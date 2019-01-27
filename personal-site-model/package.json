@@ -1,0 +1,8 @@
+{
+  "name": "personal-site-model",
+  "version": "1.0.0",
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^3.2.2"
+  }
+}
