@@ -10,7 +10,7 @@
   "license": "ISC",
   "devDependencies": {
     "@types/react": "^16.7.21",
-    "@types/react-dom": "^16.0.11",
+    "@types/react-router-dom": "^4.3.1",
     "awesome-typescript-loader": "^5.2.1",
     "source-map-loader": "^0.2.4",
     "typescript": "^3.2.4",
@@ -18,8 +18,9 @@
     "webpack-cli": "^3.2.1"
   },
   "dependencies": {
-    "react": "^16.8.0-alpha.1",
-    "react-dom": "^16.8.0-alpha.1",
-    "grraf": "^1.0.0"
+    "react": "next",
+    "react-dom": "next",
+    "react-router-dom": "next",
+    "grraf": "^1.0.6"
   }
 }

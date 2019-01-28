@@ -1,0 +1,19 @@
+
+.header-container {
+    padding-left: 10%;
+    overflow: hidden;
+    display: flex;
+    width: 100%;
+    flex-direction: row;
+    height: 3rem;
+}
+
+.header-container * {
+    margin: 0;
+    display: flex;
+    flex-grow: 1;
+}
+
+.header-container h1 {
+    font-size: 3rem;
+}

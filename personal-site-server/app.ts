@@ -2,7 +2,7 @@ import createError from 'http-errors';
 import express, {Application, NextFunction, Request, Response} from 'express';
 import cookieParser from 'cookie-parser';
 import logger from 'morgan';
-import { router as staticRouter } from './routes/static';
+import * as path from "path";
 
 export enum Env {
   dev = "dev",
@@ -17,6 +17,9 @@ export type AppGenerator = (params: AppParams) => Application;
 
 export const appGenerator: AppGenerator = (params) => {
 
+  const uiDir = path.join(__dirname, '../personal-site-ui/');
+  const publicDir = path.join(uiDir, 'public/');
+
   const app = express();
 
   app.set('view engine', 'ejs');
@@ -26,7 +29,8 @@ export const appGenerator: AppGenerator = (params) => {
   app.use(express.urlencoded({ extended: false }));
   app.use(cookieParser());
 
-  app.use('/', staticRouter);
+  app.use('/ui-deps', express.static(path.join(uiDir, 'node_modules/')));
+  app.use(express.static(publicDir));
 
   // catch 404 and forward to error handler
   app.use(function(req, res, next) {

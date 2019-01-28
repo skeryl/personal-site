@@ -1,0 +1,14 @@
+
+@font-face {
+    font-family: "Vollkorn-Regular";
+    font-face-name: "Vollkorn-Regular";
+    /*noinspection CssUnknownTarget*/
+    src: url("/fonts/vollkorn/Vollkorn-Regular.ttf") format('truetype');
+}
+
+@font-face {
+    font-family: "Vollkorn-Black";
+    font-face-name: "Vollkorn-Black";
+    /*noinspection CssUnknownTarget*/
+    src: url("/fonts/vollkorn/Vollkorn-Black.ttf") format('truetype');
+}
