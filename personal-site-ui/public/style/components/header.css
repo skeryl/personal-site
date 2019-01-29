@@ -1,19 +1,22 @@
 
-.header-container {
-    padding-left: 10%;
+#header-container {
+    height: 30vh;
+    margin: 0 10%;
     overflow: hidden;
+
     display: flex;
-    width: 100%;
     flex-direction: row;
-    height: 3rem;
+    align-items: center;
 }
 
-.header-container * {
+#header-container * {
     margin: 0;
     display: flex;
     flex-grow: 1;
 }
 
-.header-container h1 {
-    font-size: 3rem;
+#header-container h1 {
+    font-style: italic;
+    font-family: 'Vollkorn-BlackItalic', 'serif';
+    font-size: 4rem;
 }

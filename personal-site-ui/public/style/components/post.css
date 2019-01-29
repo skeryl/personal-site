@@ -1,0 +1,29 @@
+
+
+.post-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.timestamp {
+    text-align: right;
+    font-weight: lighter;
+}
+
+.post-header {
+    display: flex;
+    flex-direction: column;
+}
+
+.post-title {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+}
+
+.post-title > * {
+    margin: 0;
+    flex: 1;
+}
+

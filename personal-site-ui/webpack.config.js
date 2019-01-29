@@ -1,8 +1,14 @@
 module.exports = {
+    mode: 'development',
     entry: "./src/index.tsx",
     output: {
-        filename: "bundle.js",
-        path: __dirname + "/public/scripts"
+        filename: '[name].js',
+        path: __dirname + '/public/scripts'
+    },
+    optimization: {
+        splitChunks: {
+            chunks: 'all',
+        },
     },
 
     // Enable sourcemaps for debugging webpack's output.
@@ -23,8 +29,32 @@ module.exports = {
         ]
     },
     
-    externals: {
+/*    externals: {
         "react": "React",
         "react-dom": "ReactDOM"
-    }
+    },*/
+
+    /*optimization: {
+        splitChunks: {
+            chunks: 'async',
+            minSize: 30000,
+            maxSize: 0,
+            minChunks: 1,
+            maxAsyncRequests: 5,
+            maxInitialRequests: 3,
+            automaticNameDelimiter: '~',
+            name: true,
+            cacheGroups: {
+                vendors: {
+                    test: /[\\/]node_modules[\\/]/,
+                    priority: -10
+                },
+                default: {
+                    minChunks: 2,
+                    priority: -20,
+                    reuseExistingChunk: true
+                }
+            }
+        }
+    }*/
 };

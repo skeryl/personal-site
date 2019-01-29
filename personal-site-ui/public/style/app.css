@@ -1,0 +1,12 @@
+
+#cnv-background {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: -1;
+}
+
+#app-content {
+    display: flex;
+    margin: 0 10%;
+}

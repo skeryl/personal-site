@@ -29,7 +29,6 @@ export const appGenerator: AppGenerator = (params) => {
   app.use(express.urlencoded({ extended: false }));
   app.use(cookieParser());
 
-  app.use('/ui-deps', express.static(path.join(uiDir, 'node_modules/')));
   app.use(express.static(publicDir));
 
   // catch 404 and forward to error handler

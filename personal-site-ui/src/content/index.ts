@@ -39,7 +39,7 @@ export type TypeExtras = {
     [PostType.experiment]: StageItem,
 };
 
-export abstract class ContentDatabase {
+export class ContentDatabase {
 
     static readonly tagPosts: Map<string, string[]> = new Map<string, string[]>();
     static readonly posts: Map<string, Post> = new Map<string, Post>();

@@ -25,7 +25,7 @@ export type PostTypes = {
 export interface PostSummary extends Unique {
     type: PostType;
     title: string;
-    subtitle: string;
+    subtitle?: string;
     tags: string[];
     timestamp: Date;
 }

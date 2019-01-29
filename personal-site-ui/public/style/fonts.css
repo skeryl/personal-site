@@ -12,3 +12,10 @@
     /*noinspection CssUnknownTarget*/
     src: url("/fonts/vollkorn/Vollkorn-Black.ttf") format('truetype');
 }
+
+@font-face {
+    font-family: "Vollkorn-BlackItalic";
+    font-face-name: "Vollkorn-BlackItalic";
+    /*noinspection CssUnknownTarget*/
+    src: url("/fonts/vollkorn/Vollkorn-BlackItalic.ttf") format('truetype');
+}
