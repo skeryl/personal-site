@@ -1,14 +1,15 @@
 import * as React from "react";
-import {Post, PostTypes} from "../../../personal-site-model/models";
-import {Renderers, RenderThing} from "../content";
+import {Post, PostTypes} from "../../../../personal-site-model/models";
+import {Renderers, RenderThing} from "../../content";
 import * as moment from "moment";
-import {Tags} from "./Tags";
+import {Tags} from "../Tags";
 
-export interface Props<T extends Post> {
-    post: T
+export interface PostProps<T extends Post> {
+    post: T;
+    full: boolean;
 }
 
-export function PostComponent<T extends Post>(props: Props<T>) {
+export function PostComponent<T extends Post>(props: PostProps<T>) {
 
     type postType = T['type'];
     type itemType = PostTypes[postType];

@@ -31,6 +31,10 @@ export const appGenerator: AppGenerator = (params) => {
 
   app.use(express.static(publicDir));
 
+  app.get('*', (req, res, next) => {
+    res.sendFile(path.join(publicDir, 'index.html'));
+  });
+
   // catch 404 and forward to error handler
   app.use(function(req, res, next) {
     next(createError(404));

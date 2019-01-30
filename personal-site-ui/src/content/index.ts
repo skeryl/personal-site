@@ -1,8 +1,8 @@
 import {Post, PostSummary, PostType, PostTypes} from "../../../personal-site-model/models";
 import {ComponentClass, ReactElement} from "react";
-import {ExperimentComponent} from "../components/Experiment";
-import {WriteUpComponent} from "../components/WriteUp";
-import {ProjectComponent} from "../components/Project";
+import {ExperimentComponent} from "../components/post/Experiment";
+import {WriteUpComponent} from "../components/post/WriteUp";
+import {ProjectComponent} from "../components/post/Project";
 import {Stage} from "grraf";
 
 type ContentRenderers = {
@@ -28,15 +28,21 @@ export const Renderers: ContentRenderers = {
     },
 };
 
-type StaticItem = { render(): ReactElement<any> | null };
-type StageItem = { start(stage: Stage); stop(); };
 
-export type Extras = StaticItem | StageItem;
+
+export interface StaticContent {
+    render(): ReactElement<any> | null
+}
+
+export interface StageContent {
+    start(stage: Stage);
+    stop();
+}
 
 export type TypeExtras = {
-    [PostType.project]: StaticItem,
-    [PostType.writeUp]: StaticItem,
-    [PostType.experiment]: StageItem,
+    [PostType.project]: StaticContent,
+    [PostType.writeUp]: StaticContent,
+    [PostType.experiment]: StageContent,
 };
 
 export class ContentDatabase {
@@ -44,8 +50,12 @@ export class ContentDatabase {
     static readonly tagPosts: Map<string, string[]> = new Map<string, string[]>();
     static readonly posts: Map<string, Post> = new Map<string, Post>();
 
+    private static getUri(id: string, postType: PostType) {
+        return `${postType.toString()}/${id}`;
+    }
+
     static add<T extends Post>(postSummary: PostSummary, extras: TypeExtras[T['type']]): T {
-        const uri = `${postSummary.type.toString()}/${postSummary.id}`;
+        const uri = this.getUri(postSummary.id, postSummary.type);
 
         if(this.posts.has(uri)){
             throw new Error(`Content with uri: '${uri}' already registered.`);
@@ -69,8 +79,11 @@ export class ContentDatabase {
         return post as T;
     }
 
-    static get<T extends Post>(uri: string): T | undefined {
-        return this.posts.get(uri) as T;
+    static get<TType extends PostType>(id: string, postType: TType | null = null): PostTypes[TType] | undefined {
+        if(postType){
+            return this.posts.get(this.getUri(id, postType)) as PostTypes[TType];
+        }
+        return this.posts.get(id) as PostTypes[TType];
     }
 
     static summariesByTag(tag: string): PostSummary[] {

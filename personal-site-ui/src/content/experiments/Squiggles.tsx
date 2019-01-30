@@ -1,19 +1,19 @@
 import * as React from "react";
-import {ContentDatabase} from "../index";
+import {ContentDatabase, StageContent} from "../index";
 import {Experiment, PostType} from "../../../../personal-site-model/models";
 import {Color, DirectionalMagnitude, MouseInfo, Path, Rectangle, Shape, Stage} from "grraf";
 
-const SEGMENT_LENGTH = 20;
+const SEGMENT_LENGTH = 40;
 
 const redOrange = new Color(221, 60, 2);
 const aqua = new Color(66, 229, 244);
-const white = new Color(255, 255, 255);
+const transparent = new Color(255, 255, 255, 0.0);
 
-const SEGMENT_SPACING = 4.5;
-const VERTICAL_SPACING = 20;
+const SEGMENT_SPACING = 10;
+const VERTICAL_SPACING = 40;
 
-const BORDER_WIDTH = 800;
-const BORDER_HEIGHT = 800;
+const BORDER_WIDTH_PCT = 0.8;
+const BORDER_HEIGHT_PCT = 0.8;
 
 
 export class AnchoredSquiggle extends Shape {
@@ -28,6 +28,7 @@ export class AnchoredSquiggle extends Shape {
 
         this.path = this.stage.createShape(Path)
             .setLineCap("round")
+            .setColor(redOrange)
             .setStrokeColor(redOrange) as Path;
     }
 
@@ -51,37 +52,45 @@ export class AnchoredSquiggle extends Shape {
 }
 
 
-export class SomethingPretty {
+export class SomethingPretty implements StageContent {
 
     private stage: Stage | undefined;
     private mouse: MouseInfo | undefined;
-    private border: Shape | undefined;
+    private border: Rectangle | undefined;
 
+    private hypotenuse: number = 1;
     private squiggles: AnchoredSquiggle[] = [];
 
     start = (stage: Stage) => {
         this.stage = stage;
 
+        const size = stage.getSize();
+
+        const borderWidth = size.width * BORDER_WIDTH_PCT;
+        const borderHeight = size.height * BORDER_HEIGHT_PCT;
+
         const startingPosition = {
-            x: (window.innerWidth - BORDER_WIDTH) / 2,
-            y: (window.innerHeight - BORDER_HEIGHT) / 2,
+            x: (size.width - borderWidth) / 2,
+            y: (size.height - borderHeight) / 2,
         };
 
-        this.border = this.stage.createShape(Rectangle, startingPosition.x, startingPosition.y, white, -1)
-            .setHeight(BORDER_HEIGHT)
-            .setWidth(BORDER_WIDTH)
-            .setColor(white)
-            .setStrokeWidth(20)
-            .setStrokeColor(aqua);
+        this.border = this.stage.createShape(Rectangle, startingPosition.x, startingPosition.y, transparent, -1)
+            .setWidth(borderWidth)
+            .setHeight(borderHeight)
+            .setColor(transparent)
+            .setStrokeWidth(10)
+            .setStrokeColor(aqua) as Rectangle;
 
-        const borderEdgeRight = BORDER_WIDTH + this.border.x;
-        const borderEdgeDown = BORDER_HEIGHT + this.border.y;
+        const borderEdgeRight = borderWidth + this.border.x;
+        const borderEdgeDown = borderHeight + this.border.y;
 
         const initialX = this.border.position.x + (this.border.strokeWidth || 0);
         let next: DirectionalMagnitude | null = {
             x: initialX,
             y: this.border.position.y  + (this.border.strokeWidth || 0)
         };
+
+        this.hypotenuse = Math.sqrt(borderWidth**2 + borderHeight**2);
 
         let count = 0;
 
@@ -97,10 +106,10 @@ export class SomethingPretty {
             const nextX = currentX + SEGMENT_LENGTH + SEGMENT_SPACING;
             const nextY = currentY + VERTICAL_SPACING;
 
-            const outsideBoundsX = nextX > borderEdgeRight;
-            const outsideBoundsY = nextY > borderEdgeDown;
+            const outsideBoundsX = nextX >= borderEdgeRight;
+            const outsideBoundsY = nextY >= borderEdgeDown;
 
-            next = (outsideBoundsX && outsideBoundsY) ? null :
+            next = (outsideBoundsY && outsideBoundsX) ? null :
                 outsideBoundsX ? {
                     x: initialX,
                     y: nextY,
@@ -116,6 +125,7 @@ export class SomethingPretty {
             window.requestAnimationFrame(this.redrawLines);
         });
 
+        this.stage.draw();
     };
 
 
@@ -123,13 +133,15 @@ export class SomethingPretty {
         if(this.stage){
             if(this.border && this.mouse){
                 const position = this.mouse.position();
-                const velocity = this.mouse.velocity();
-                // const width = Math.min(20,Math.max(1,Math.floor((velocity.x + velocity.y))));
 
                 this.squiggles.forEach(squiggle => {
+
+                    const progressFromCenter = Math.abs(
+                        (position.y - (this.border.y + (this.border.height()/2)))
+                    );
+
                     squiggle.setTarget(Math.ceil(position.x), Math.ceil(position.y))
-                        .setCpPosition({ x: Math.ceil(velocity.x), y: Math.ceil(velocity.y) })
-                        .setStrokeWidth(1);
+                        .setStrokeWidth(Math.ceil((20*(progressFromCenter)/this.border.height())));
                 });
             }
             this.stage.draw();
@@ -146,7 +158,7 @@ export class SomethingPretty {
 }
 
 export const Squiggles = ContentDatabase.add<Experiment>({
-    id: '1',
+    id: 'squiggles',
     tags: ['fun', 'canvas', 'grraf', 'interactive'],
     title: 'Squiggles',
     timestamp: new Date(2019, 0, 29),
