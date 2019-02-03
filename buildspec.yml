@@ -25,11 +25,11 @@ phases:
       - cd $CODEBUILD_SRC_DIR
       - echo Build started on `date`
       - echo Building the Docker image...
-      - docker build -t $REPOSITORY_URI:latest .
-      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
+      - docker build -t 276223127361.dkr.ecr.us-east-1.amazonaws.com/carroll/shane:latest .
+      - docker tag 276223127361.dkr.ecr.us-east-1.amazonaws.com/carroll/shane:latest 276223127361.dkr.ecr.us-east-1.amazonaws.com/carroll/shane:$IMAGE_TAG
   post_build:
     commands:
-      - printf '[{"name":"hello-world","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
+      - printf '[{"name":"hello-world","imageUri":"%s"}]' 276223127361.dkr.ecr.us-east-1.amazonaws.com/carroll/shane:$IMAGE_TAG > imagedefinitions.json
 
 artifacts:
   files:
