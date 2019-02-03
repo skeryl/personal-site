@@ -26,7 +26,7 @@ phases:
       - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
   post_build:
     commands:
-      - printf '[{"name":"carroll/shane","imageUri":"%s"}]' $REPOSITORY_URI:$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7) > imagedefinitions.json
+      - printf '[{"name":"personal-site-container","imageUri":"%s"}]' $REPOSITORY_URI:$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7) > imagedefinitions.json
 
 artifacts:
   files:
