@@ -4,12 +4,13 @@ version: 0.1
 phases:
   install:
     commands:
-      - cd ./personal-site-ui
+      - ls
+      - ls $CODEBUILD_SRC_DIR_personal-site
+      - cd $CODEBUILD_SRC_DIR_personal-site/personal-site-ui
       - npm install
-      - cd ../personal-site-server
+      - cd $CODEBUILD_SRC_DIR_personal-site/personal-site-server
       - npm install
-      - cd ..
   build:
     commands:
-      - cd ./personal-site-ui
+      - cd $CODEBUILD_SRC_DIR_personal-site/personal-site-ui
       - npm run build
