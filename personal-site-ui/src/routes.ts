@@ -2,8 +2,9 @@ import {RouteProps} from 'react-router-dom';
 import {Home} from "./containers/Home";
 import {PostDetail} from "./containers/PostDetail";
 import {PostType} from "../../personal-site-model/models";
+import {PostList} from "./containers/PostList";
 
-export type RouteConfig = RouteProps & { name: '' };
+export type NavRoute = RouteProps & { name: string };
 
 const index: RouteProps = {
     exact: true,
@@ -11,8 +12,22 @@ const index: RouteProps = {
     component: Home
 };
 
-const experiments: RouteProps = {
-    path: '/experiments'
+const experiments: NavRoute = {
+    name: 'experiments',
+    path: '/experiments',
+    component: PostList(PostType.experiment),
+};
+
+const projects: NavRoute = {
+    name: 'projects',
+    path: '/projects',
+    component: PostList(PostType.project),
+};
+
+const writeUps: NavRoute = {
+    name: 'write-ups',
+    path: '/write-ups',
+    component: PostList(PostType.writeUp)
 };
 
 const experimentDetail: RouteProps = {
@@ -33,6 +48,8 @@ const projectDetail: RouteProps = {
 export const routes = [
     index,
     experiments,
+    projects,
+    writeUps,
     experimentDetail,
     writeUpDetail,
     projectDetail,

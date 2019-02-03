@@ -28,6 +28,7 @@ export interface PostSummary extends Unique {
     subtitle?: string;
     tags: string[];
     timestamp: Date;
+    thumbnail?: string;
 }
 
 export interface Post extends PostSummary, Linkable {

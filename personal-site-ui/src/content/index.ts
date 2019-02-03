@@ -4,6 +4,8 @@ import {ExperimentComponent} from "../components/post/Experiment";
 import {WriteUpComponent} from "../components/post/WriteUp";
 import {ProjectComponent} from "../components/post/Project";
 import {Stage} from "grraf";
+import {ExperimentSummary} from "../components/post/ExperimentSummary";
+import {PostSummaryComponent} from "../components/post/PostSummary";
 
 type ContentRenderers = {
     [key in PostType]: Renderer<key>;
@@ -13,18 +15,20 @@ export type RenderThing<T extends PostType> = ComponentClass<{ post: PostTypes[T
     ((props: { post: PostTypes[T] }) => (ReactElement<any> | null));
 
 export type Renderer<T extends PostType> = {
-    template: RenderThing<T>;
+    main: RenderThing<T>;
+    summary?: RenderThing<T>;
 };
 
 export const Renderers: ContentRenderers = {
     [PostType.project]: {
-        template: ProjectComponent
+        main: ProjectComponent,
     },
     [PostType.experiment]: {
-        template: ExperimentComponent
+        main: ExperimentComponent,
+        summary: ExperimentSummary
     },
     [PostType.writeUp]: {
-        template: WriteUpComponent
+        main: WriteUpComponent,
     },
 };
 
@@ -51,10 +55,10 @@ export class ContentDatabase {
     static readonly posts: Map<string, Post> = new Map<string, Post>();
 
     private static getUri(id: string, postType: PostType) {
-        return `${postType.toString()}/${id}`;
+        return `${postType.toString()}s/${id}`;
     }
 
-    static add<T extends Post>(postSummary: PostSummary, extras: TypeExtras[T['type']]): T {
+    static add<T extends PostType>(postSummary: PostSummary, extras: TypeExtras[T]): PostTypes[T] {
         const uri = this.getUri(postSummary.id, postSummary.type);
 
         if(this.posts.has(uri)){
@@ -76,7 +80,7 @@ export class ContentDatabase {
 
         this.posts.set(uri, post);
 
-        return post as T;
+        return post as PostTypes[T];
     }
 
     static get<TType extends PostType>(id: string, postType: TType | null = null): PostTypes[TType] | undefined {
@@ -95,11 +99,16 @@ export class ContentDatabase {
     // ToDo: optimize
     static latest(): Post | undefined {
         let sorted = Array.from(this.posts.values())
-            .sort((a, b) => Math.sign(a.timestamp.getTime() - b.timestamp.getTime()));
+            .sort((a, b) => Math.sign(b.timestamp.getTime() - a.timestamp.getTime()));
 
         return sorted[0];
     }
 
+    static list<T extends PostType>(postType: T): Array<PostTypes[T]> {
+        return Array.from(this.posts.values())
+            .filter(post => post.type === postType) as Array<PostTypes[T]>;
+    }
 }
 
 export * from './experiments';
+export * from './projects';

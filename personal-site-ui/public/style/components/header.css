@@ -1,6 +1,6 @@
 
 #header-container {
-    height: 30vh;
+    height: 10vh;
     margin: 0 10%;
     overflow: hidden;
 
@@ -18,5 +18,5 @@
 #header-container h1 {
     font-style: italic;
     font-family: 'Vollkorn-BlackItalic', 'serif';
-    font-size: 4rem;
+    /*font-size: 4rem;*/
 }

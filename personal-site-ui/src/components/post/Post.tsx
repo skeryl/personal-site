@@ -14,7 +14,7 @@ export function PostComponent<T extends Post>(props: PostProps<T>) {
     type postType = T['type'];
     type itemType = PostTypes[postType];
 
-    const Renderer = Renderers[props.post.type].template as RenderThing<postType>;
+    const Renderer = Renderers[props.post.type].main as RenderThing<postType>;
 
     return (
         <div className="post-container">

@@ -1,0 +1,15 @@
+
+version: 0.1
+
+phases:
+  install:
+    commands:
+      cd ./personal-site-ui
+      npm install
+      cd ../personal-site-server
+      npm install
+      cd ..
+  build:
+    commands:
+      cd ./personal-site-ui
+      npm run build
