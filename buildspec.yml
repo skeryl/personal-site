@@ -14,7 +14,9 @@ phases:
     commands:
       - cd $CODEBUILD_SRC_DIR/personal-site-ui
       - npm run build
+      - cd $CODEBUILD_SRC_DIR
+      - pwd
 
 artifacts:
   files:
-    $CODEBUILD_SRC_DIR/**/*
+    - '**/*'
