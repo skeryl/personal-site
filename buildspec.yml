@@ -10,12 +10,24 @@ phases:
       - npm install
       - cd $CODEBUILD_SRC_DIR/personal-site-server
       - npm install
+    pre_build:
+      commands:
+        - echo Logging in to Amazon ECR...
+        - aws --version
+        - $(aws ecr get-login --region us-east-1 --no-include-email)
+        - REPOSITORY_URI=276223127361.dkr.ecr.us-east-1.amazonaws.com/carroll/shane:latest
   build:
     commands:
       - cd $CODEBUILD_SRC_DIR/personal-site-ui
       - npm run build
       - cd $CODEBUILD_SRC_DIR
-      - pwd
+      - echo Build started on `date`
+      - echo Building the Docker image...
+      - docker build -t $REPOSITORY_URI:latest .
+      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
+  post_build:
+    commands:
+      - printf '[{"name":"hello-world","imageUri":"%s"}]' $REPOSITORY_URI > imagedefinitions.json
 
 artifacts:
   files:
