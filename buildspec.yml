@@ -5,13 +5,13 @@ phases:
   install:
     commands:
       - ls
-      - cd ./personal-site-ui
+      - cd $CODEBUILD_SRC_DIR/personal-site-ui
       - ls
       - npm install
-      - cd ../personal-site-server
+      - cd $CODEBUILD_SRC_DIR/personal-site-server
       - ls
       - npm install
   build:
     commands:
-      - cd ./personal-site-ui
+      - cd $CODEBUILD_SRC_DIR/personal-site-ui
       - npm run build
