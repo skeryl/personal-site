@@ -14,7 +14,7 @@ phases:
       commands:
         - echo Logging in to Amazon ECR...
         - aws --version
-        - $(aws ecr get-login --region us-east-1 --no-include-email | sed 's|https://||')
+        - $(aws ecr get-login --region us-east-1 --no-include-email)
   build:
     commands:
       - echo Build started on `date`
