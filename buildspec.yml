@@ -29,7 +29,7 @@ phases:
       - printf '[{"name":"personal-site-container","imageUri":"%s"}]' $REPOSITORY_URI:$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7) > imagedefinitions.json
       - echo Build completed on `date`
       - echo Pushing the Docker image...
-      - docker push $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/$REPOSITORY_URI:$IMAGE_TAG
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/$REPOSITORY_URI:$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
 
 artifacts:
   files:
