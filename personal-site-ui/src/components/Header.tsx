@@ -9,8 +9,9 @@ function pathString(path: string | string[]): string {
 export function Header(){
     return (
         <div id="header-container">
-            <a href={'/'}><h1>Shane Carroll</h1></a>
-            <ul id="nav">
+            <h1>Shane Carroll</h1>
+            {/*<a href={'/'}></a>*/}
+            {/*<ul id="nav">
             {
                 routes.map(route => route as NavRoute)
                     .filter(navRoute => navRoute.name)
@@ -18,7 +19,7 @@ export function Header(){
                         <li key={pathString(navRoute.path)}><a href={pathString(navRoute.path)}>{navRoute.name}</a></li>
                     ))
             }
-            </ul>
+            </ul>*/}
         </div>
     )
 }
