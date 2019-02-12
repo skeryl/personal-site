@@ -1,5 +1,6 @@
 
 .container {
+    width: inherit;
     display: flex;
     flex-basis: 100%;
     padding: 1rem;

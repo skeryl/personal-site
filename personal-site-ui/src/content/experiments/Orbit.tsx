@@ -1,20 +1,7 @@
 import * as React from "react";
 import {ContentDatabase, StageContent} from "../index";
 import {PostType} from "../../../../personal-site-model/models";
-import {
-    add,
-    Circle,
-    Color,
-    DirectionalMagnitude,
-    Environment,
-    EnvironmentalProperties, LinearGradient,
-    MouseInfo,
-    Path, RadialGradient,
-    Rectangle,
-    Shape,
-    Simulation,
-    Stage, subtract
-} from "grraf";
+import {Circle, Color, Environment, EnvironmentalProperties, Simulation, Stage, subtract} from "grraf";
 
 const blue = new Color(37, 150, 230);
 const bg = new Color(244,215,220);
@@ -23,12 +10,11 @@ const orange = new Color(230, 150, 37);
 export class OrbitSimulation implements StageContent {
 
     private readonly envProperties: Partial<EnvironmentalProperties> = {
-        /*isMeasuringGravity: true,
-        metersPerPixel: 100_000*/
     };
 
     private simulation: Simulation | undefined;
     private stage: Stage | undefined;
+    private intervalId: number | undefined;
 
     start = (stage: Stage) => {
         this.stage = stage;
@@ -77,10 +63,10 @@ export class OrbitSimulation implements StageContent {
             }
         });
 
-        setInterval(() => {
+        this.intervalId = setInterval(() => {
             const particleGhost = this.createParticle(stage, particleRadius)
                 .setPosition(particle.position);
-            const animation = this.stage.animate(particleGhost)
+            const animation = stage.animate(particleGhost)
                 .transition("color", { 0: blue, 3000: bg })
                 .create();
             animation.then(() => {
@@ -103,6 +89,9 @@ export class OrbitSimulation implements StageContent {
     }
 
     stop = () => {
+        if(this.intervalId){
+            clearInterval(this.intervalId)
+        }
         if(this.simulation){
             this.simulation.stop();
         }
@@ -117,7 +106,7 @@ export const Orbit = ContentDatabase.add<PostType.experiment>({
     id: 'orbit',
     tags: ['fun', 'canvas', 'grraf', 'interactive'],
     title: 'Orbit',
-    timestamp: new Date(2019, 1, 19),
+    timestamp: new Date(2019, 1, 10),
     type: PostType.experiment,
 },
     new OrbitSimulation(),

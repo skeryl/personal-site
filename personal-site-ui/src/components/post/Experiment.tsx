@@ -29,6 +29,7 @@ export function ExperimentComponent(props: PostProps<Experiment>){
             props.post.stop();
             stage.clear();
         }
+        stage = null;
     }
 
     function initialize() {
