@@ -11,11 +11,9 @@ export interface PostProps<T extends Post> {
 
 export function PostSummaryComponent<T extends PostType>(postType: PostType) {
     return function(props: PostProps<PostTypes[T]>){
-
-        const SummaryRenderer: RenderThing<T> | undefined = Renderers[postType].summary;
-
+        // const SummaryRenderer: RenderThing<T> | undefined = Renderers[postType].summary;
         return (
-            <>
+            <div className="post-summary">
                 <div className="post-header">
                     <div className="post-title">
                         <h1>{props.post.title}</h1>
@@ -24,8 +22,8 @@ export function PostSummaryComponent<T extends PostType>(postType: PostType) {
                     {/*{ props.post.subtitle && <h2>{props.post.subtitle}</h2> }*/}
                     <Tags tags={props.post.tags} />
                 </div>
-                {SummaryRenderer && <SummaryRenderer post={props.post as any as PostTypes[T]}/>}
-            </>
+                {/*{SummaryRenderer && <SummaryRenderer post={props.post as any as PostTypes[T]}/>}*/}
+            </div>
         );
     }
 }

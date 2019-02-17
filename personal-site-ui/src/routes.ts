@@ -14,6 +14,7 @@ const index: RouteProps = {
 
 const experiments: NavRoute = {
     name: 'experiments',
+    exact: true,
     path: '/experiments',
     component: PostList(PostType.experiment),
 };

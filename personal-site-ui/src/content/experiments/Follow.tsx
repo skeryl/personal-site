@@ -1,11 +1,7 @@
 import * as React from "react";
 import {ContentDatabase, StageContent} from "../index";
 import {PostType} from "../../../../personal-site-model/models";
-import {add, Circle, Color, DirectionalMagnitude, MouseInfo, Path, Stage} from "grraf";
-
-const blue = new Color(37, 150, 230);
-const bg = new Color(244,215,220);
-const orange = new Color(230, 150, 37);
+import {add, Circle, Color, DirectionalMagnitude, MouseInfo, Path, Stage, subtract} from "grraf";
 
 interface Thickness {
     min: number;
@@ -17,7 +13,7 @@ class Pen {
 
     private lines: Path[] = [];
     private currentLine: Path | undefined;
-    private color: Color = orange;
+    private color: Color = colors[0];
 
     constructor(
         public width: number,
@@ -46,11 +42,11 @@ class Pen {
         }
     };
 
-
     public addPoint(coordinates: DirectionalMagnitude) {
         const coords = this.position(coordinates);
         if(this.currentLine){
             this.currentLine.lineTo(coords.x, coords.y);
+            this.stopLine();
         } else {
             this.currentLine = this.stage.createShape(Path, coords.x, coords.y, this.color, 2)
                 .moveTo(coords.x, coords.y)
@@ -66,14 +62,34 @@ class Pen {
             this.currentLine = undefined;
         }
     }
+
+    public setWidth = (current: number) => {
+        this.width = current;
+    };
 }
 
-export class MirrorsContent implements StageContent {
+
+
+const waitFor = (num: number): Promise<void> => {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            resolve();
+        }, num);
+    });
+};
+
+const colorA = new Color(219, 92, 135);
+const colorB = new Color(227, 3, 140);
+const colorC = new Color(207, 49, 179);
+
+const colors = [colorA, colorB, colorC];
+
+export class FollowContent implements StageContent {
 
     private readonly thickness: Thickness = {
         min: 1,
         max: 50,
-        current: 1,
+        current: 10,
     };
 
     private pointer: Circle | undefined;
@@ -89,100 +105,60 @@ export class MirrorsContent implements StageContent {
 
         this.stage = stage;
         const size = stage.getSize();
-        const reflection = size.width / 2;
 
         this.pointer = this.stage.createShape(Circle)
             .setRadius(this.thickness.current/2)
             .setColor(new Color(255, 145, 98, 1)) as Circle;
 
+        const halfWidth = size.width/2;
+
         this.pens = [
             new Pen(this.thickness.current, this.stage),
-            ...(
-                new Array(20).fill(undefined).map((_, ix) => new Pen(
-                    this.thickness.current,
-                    this.stage,
-                    ({ x, y }) => ({
-                        x: x,
-                        y: y + (20*ix),
-                    })
-                ))
-            ),
-            /*new Pen(this.thickness.current, this.stage, ({ x, y }) => ({
-                x: reflection + (reflection - x),
-                y: y,
-            })),*/
         ];
 
-        function averageChange(positions: DirectionalMagnitude[]): DirectionalMagnitude {
+        let position = { x: halfWidth, y: size.height/2 };
 
-            const lastPosition = positions[positions.length - 1];
-
-            type Result = { result: DirectionalMagnitude, last: DirectionalMagnitude };
-            const sum = positions.reduce((result: Result, current: DirectionalMagnitude) => {
-
-                result.result = {
-                    x: result.result.x + (result.last.x - current.x),
-                    y: result.result.y + (result.last.y - current.y),
-                };
-
-                result.last = current;
-
-                return result;
-            }, {
-                last: {
-                    x: lastPosition.x + Math.ceil(Math.sign(Math.random() - 0.5)*250),
-                    y: lastPosition.y + Math.ceil(Math.sign(Math.random() - 0.5)*250)
-                },
-                result: {
-                    x: 0,
-                    y: 0,
-                },
-            });
-
-            return {
-                x: 2*sum.result.x / positions.length,
-                y: 2*sum.result.y / positions.length,
-            }
-        }
-
-        let position = { x: size.width/2, y: size.height/2 };
-        let positionsInSet = [position];
-        this.interval = setInterval(() => {
-            const avg = averageChange(positionsInSet);
-            const newPosition = {
-                x: position.x + avg.x,
-                y: position.y + avg.y
-            };
-            positionsInSet.push(newPosition);
-
+        this.stage.onMouseClick(async mouse => {
+            position = mouse.position();
             if(this.pens){
-                this.pens.forEach(pen => pen.addPoint(newPosition));
-            }
 
-            if((Math.random()*100) > 0.1){
-                position = newPosition;
-            } else {
-                // reset
-                const red = (125*Math.random())+95;
-                const color = new Color(red, Math.random()*25, Math.random()*25);
-                this.pens.forEach(pen => {
-                    pen.stopLine();
-                    pen.setColor(color);
-                });
-                position = { x: Math.random()*size.width, y: Math.random()*size.height };
-                positionsInSet = [position];
-            }
+                await this.drawSpiral(position);
 
-            stage.draw();
-        }, 2);
+                this.pens.forEach(pen => pen.stopLine());
+
+            }
+        });
 
         this.stage.onMouseUpdate(mouse => {
             this.pointer.setPosition(mouse.position());
-            if(mouse.isLeftDown()){
-                position = mouse.position();
-            }
-            window.requestAnimationFrame(() => this.stage.draw());
+            this.stage.draw();
         });
+    };
+
+    private drawSpiral = async (position: DirectionalMagnitude) => {
+        let delta = {...position};
+        let pos = {...position};
+        let count = 0;
+
+        while(/*delta.x > 1 && delta.y > 1*/ (count++) < 900){
+            delta = (await (this.drawNext(pos, count)));
+            pos = add(pos, delta);
+        }
+    };
+
+    private drawNext = async (pos: DirectionalMagnitude, count: number): Promise<DirectionalMagnitude> => {
+        await waitFor(Math.log(count));
+
+        const delta = { x: -Math.sin(count)*count*2, y: Math.cos(count)*-2*count};
+        const color = colors[count % 3];
+
+        this.pens.forEach(pen => {
+            pen.setWidth(Math.floor(1.5*Math.log(count)));
+            pen.setColor(color);
+            pen.addPoint(pos);
+        });
+        this.stage.draw();
+        return delta;
     };
 
     private handleMouseWheel = (e) => {
@@ -215,12 +191,12 @@ export class MirrorsContent implements StageContent {
     };
 }
 
-export const Mirrors = ContentDatabase.add<PostType.experiment>({
-        id: 'mirrors',
+export const Follow = ContentDatabase.add<PostType.experiment>({
+        id: 'follow',
         tags: ['fun', 'canvas', 'grraf', 'interactive'],
-        title: 'Mirrors',
-        timestamp: new Date(2019, 1, 15),
+        title: 'Follow',
+        timestamp: new Date(2019, 1, 16),
         type: PostType.experiment,
     },
-    new MirrorsContent(),
+    new FollowContent(),
 );
