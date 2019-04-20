@@ -1,12 +1,15 @@
 
 #header-container {
-    height: 10vh;
-    margin: 0 10%;
+    height: 5vh;
     overflow: hidden;
-
     display: flex;
     flex-direction: row;
     align-items: center;
+    background-color: rgba(248, 249, 73, 0.2);
+}
+
+#header-container .logo-name {
+    flex-basis: 0;
 }
 
 #header-container * {
@@ -16,7 +19,10 @@
 }
 
 #header-container h1 {
-    font-style: italic;
-    font-family: 'Vollkorn-BlackItalic', 'serif';
-    /*font-size: 4rem;*/
+    font-family: 'Trocchi-Regular', 'sans-serif';
+}
+
+#header-container a {
+    text-decoration: none;
+    text-align: right;
 }

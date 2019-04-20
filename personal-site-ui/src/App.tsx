@@ -1,6 +1,6 @@
 import * as React from 'react';
 import {useEffect} from 'react';
-import {BrowserRouter, Route} from "react-router-dom";
+import {BrowserRouter, Route, Switch} from "react-router-dom";
 import {routes} from "./routes";
 import {Header} from "./components/Header";
 import {Animation, Color, Rectangle, SizeStrategy, Stage, TimingFunction} from "grraf";
@@ -35,11 +35,13 @@ export function App() {
             <Header/>
             <div id="app-content">
                 <BrowserRouter>
-                    {
-                        routes.map(routeProps => (
-                            <Route key={Array.isArray(routeProps.path) ? routeProps.path.join('/') : routeProps.path} {...routeProps} />
-                        ))
-                    }
+                    <Switch>
+                        {
+                            routes.map(routeProps => (
+                                <Route key={Array.isArray(routeProps.path) ? routeProps.path.join('/') : routeProps.path} {...routeProps} />
+                            ))
+                        }
+                    </Switch>
                 </BrowserRouter>
             </div>
         </div>

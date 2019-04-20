@@ -49,6 +49,8 @@ export type TypeExtras = {
     [PostType.experiment]: StageContent,
 };
 
+const sortByTimestamp = (a, b) => Math.sign(b.timestamp.getTime() - a.timestamp.getTime());
+
 export class ContentDatabase {
 
     static readonly tagPosts: Map<string, string[]> = new Map<string, string[]>();
@@ -99,13 +101,14 @@ export class ContentDatabase {
     // ToDo: optimize
     static latest(): Post | undefined {
         let sorted = Array.from(this.posts.values())
-            .sort((a, b) => Math.sign(b.timestamp.getTime() - a.timestamp.getTime()));
+            .sort(sortByTimestamp);
 
         return sorted[0];
     }
 
     static list<T extends PostType>(postType: T): Array<PostTypes[T]> {
         return Array.from(this.posts.values())
+            .sort(sortByTimestamp)
             .filter(post => post.type === postType) as Array<PostTypes[T]>;
     }
 }

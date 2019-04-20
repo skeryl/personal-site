@@ -13,7 +13,7 @@ export function PostList<T extends PostType>(postType: T){
             <div className="post-summary-container">
                 {
                     posts.map(post => (
-                        <a href={post.uri}>
+                        <a href={post.uri} className="post-list-item">
                             <Summary key={post.id} post={post} full={false}/>
                         </a>
                     ))

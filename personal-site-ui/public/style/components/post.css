@@ -4,7 +4,7 @@
     width: 100%;
     display: flex;
     flex-direction: column;
-    min-height: 60vh;
+    min-height: 94vh;
 }
 
 .post-summary-container {
@@ -14,6 +14,9 @@
      min-height: 10vh;
  }
 
+.post-list-item {
+    margin-bottom: 20px;
+}
 
 .timestamp {
     text-align: right;
@@ -27,11 +30,35 @@
 
 .post-title {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     align-items: baseline;
 }
 
-.post-title > * {
+.timestamp {
+    font-weight: bold;
+}
+
+.post-title h1 {
+    margin-left: 5px;
+    flex-basis: 100%;
+}
+
+.post-title > *  {
+    display: flex;
+    flex-direction: row;
+    flex-basis: 100%;
     margin: 0;
-    flex: 1;
+    flex-grow: 1;
+    align-self: center;
+}
+
+
+.post-title > * > * {
+    margin: 0;
+    padding-left: 2px;
+    padding-right: 2px;
+    display: flex;
+    flex-grow: 1;
+    flex-shrink: 0;
+    align-self: center;
 }

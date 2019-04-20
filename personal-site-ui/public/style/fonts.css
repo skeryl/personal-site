@@ -1,21 +1,16 @@
 
+
+
 @font-face {
-    font-family: "Vollkorn-Regular";
-    font-face-name: "Vollkorn-Regular";
+    font-family: "Trocchi-Regular";
+    font-face-name: "Trocchi-Regular";
     /*noinspection CssUnknownTarget*/
-    src: url("/fonts/vollkorn/Vollkorn-Regular.ttf") format('truetype');
+    src: url("/fonts/trocchi/Trocchi-Regular.ttf") format('truetype');
 }
 
 @font-face {
-    font-family: "Vollkorn-Black";
-    font-face-name: "Vollkorn-Black";
+    font-family: "SourceCodePro-Regular";
+    font-face-name: "SourceCodePro-Regular";
     /*noinspection CssUnknownTarget*/
-    src: url("/fonts/vollkorn/Vollkorn-Black.ttf") format('truetype');
-}
-
-@font-face {
-    font-family: "Vollkorn-BlackItalic";
-    font-face-name: "Vollkorn-BlackItalic";
-    /*noinspection CssUnknownTarget*/
-    src: url("/fonts/vollkorn/Vollkorn-BlackItalic.ttf") format('truetype');
+    src: url("/fonts/source-code-pro/SourceCodePro-Regular.ttf") format('truetype');
 }

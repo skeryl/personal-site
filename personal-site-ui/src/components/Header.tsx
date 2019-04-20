@@ -9,17 +9,8 @@ function pathString(path: string | string[]): string {
 export function Header(){
     return (
         <div id="header-container">
-            <h1>Shane Carroll</h1>
-            {/*<a href={'/'}></a>*/}
-            {/*<ul id="nav">
-            {
-                routes.map(route => route as NavRoute)
-                    .filter(navRoute => navRoute.name)
-                    .map(navRoute => (
-                        <li key={pathString(navRoute.path)}><a href={pathString(navRoute.path)}>{navRoute.name}</a></li>
-                    ))
-            }
-            </ul>*/}
+            <a href="/" className="logo-name"><h1>Shane Carroll</h1></a>
+            <a href="/experiments">&lt;&lt;&nbsp;all experiments&nbsp;&gt;&gt; </a>
         </div>
     )
 }

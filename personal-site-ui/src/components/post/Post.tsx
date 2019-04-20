@@ -20,11 +20,10 @@ export function PostComponent<T extends Post>(props: PostProps<T>) {
         <div className="post-container">
             <div className="post-header">
                 <div className="post-title">
-                    <h1>{props.post.title}</h1>
-                    <span className="timestamp">{`published ${moment(props.post.timestamp).format("LL")}`}</span>
+                    <div><span>this post is called</span><h1>{props.post.title}</h1></div>
+                    <div><span>and was published</span><span className="timestamp">{`${moment(props.post.timestamp).format("LL")}`}</span></div>
+                    <div><Tags tags={props.post.tags} /></div>
                 </div>
-                {/*{ props.post.subtitle && <h2>{props.post.subtitle}</h2> }*/}
-                <Tags tags={props.post.tags} />
             </div>
             <Renderer post={props.post as any as itemType}/>
         </div>
