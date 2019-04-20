@@ -16,13 +16,20 @@
     margin: 0;
     display: flex;
     flex-grow: 1;
+
 }
 
 #header-container h1 {
+    flex-shrink: 0;
     font-family: 'Trocchi-Regular', 'sans-serif';
+    font-size: 1.75rem;
 }
 
 #header-container a {
     text-decoration: none;
     text-align: right;
+}
+
+#header-container a:last-of-type {
+    justify-content: flex-end;
 }

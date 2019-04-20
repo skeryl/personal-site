@@ -40,13 +40,14 @@
 
 .post-title h1 {
     margin-left: 5px;
-    flex-basis: 100%;
+    margin-right: 5px;
 }
 
 .post-title > *  {
     display: flex;
     flex-direction: row;
     flex-basis: 100%;
+    flex-wrap: wrap;
     margin: 0;
     flex-grow: 1;
     align-self: center;
