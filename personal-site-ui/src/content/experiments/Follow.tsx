@@ -48,10 +48,10 @@ class Pen {
             this.currentLine.lineTo(coords.x, coords.y);
             this.stopLine();
         } else {
-            this.currentLine = this.stage.createShape(Path, coords.x, coords.y, this.color, 2)
+            this.currentLine = this.stage.createShape(Path, {position: coords, fill: this.color, layer: 2 })
                 .moveTo(coords.x, coords.y)
                 .setLineCap('round')
-                .setStrokeColor(this.color)
+                .setStrokeStyle(this.color)
                 .setStrokeWidth(this.width) as Path;
         }
     }

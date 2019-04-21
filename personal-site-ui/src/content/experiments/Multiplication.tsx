@@ -1,7 +1,7 @@
 import * as React from "react";
 import {ContentDatabase, StageContent} from "../index";
 import {PostType} from "../../../../personal-site-model/models";
-import {Circle, Color, DirectionalMagnitude, FillStyle, MouseInfo, Rectangle, Shape, Stage, Text} from "grraf";
+import {Circle, Color, DirectionalMagnitude, MouseInfo, Rectangle, Shape, ShapeProperties, Stage, Text} from "grraf";
 
 const clear = new Color(255,255,255, 0.0);
 const white = new Color(255,255,255);
@@ -23,16 +23,21 @@ const colors = [
 
 const VERTEX_RADIUS = 15;
 
-class Vertex extends Shape {
+interface VertexProps extends ShapeProperties {
+    radius: number;
+}
+
+class Vertex extends Shape<VertexProps> {
 
     private circle: Circle;
     private text: Text;
     public radius: number = 0;
 
-    constructor(stage: Stage, id: number, context: CanvasRenderingContext2D, x: number, y: number, color: FillStyle, layer: number = 0) {
-        super(stage, id, context, x, y, color, layer);
-        this.circle = stage.createShape(Circle, x, y, color as Color, layer);
-        this.text = stage.createShape(Text, x, y, white, layer + 1).setFontSize(20);
+    constructor(stage: Stage, id: number, initialProperties: Partial<VertexProps>, ) {
+        super(stage, id, initialProperties);
+        this.circle = stage.createShape(Circle, { position: initialProperties.position, fill: initialProperties.fill, layer: initialProperties.layer });
+        this.text = stage.createShape(Text, { position: initialProperties.position, fill: white, layer: initialProperties.layer + 1 }).setFontSize(20);
+        this.radius = initialProperties.radius;
     }
 
     setRadius(radius: number): this {
@@ -53,11 +58,11 @@ class Vertex extends Shape {
     }
 
     select(){
-        this.circle.setStrokeWidth(2).setStrokeColor(black);
+        this.circle.setStrokeWidth(2).setStrokeStyle(black);
     }
 
     deselect(){
-        this.circle.setStrokeWidth(2).setStrokeColor(clear);
+        this.circle.setStrokeWidth(2).setStrokeStyle(clear);
     }
 
     withinBounds(position: DirectionalMagnitude): boolean {
@@ -105,8 +110,8 @@ class Matrix extends Rectangle {
         this.context.lineWidth = lineWidth;
         this.context.strokeStyle = plum.fillStyle(this.context);
 
-        const width = (this.width() / this.vals.length) - (lineWidth*2);
-        const height = (this.height() / this.vals.length)  - (lineWidth*2);
+        const width = (this.width / this.vals.length) - (lineWidth*2);
+        const height = (this.height / this.vals.length)  - (lineWidth*2);
 
         this.vals.forEach((row, ix) => {
             let y = (ix*height);
@@ -203,7 +208,7 @@ export class MultiplicationContent implements StageContent {
             .setWidth(width).setHeight(width)
             .setPosition({ x: 10, y: y - (width/4) - 20 })
             .setStrokeWidth(2)
-            .setStrokeColor(plum) as Matrix;
+            .setStrokeStyle(plum) as Matrix;
 
         stage.onMouseClick(this.onClick.bind(this));
         stage.draw();
@@ -252,7 +257,7 @@ export class MultiplicationContent implements StageContent {
     }
 
     private addVertex(stage: Stage, position: DirectionalMagnitude) {
-        const vertex = stage.createShape(Vertex, position.x, position.y, this.nextColor())
+        const vertex = stage.createShape(Vertex, { position, fill: this.nextColor() })
             .setRadius(VERTEX_RADIUS)
             .setLabel(this.nextLetter()) as Vertex;
         if(this.adjacency){
@@ -263,7 +268,7 @@ export class MultiplicationContent implements StageContent {
 
     private createOrDestroyEdge(wasTurnedOn: boolean, stage: Stage, vertexA: Vertex, vertexB: Vertex) {
         if (wasTurnedOn) {
-            this.edges.push(stage.createShape(Edge, 0, 0, new Color(), -1).addVertices(vertexA, vertexB));
+            this.edges.push(stage.createShape(Edge).addVertices(vertexA, vertexB));
         } else {
             const foundIndex = this.edges.findIndex(edge => edge.a === vertexA && edge.b === vertexB);
             if (foundIndex >= 0) {
@@ -325,7 +330,7 @@ export class MultiplicationContent implements StageContent {
 
 export const Multiplication = ContentDatabase.add<PostType.experiment>({
         id: 'multiplication',
-        tags: [],
+        tags: ['software', 'research'],
         title: 'Multiplication',
         timestamp: new Date(2019, 2, 2),
         type: PostType.experiment,

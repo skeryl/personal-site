@@ -52,10 +52,10 @@ class Pen {
         if(this.currentLine){
             this.currentLine.lineTo(coords.x, coords.y);
         } else {
-            this.currentLine = this.stage.createShape(Path, coords.x, coords.y, this.color, 2)
+            this.currentLine = this.stage.createShape(Path, { position: coords, fill: this.color, layer: 2 })
                 .moveTo(coords.x, coords.y)
                 .setLineCap('round')
-                .setStrokeColor(this.color)
+                .setStrokeStyle(this.color)
                 .setStrokeWidth(this.width) as Path;
         }
     }
@@ -107,10 +107,10 @@ export class MirrorsContent implements StageContent {
                     })
                 ))
             ),
-            /*new Pen(this.thickness.current, this.stage, ({ x, y }) => ({
+            new Pen(this.thickness.current, this.stage, ({ x, y }) => ({
                 x: reflection + (reflection - x),
                 y: y,
-            })),*/
+            })),
         ];
 
         function averageChange(positions: DirectionalMagnitude[]): DirectionalMagnitude {

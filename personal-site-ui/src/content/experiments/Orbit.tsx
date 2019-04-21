@@ -67,7 +67,7 @@ export class OrbitSimulation implements StageContent {
             const particleGhost = this.createParticle(stage, particleRadius)
                 .setPosition(particle.position);
             const animation = stage.animate(particleGhost)
-                .transition("color", { 0: blue, 3000: bg })
+                .transition("fill", { 0: blue, 3000: bg })
                 .create();
             animation.then(() => {
                 stage.removeShape(particleGhost);

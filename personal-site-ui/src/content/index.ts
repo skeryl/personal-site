@@ -5,7 +5,6 @@ import {WriteUpComponent} from "../components/post/WriteUp";
 import {ProjectComponent} from "../components/post/Project";
 import {Stage} from "grraf";
 import {ExperimentSummary} from "../components/post/ExperimentSummary";
-import {PostSummaryComponent} from "../components/post/PostSummary";
 
 type ContentRenderers = {
     [key in PostType]: Renderer<key>;

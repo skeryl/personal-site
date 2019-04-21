@@ -1,7 +1,7 @@
 import * as React from "react";
 import {ContentDatabase, StageContent} from "../index";
 import {PostType} from "../../../../personal-site-model/models";
-import {Color, DirectionalMagnitude, MouseInfo, Path, Rectangle, Shape, Stage} from "grraf";
+import {Color, DirectionalMagnitude, MouseInfo, Path, Rectangle, Shape, ShapeProperties, Stage} from "grraf";
 
 const SEGMENT_LENGTH = 40;
 
@@ -21,13 +21,13 @@ export class AnchoredSquiggle extends Shape {
     private path: Path;
     private target: DirectionalMagnitude = { x: this.x + SEGMENT_LENGTH, y: this.y };
 
-    constructor(stage: Stage, id: number, context: CanvasRenderingContext2D, x: number, y: number, color: Color) {
-        super(stage, id, context, x, y, color);
+    constructor(stage: Stage, id: number, props: Partial<ShapeProperties>) {
+        super(stage, id, props);
 
         this.path = this.stage.createShape(Path)
             .setLineCap("round")
             .setColor(redOrange)
-            .setStrokeColor(redOrange) as Path;
+            .setStrokeStyle(redOrange) as Path;
     }
 
     setTarget(x: number, y: number): AnchoredSquiggle {
@@ -67,12 +67,12 @@ export class SomethingPretty implements StageContent {
             y: (size.height - borderHeight) / 2,
         };
 
-        this.border = this.stage.createShape(Rectangle, startingPosition.x, startingPosition.y, transparent, -1)
+        this.border = this.stage.createShape(Rectangle, { position: startingPosition, fill: transparent, layer: -1 })
             .setWidth(borderWidth)
             .setHeight(borderHeight)
             .setColor(transparent)
             .setStrokeWidth(10)
-            .setStrokeColor(aqua) as Rectangle;
+            .setStrokeStyle(aqua) as Rectangle;
 
         const borderEdgeRight = borderWidth + this.border.x;
         const borderEdgeDown = borderHeight + this.border.y;
@@ -137,11 +137,11 @@ export class SomethingPretty implements StageContent {
                 this.squiggles.forEach(squiggle => {
 
                     const progressFromCenter = Math.abs(
-                        (position.y - (this.border.y + (this.border.height()/2)))
+                        (position.y - (this.border.y + (this.border.height/2)))
                     );
 
                     squiggle.setTarget(Math.ceil(position.x), Math.ceil(position.y))
-                        .setStrokeWidth(Math.ceil((20*(progressFromCenter)/this.border.height())));
+                        .setStrokeWidth(Math.ceil((20*(progressFromCenter)/this.border.height)));
                 });
             }
             this.stage.draw();
