@@ -98,7 +98,7 @@ export class MirrorsContent implements StageContent {
         this.pens = [
             new Pen(this.thickness.current, this.stage),
             ...(
-                new Array(20).fill(undefined).map((_, ix) => new Pen(
+                new Array(3).fill(undefined).map((_, ix) => new Pen(
                     this.thickness.current,
                     this.stage,
                     ({ x, y }) => ({
@@ -111,6 +111,16 @@ export class MirrorsContent implements StageContent {
                 x: reflection + (reflection - x),
                 y: y,
             })),
+            ...(
+                new Array(3).fill(undefined).map((_, ix) => new Pen(
+                    this.thickness.current,
+                    this.stage,
+                    ({ x, y }) => ({
+                        x: reflection + (reflection - x),
+                        y: y + (20*ix),
+                    })
+                ))
+            ),
         ];
 
         function averageChange(positions: DirectionalMagnitude[]): DirectionalMagnitude {

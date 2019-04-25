@@ -1,10 +1,10 @@
 import * as React from "react";
 import {ContentDatabase, StageContent} from "../index";
 import {PostType} from "../../../../personal-site-model/models";
-import {Color, DirectionalMagnitude, MouseInfo, Stage} from "grraf";
+import {Color, DirectionalMagnitude, MouseInfo, ShapeProperties, Stage, subtract} from "grraf";
+import {Vertex} from "../shapes/Vertex";
 import {Edge} from "../shapes/Edge";
-import {Vertex, VERTEX_RADIUS} from "../shapes/Vertex";
-import {MatrixShape, plum} from "../shapes/Matrix";
+import {MatrixShape, plum, VisibilityMatrix} from "../shapes/Matrix";
 
 const colors = [
     new Color(255, 125, 42),
@@ -17,11 +17,9 @@ const colors = [
     new Color(175, 0, 42),
 ];
 
-async function waitFor(ms: number) {
-    return new Promise(resolve => setTimeout(() => resolve(), ms));
-}
+const VERTEX_RADIUS = 15;
 
-export class MultiplicationContent implements StageContent {
+export class MoreMultiplicationContent implements StageContent {
 
     private vertices: Vertex[] = [];
     private edges: Edge[] = [];
@@ -29,7 +27,7 @@ export class MultiplicationContent implements StageContent {
 
     private selectedSource: Vertex | undefined;
 
-    private adjacency: MatrixShape | undefined;
+    private matrix: MatrixShape | undefined;
 
     start = (stage: Stage) => {
         this.stage = stage;
@@ -40,7 +38,7 @@ export class MultiplicationContent implements StageContent {
 
         const width = Math.min(size.height, size.width) * 0.65;
 
-        this.adjacency = stage.createShape(MatrixShape)
+        this.matrix = stage.createShape(MatrixShape)
             .setWidth(width).setHeight(width)
             .setPosition({ x: 10, y: y - (width/4) - 20 })
             .setStrokeWidth(2)
@@ -50,7 +48,13 @@ export class MultiplicationContent implements StageContent {
         stage.draw();
         window.addEventListener('keypress', (e) => {
             if(e.key === 'Enter'){
-                this.startTightlyCoupledAnimation(stage);
+                this.multiply();
+            }
+            if(e.key === 't'){
+                this.connectTightly();
+            }
+            if(e.key === 'l'){
+                this.connectLoosely();
             }
         });
     };
@@ -65,8 +69,8 @@ export class MultiplicationContent implements StageContent {
 
     private onClick = (mouse: MouseInfo) => {
         const stage = this.stage;
-        const adjacency = this.adjacency;
-        if(stage && adjacency){
+        const matrix = this.matrix;
+        if(stage && matrix){
             const position = mouse.position();
             const clickedVertex: Vertex | undefined = this.findVertex(position);
             if(clickedVertex){
@@ -86,8 +90,8 @@ export class MultiplicationContent implements StageContent {
     };
 
     private connect(vertexA: Vertex, vertexB: Vertex) {
-        if(this.stage && this.adjacency){
-            const wasTurnedOn = this.adjacency.toggleConnection(vertexA, vertexB);
+        if(this.stage && this.matrix){
+            const wasTurnedOn = this.matrix.toggleConnection(vertexA, vertexB);
             this.createOrDestroyEdge(wasTurnedOn, this.stage, vertexA, vertexB);
         }
     }
@@ -96,8 +100,8 @@ export class MultiplicationContent implements StageContent {
         const vertex = stage.createShape(Vertex, { position, fill: this.nextColor() })
             .setRadius(VERTEX_RADIUS)
             .setLabel(this.nextLetter()) as Vertex;
-        if(this.adjacency){
-            this.adjacency.add(vertex);
+        if(this.matrix){
+            this.matrix.add(vertex);
         }
         this.vertices.push(vertex);
     }
@@ -126,52 +130,78 @@ export class MultiplicationContent implements StageContent {
         return String.fromCharCode(97 + this.vertices.length);
     }
 
-    private startTightlyCoupledAnimation = async (stage: Stage) => {
-        const size = stage.getSize();
+    private connectTightly = () => {
+        this.connectNodes(0.4);
+    };
 
-        const startingLayer = 3;
-        const layers = 5;
-        const growthPerNode = 5;
+    private connectLoosely = () => {
+        this.connectNodes(0.9);
+    };
 
-        const spacePerLayer = (size.width / layers);
-
-        let shapesThisLayer = 0;
-        let x = VERTEX_RADIUS * 1.5;
-        let y = 0;
-
-        for(let layer = 0; layer < layers; layer++){
-            shapesThisLayer = startingLayer + (growthPerNode*layer);
-            x = (VERTEX_RADIUS*1.5) + (spacePerLayer*layer);
-
-            for(let shape = 0; shape < shapesThisLayer; shape++){
-                y = (shape * VERTEX_RADIUS * 3) + (2 * VERTEX_RADIUS);
-                await waitFor(10);
-                this.addVertex(stage, { x, y });
-                stage.draw();
-            }
-
-        }
-
+    private connectNodes = (percent: number) => {
         for(let vi = 0; vi < this.vertices.length; vi++){
             for(let vj = this.vertices.length - 1; vj >= 0; vj--){
-                if(vi !== vj && (Math.random() > 0.9)){
+                if(vi !== vj && (Math.random() > percent)){
                     this.connect(this.vertices[vi], this.vertices[vj]);
-                    await waitFor(5);
-                    stage.draw();
+                    this.stage.draw();
                 }
             }
         }
     };
+
+    private multiply = () => {
+        const size = this.stage.getSize();
+        const width = Math.min(size.height, size.width) * 0.3;
+
+        const matrices: VisibilityMatrix[] = this.vertices.reduce(
+            (result: VisibilityMatrix[], _, index: number) => {
+                const previous = result[index + 1]; // (skip the identity matrix)
+                result.push(previous.multiply(previous));
+                return result;
+            },
+            [VisibilityMatrix.identity(this.matrix.numRows()), this.matrix.matrix()]
+        );
+
+        const final = matrices.reduce((result: VisibilityMatrix, current: VisibilityMatrix) => {
+            return result.add(current);
+        });
+        matrices.push(final);
+
+        const matrixShapes = matrices.map((matrix: VisibilityMatrix, ix: number) => {
+            const m = this.stage.createShape(MatrixShape)
+                .setWidth(200).setHeight(200)
+                .setPosition({ x: (size.width - 240), y: (ix * width) + 10 })
+                .setStrokeWidth(1)
+                .setStrokeStyle(plum) as MatrixShape;
+            m.setMatrix(matrix);
+            return m;
+        });
+
+        const animations = matrixShapes.map(shape => {
+            return this.stage.animate(shape)
+                .transition('position', {
+                    0: shape.position,
+                    25_000: subtract(shape.position, { x: 0, y: (matrixShapes.length * 200) + (size.height / 2) })
+                })
+                .create();
+        });
+
+        animations.forEach(animate => {
+            animate.start();
+        });
+
+        this.stage.draw();
+    };
 }
 
-export const Multiplication = ContentDatabase.add<PostType.experiment>({
-        id: 'multiplication',
+export const MoreMultiplication = ContentDatabase.add<PostType.experiment>({
+        id: 'more-multiplication',
         tags: ['software', 'research'],
-        title: 'Multiplication',
-        timestamp: new Date(2019, 2, 2),
+        title: 'More Multiplication',
+        timestamp: new Date(2019, 2, 3),
         type: PostType.experiment,
     },
-    new MultiplicationContent(),
+    new MoreMultiplicationContent(),
 );
 
 

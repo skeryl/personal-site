@@ -113,4 +113,3 @@ export class ContentDatabase {
 }
 
 export * from './experiments';
-export * from './projects';
