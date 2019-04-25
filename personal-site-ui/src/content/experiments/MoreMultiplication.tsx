@@ -181,6 +181,7 @@ export class MoreMultiplicationContent implements StageContent {
             return this.stage.animate(shape)
                 .transition('position', {
                     0: shape.position,
+                    2_000: shape.position,
                     25_000: subtract(shape.position, { x: 0, y: (matrixShapes.length * 200) + (size.height / 2) })
                 })
                 .create();
