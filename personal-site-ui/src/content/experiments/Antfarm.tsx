@@ -164,7 +164,6 @@ export class AntFarmContent implements StageContent {
                 .setHeight(innerSquareSize);
         }
 
-        stage.draw();
         this.isPlaying = true;
         this.regenerate();
 
@@ -187,7 +186,6 @@ export class AntFarmContent implements StageContent {
                 wanderer.eat(color.red() + color.green() + color.blue());
                 nearestRectangle.setFill(Color.white);
             }
-            this.stage.draw();
         };
 
         new Wanderer(
@@ -196,6 +194,15 @@ export class AntFarmContent implements StageContent {
             { x: size.width / 2, y: size.width / 2},
             onLocationUpdate
         );
+
+        this.startDrawLoop();
+    };
+
+    startDrawLoop = () => {
+        if(this.isPlaying){
+            this.stage.draw();
+            requestAnimationFrame(this.startDrawLoop);
+        }
     };
 
     get numRows(): number {
