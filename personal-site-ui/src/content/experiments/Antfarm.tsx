@@ -129,7 +129,7 @@ export class AntFarmContent implements StageContent {
     private stage: Stage;
     private isPlaying: boolean = false;
 
-    private ongoingAnimations: Animation[] = [];
+    private readonly ongoingAnimations = new Map<number, Animation>();
 
     start = (stage: Stage) => {
         this.stage = stage;
@@ -181,8 +181,17 @@ export class AntFarmContent implements StageContent {
             if(!nearestRectangle || !nearestRectangle.withinBounds(wanderer.currentLocation)){
                 return;
             }
+
             const color = nearestRectangle.fill as Color;
             if(color !== Color.white){
+                // to prevent massive spawns, destroy any fade-in that may be happening
+                const animation = this.ongoingAnimations.get(nearestRectangle.id);
+                if(animation){
+                    animation.then(() => {
+                        nearestRectangle.setFill(Color.white);
+                    });
+                    animation.cancel();
+                }
                 wanderer.eat(color.red() + color.green() + color.blue());
                 nearestRectangle.setFill(Color.white);
             }
@@ -237,8 +246,8 @@ export class AntFarmContent implements StageContent {
                         ),
                     }).create();
 
-                    this.ongoingAnimations.push(animation);
-                    animation.then(this.remove(animation));
+                    this.ongoingAnimations.set(randomSquare.id, animation);
+                    animation.then(this.remove(randomSquare.id));
                     animation.start();
                 }
 
@@ -248,12 +257,9 @@ export class AntFarmContent implements StageContent {
         }
     };
 
-    private remove(animation) {
+    private remove(id: number): () => void {
         return () => {
-            const ix = this.ongoingAnimations.findIndex(a => a === animation);
-            if (ix >= 0) {
-                this.ongoingAnimations.splice(ix, 1);
-            }
+            this.ongoingAnimations.delete(id)
         };
     }
 
@@ -262,7 +268,7 @@ export class AntFarmContent implements StageContent {
         this.ongoingAnimations.forEach(animation => {
             animation.cancel();
         });
-        this.ongoingAnimations = [];
+        this.ongoingAnimations.clear();
         if(this.stage){
             this.stage.clear();
             this.stage = undefined;
