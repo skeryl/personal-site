@@ -1,5 +1,5 @@
 import {ContentDatabase, StageContent} from "../index";
-import {Color, Rectangle, Stage, Text} from "grraf";
+import {Color, Rectangle, Stage} from "grraf";
 import {PostType} from "../../../../personal-site-model/models";
 
 const rowSize = 80;
@@ -78,7 +78,7 @@ export class PrimeColoringContent implements StageContent {
             }
 
             stage.draw();
-            await this.waitFor(250);
+            await this.waitFor(1);
             if(this.stopped){
                 break;
             }
