@@ -1,11 +1,7 @@
 import * as React from "react";
 import {ContentDatabase, StageContent} from "../index";
 import {PostType} from "../../../../personal-site-model/models";
-import {Color, Rectangle, Stage, Animation, DirectionalMagnitude, NearbyShape, Circle} from "grraf";
-
-const rowSize = 20;
-
-const magnitude = 2;
+import {Animation, Circle, Color, DirectionalMagnitude, Rectangle, Stage} from "grraf";
 
 const numColors = {
     [0]: new Color(255, 237, 168),
@@ -22,105 +18,121 @@ function getColor(seed: number): Color {
     return seed in numColors ? numColors[seed] : new Color((Math.random()*125) + 130, (Math.random()*55)+85, (Math.random()*125)+130, 1);
 }
 
-const feedingCloneCost = 5000;
+const birthCost = 5000;
+
+function getSpecificDirection() {
+    const sign = Math.sign(Math.random() - 0.5);
+    return Math.random() < 0.1 ? 0 : sign;
+}
 
 function randomDirection(){
+    const x = getSpecificDirection();
+    const y = getSpecificDirection();
     return {
-        x: Math.sign(Math.random() - 0.5),
-        y: Math.sign(Math.random() - 0.5),
+        x,
+        // if both x and y are zero our wanderer won't move. give it a tiny nudge
+        y: (x | y) === 0 ? Math.sign(Math.random() - 0.5) : y,
     };
 }
 
-class Wanderer {
+export class Wanderer {
 
-    private previous: DirectionalMagnitude;
+    private stepSize: number;
+    private isWandering = false;
+    private cloneCount = 0;
 
-    private wandering = false;
     public readonly circle: Circle;
     public food: number = 2000;
 
     public direction: DirectionalMagnitude = randomDirection();
-
-    private cloneCount = 0;
 
     constructor(
         private readonly stage: Stage,
         private readonly bounds: DirectionalMagnitude,
         public currentLocation: DirectionalMagnitude,
         private onLocationChange: (self: Wanderer) => void,
+        public startingRadius: number,
         public generation: number = 0,
 
     ){
-        this.previous = currentLocation;
-        this.circle = this.stage.createShape(Circle, { position: currentLocation, fill: getColor(generation), radius: 10, layer: 1 });
-        this.wandering = true;
+        this.circle = this.stage.createShape(Circle, { position: currentLocation, fill: getColor(generation), radius: this.startingRadius, layer: 1 });
+        this.stepSize = Math.max(3, this.startingRadius / 10);
+        this.isWandering = true;
         this.startWandering();
     }
 
-    startWandering = () => {
-        if(this.wandering){
-            const updatedLocation = {
+    private startWandering = () => {
+        if(this.isWandering){
+            this.currentLocation = {
                 x: Math.max(
                     0,
                     Math.min(
                         this.bounds.x,
-                        this.currentLocation.x + ((Math.random()*magnitude*this.direction.x))
+                        this.currentLocation.x + ((Math.random() * this.stepSize * this.direction.x))
                     )
                 ),
                 y: Math.max(
                     0,
                     Math.min(
                         this.bounds.y,
-                        this.currentLocation.y + ((Math.random()*magnitude*this.direction.y))
+                        this.currentLocation.y + ((Math.random() * this.stepSize * this.direction.y))
                     )
                 )
             };
 
-            this.previous = this.currentLocation;
-            this.currentLocation = updatedLocation;
             this.circle.setPosition(this.currentLocation);
             this.onLocationChange(this);
 
-            if(this.currentLocation.x >= this.bounds.x || this.currentLocation.x <= 0){
-                this.direction.x = this.direction.x*-1;
+            if(this.currentLocation.x >= this.bounds.x || (this.currentLocation.x - this.startingRadius) <= 0){
+                this.direction.x = getSpecificDirection();
             }
-            if(this.currentLocation.y >= this.bounds.y || this.currentLocation.y <= 0){
-                this.direction.y = this.direction.y*-1;
+
+            if(this.currentLocation.y >= this.bounds.y || (this.currentLocation.y - this.startingRadius) <= 0){
+                this.direction.y = getSpecificDirection();
             }
-            this.food--;
-            if(this.food <= 0){
-                this.die();
-            }
+
+            this.digest();
+
             requestAnimationFrame(this.startWandering);
+        }
+    };
+
+    digest = () => {
+        this.food--;
+        if (this.food <= 0) {
+            this.die();
+        } else {
+            const expectedRadius = this.food > (birthCost/2) ? (this.startingRadius*1.5) : this.startingRadius;
+            if(expectedRadius !== this.circle.radius){
+                const animation = this.stage.animate(this.circle)
+                    .transition("radius", { 0: this.circle.radius, 100: expectedRadius })
+                    .create({ manualDraw: true });
+                animation.start();
+            }
         }
     };
 
     eat = (n: number) => {
         this.direction = randomDirection();
         this.food += n;
-        if(this.food > feedingCloneCost){
-            this.clone();
+        if(this.food > birthCost){
+            this.giveBirth();
         }
     };
 
-    clone = (): Wanderer => {
+    giveBirth = (): Wanderer => {
         this.cloneCount++;
-        this.food -= feedingCloneCost;
+        this.food -= birthCost;
         if(this.cloneCount > 2){
             this.die();
         }
-        return new Wanderer(this.stage, this.bounds, this.currentLocation, this.onLocationChange, this.generation + 1);
+        return new Wanderer(this.stage, this.bounds, this.currentLocation, this.onLocationChange, this.startingRadius, this.generation + 1);
     };
 
     die = () => {
-        this.wandering = false;
+        this.isWandering = false;
         this.stage.removeShape(this.circle);
     };
-
-    stop(){
-        this.wandering = false;
-    }
-
 }
 
 export class AntFarmContent implements StageContent {
@@ -131,33 +143,37 @@ export class AntFarmContent implements StageContent {
 
     private readonly ongoingAnimations = new Map<number, Animation>();
 
+    private rowSize: number;
+
     start = (stage: Stage) => {
         this.stage = stage;
 
         const size = stage.getSize();
 
-        const outerSquareSize = Math.floor(size.width / rowSize);
+        const outerSquareSize = Math.floor(Math.max(size.width, size.height) / 20);
         const innerSquareSize = outerSquareSize*0.6;
 
-        const total = Math.floor(size.height / outerSquareSize) * rowSize;
+        this.rowSize = Math.floor(size.width / outerSquareSize);
 
-        const extra = (size.width - (outerSquareSize*rowSize)) / 2;
+        const total = Math.floor(size.height / outerSquareSize) * this.rowSize;
+
+        const extra = (size.width - (outerSquareSize*this.rowSize)) / 2;
 
         const spacing = (outerSquareSize - innerSquareSize)/2;
 
         for(let n = 0; n < total; n++){
-            const row = Math.floor(n / rowSize);
+            const row = Math.floor(n / this.rowSize);
             if(!this.squares[row]){
                 this.squares[row] = [];
             }
-            const col = n % rowSize;
+            const col = n % this.rowSize;
 
             this.squares[row][col] = stage.createShape(Rectangle, {
                 position: {
                     x: (col * outerSquareSize) + (spacing) + extra,
                     y: (row * outerSquareSize) + (spacing)
                 },
-                fill: Color.white,
+                fill: this.colorByPosition(row, col),
                 layer: 0
             })
                 .setWidth(innerSquareSize)
@@ -200,8 +216,9 @@ export class AntFarmContent implements StageContent {
         new Wanderer(
             this.stage,
             { x: size.width, y: size.height },
-            { x: size.width / 2, y: size.width / 2},
-            onLocationUpdate
+            { x: size.width / 2, y: size.height / 2},
+            onLocationUpdate,
+            innerSquareSize/3
         );
 
         this.startDrawLoop();
@@ -219,7 +236,7 @@ export class AntFarmContent implements StageContent {
     }
 
     get numCols(): number {
-        return rowSize;
+        return this.rowSize;
     }
 
     regenerate = () => {
@@ -228,34 +245,27 @@ export class AntFarmContent implements StageContent {
             const randomCol = Math.round(Math.random() * (this.numCols - 1));
 
             const row = this.squares[randomRow];
-            if(!row){
-                console.log(randomRow);
-            } else {
-                const randomSquare = row[randomCol];
+            const randomSquare = row && row[randomCol];
 
-                if(!randomSquare){
-                    console.log(randomRow, randomCol);
-                } else {
-                    const animation = this.stage.animate(randomSquare).transition("fill", {
-                        0: randomSquare.fill,
-                        1500: new Color(
-                            (randomRow / this.numRows)*255,
-                            ((randomCol / this.numCols)*120),
-                            (((randomRow + randomCol) / (this.numRows + this.numCols))*255),
-                            0.1
-                        ),
-                    }).create();
+            const animation = this.stage.animate(randomSquare).transition("fill", {
+                0: randomSquare.fill,
+                1500: this.colorByPosition(randomRow, randomCol),
+            }).create({ manualDraw: true });
 
-                    this.ongoingAnimations.set(randomSquare.id, animation);
-                    animation.then(this.remove(randomSquare.id));
-                    animation.start();
-                }
-
-            }
-
-            window.setTimeout(this.regenerate, 200);
+            this.ongoingAnimations.set(randomSquare.id, animation);
+            animation.then(this.remove(randomSquare.id));
+            animation.start();
+            window.setTimeout(this.regenerate, 750);
         }
     };
+
+    private colorByPosition(row, col) {
+        return new Color(
+            (row / this.numRows) * 255,
+            ((col / this.numCols) * 120),
+            (((row + col) / (this.numRows + this.numCols)) * 255)
+        );
+    }
 
     private remove(id: number): () => void {
         return () => {

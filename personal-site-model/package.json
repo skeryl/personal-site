@@ -2,7 +2,7 @@
   "name": "personal-site-model",
   "version": "1.0.0",
   "dependencies": {
-    "grraf": "^1.0.15",
+    "grraf": "^1.0.16",
     "@types/react": "^16.7.21"
   },
   "devDependencies": {
