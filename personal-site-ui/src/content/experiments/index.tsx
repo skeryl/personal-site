@@ -6,3 +6,4 @@ export * from './Multiplication';
 export * from './PrimeColoring';
 export * from './MoreMultiplication';
 export * from './Antfarm';
+export * from './Chrysanthemum';

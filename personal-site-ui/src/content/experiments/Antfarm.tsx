@@ -37,12 +37,12 @@ function randomDirection(){
 
 export class Wanderer {
 
-    private stepSize: number;
     private isWandering = false;
     private cloneCount = 0;
+    public food: number = 2000;
 
     public readonly circle: Circle;
-    public food: number = 2000;
+    private readonly stepSize: number;
 
     public direction: DirectionalMagnitude = randomDirection();
 
