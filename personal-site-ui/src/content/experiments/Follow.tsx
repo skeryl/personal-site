@@ -35,11 +35,11 @@ class Pen {
     }
 
     private onMouseUpdate = (mouse: MouseInfo) => {
-        if (mouse.isLeftDown()) {
+        /*if (mouse.isLeftDown()) {
             this.addPoint(mouse.position());
         } else {
             this.stopLine();
-        }
+        }*/
     };
 
     public addPoint(coordinates: DirectionalMagnitude) {
@@ -68,8 +68,6 @@ class Pen {
     };
 }
 
-
-
 const waitFor = (num: number): Promise<void> => {
     return new Promise((resolve) => {
         setTimeout(() => {
@@ -97,11 +95,16 @@ export class FollowContent implements StageContent {
     private pens: Pen[] = [];
     private interval: number | undefined;
 
+    startDrawLoop = () => {
+        if(this.stage){
+            this.stage.draw();
+            requestAnimationFrame(this.startDrawLoop);
+        }
+    };
+
     start = (stage: Stage) => {
         const ctx = stage.canvas.getContext('2d');
         ctx.lineJoin = 'round';
-
-        window.addEventListener('wheel', this.handleMouseWheel);
 
         this.stage = stage;
         const size = stage.getSize();
@@ -129,10 +132,7 @@ export class FollowContent implements StageContent {
             }
         });
 
-        this.stage.onMouseUpdate(mouse => {
-            this.pointer.setPosition(mouse.position());
-            this.stage.draw();
-        });
+        this.startDrawLoop();
     };
 
     private drawSpiral = async (position: DirectionalMagnitude) => {
@@ -140,7 +140,7 @@ export class FollowContent implements StageContent {
         let pos = {...position};
         let count = 0;
 
-        while(/*delta.x > 1 && delta.y > 1*/ (count++) < 900){
+        while((count++) < 900){
             delta = (await (this.drawNext(pos, count)));
             pos = add(pos, delta);
         }
@@ -157,28 +157,8 @@ export class FollowContent implements StageContent {
             pen.setColor(color);
             pen.addPoint(pos);
         });
-        this.stage.draw();
         return delta;
     };
-
-    private handleMouseWheel = (e) => {
-        const additional = Math.ceil(e.deltaY/100);
-        this.setThickness(additional);
-    };
-
-    private setThickness(additional: number) {
-        this.thickness.current += additional;
-        this.thickness.current = Math.min(this.thickness.max,
-            Math.max(this.thickness.min, this.thickness.current)
-        );
-        this.pens.forEach(pen => pen.width = this.thickness.current);
-        if (this.pointer) {
-            this.pointer.setRadius(this.thickness.current / 2);
-        }
-        if (this.stage) {
-            this.stage.draw();
-        }
-    }
 
     stop = () => {
         if(this.stage){

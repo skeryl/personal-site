@@ -18,13 +18,20 @@ export function PostComponent<T extends Post>(props: PostProps<T>) {
 
     return (
         <div className="post-container">
+            <Renderer post={props.post as any as itemType}/>
             <div className="post-header">
                 <div className="post-title">
-                    <div><span>this post is called</span><h1>{props.post.title}</h1><span>and was published</span><span className="timestamp">{`${moment(props.post.timestamp).format("LL")}`}</span></div>
+                    <div>
+                        <span>this experiment is called</span>
+                        <h1>{props.post.title}</h1>
+                    </div>
+                    <div>
+                        <span>and was published</span>
+                        <span className="timestamp">{`${moment(props.post.timestamp).format("LL")}`}</span>
+                    </div>
                     <div><Tags tags={props.post.tags} /></div>
                 </div>
             </div>
-            <Renderer post={props.post as any as itemType}/>
         </div>
     );
 }

@@ -31,8 +31,6 @@ export const Renderers: ContentRenderers = {
     },
 };
 
-
-
 export interface StaticContent {
     render(): ReactElement<any> | null
 }

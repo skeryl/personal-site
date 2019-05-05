@@ -1,8 +1,6 @@
 import * as React from "react";
-import {RouteComponentProps} from "react-router";
 import {ContentDatabase} from "../content";
 import {PostType, PostTypes} from "../../../personal-site-model/models";
-import {PostComponent} from "../components/post/Post";
 import {PostSummaryComponent} from "../components/post/PostSummary";
 
 export function PostList<T extends PostType>(postType: T){

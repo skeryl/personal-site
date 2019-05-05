@@ -1,8 +1,9 @@
 import {RouteProps} from 'react-router-dom';
-import {Home} from "./containers/Home";
+import {Home, HomeWithOverlay} from "./containers/Home";
 import {PostDetail} from "./containers/PostDetail";
 import {PostType} from "../../personal-site-model/models";
 import {PostList} from "./containers/PostList";
+import {AboutOverlay} from "./overlays/AboutOverlay";
 
 export type NavRoute = RouteProps & { name: string };
 
@@ -19,16 +20,11 @@ const experiments: NavRoute = {
     component: PostList(PostType.experiment),
 };
 
-const projects: NavRoute = {
-    name: 'projects',
-    path: '/projects',
-    component: PostList(PostType.project),
-};
-
-const writeUps: NavRoute = {
-    name: 'write-ups',
-    path: '/write-ups',
-    component: PostList(PostType.writeUp)
+const about: NavRoute = {
+    name: 'about',
+    exact: true,
+    path: '/about',
+    component: HomeWithOverlay(AboutOverlay),
 };
 
 const experimentDetail: RouteProps = {
@@ -36,22 +32,9 @@ const experimentDetail: RouteProps = {
     component: PostDetail(PostType.experiment),
 };
 
-const writeUpDetail: RouteProps = {
-    path: '/write-ups/:id',
-    component: PostDetail(PostType.writeUp),
-};
-
-const projectDetail: RouteProps = {
-    path: '/projects/:id',
-    component: PostDetail(PostType.project),
-};
-
 export const routes = [
     index,
+    about,
     experiments,
-    projects,
-    writeUps,
     experimentDetail,
-    writeUpDetail,
-    projectDetail,
 ];

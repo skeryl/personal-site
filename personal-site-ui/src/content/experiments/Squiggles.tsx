@@ -115,8 +115,9 @@ export class SomethingPretty implements StageContent {
 
         this.stage.onMouseUpdate(mouse => {
             this.mouse = mouse;
-            window.requestAnimationFrame(this.redrawLines);
         });
+
+        requestAnimationFrame(this.redrawLines);
 
         this.stage.draw();
     };
@@ -146,6 +147,7 @@ export class SomethingPretty implements StageContent {
             }
             this.stage.draw();
         }
+        requestAnimationFrame(this.redrawLines);
     };
 }
 

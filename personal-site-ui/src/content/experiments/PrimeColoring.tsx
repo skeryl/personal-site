@@ -30,6 +30,13 @@ export class PrimeColoringContent implements StageContent {
         }, ms));
     };
 
+    startDrawLoop = () => {
+        if(this.stage && !this.stopped){
+            this.stage.draw();
+            requestAnimationFrame(this.startDrawLoop);
+        }
+    };
+
     public start = async (stage: Stage) => {
         this.stopped = false;
         this.stage = stage;
@@ -61,9 +68,9 @@ export class PrimeColoringContent implements StageContent {
                 .setHeight(squareSize);
         }
 
-        stage.draw();
-
         const colors: {[index: number]: Color} = {};
+
+        this.startDrawLoop();
 
         for(let num = 2; num < total; num++){
 
@@ -77,13 +84,11 @@ export class PrimeColoringContent implements StageContent {
                 square.fill = square.fill === Color.transparent ? colors[num] : Color.mix([square.fill as Color, colors[num]]);
             }
 
-            stage.draw();
             await this.waitFor(1);
             if(this.stopped){
                 break;
             }
         }
-        stage.draw();
     };
 
     public stop = () => {

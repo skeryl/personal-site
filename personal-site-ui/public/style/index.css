@@ -6,16 +6,16 @@
 
 * {
     color: rgb(85, 73, 0);
-    font-family: 'SourceCodePro-Regular', 'serif';
+    font-family: 'Arial', 'sans-serif';
 }
 
 body {
-    background-color: rgb(255, 245, 238);
+    background-color: rgb(244, 219, 206);
     margin: 0;
     overflow-x: hidden;
     overflow-y: scroll;
 }
 
 h1, h2, h3, h4, h5 {
-    font-family: 'Trocchi-Regular', 'serif';
+    font-family: 'PlayfairDisplay', 'serif';
 }

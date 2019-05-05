@@ -81,6 +81,13 @@ export class MirrorsContent implements StageContent {
     private pens: Pen[] = [];
     private interval: number | undefined;
 
+    startDrawLoop = () => {
+        if(this.stage){
+            this.stage.draw();
+            requestAnimationFrame(this.startDrawLoop);
+        }
+    };
+
     start = (stage: Stage) => {
         const ctx = stage.canvas.getContext('2d');
         ctx.lineJoin = 'round';
@@ -182,8 +189,6 @@ export class MirrorsContent implements StageContent {
                 position = { x: Math.random()*size.width, y: Math.random()*size.height };
                 positionsInSet = [position];
             }
-
-            stage.draw();
         }, 2);
 
         this.stage.onMouseUpdate(mouse => {
@@ -191,8 +196,9 @@ export class MirrorsContent implements StageContent {
             if(mouse.isLeftDown()){
                 position = mouse.position();
             }
-            window.requestAnimationFrame(() => this.stage.draw());
         });
+
+        this.startDrawLoop();
     };
 
     private handleMouseWheel = (e) => {
@@ -208,9 +214,6 @@ export class MirrorsContent implements StageContent {
         this.pens.forEach(pen => pen.width = this.thickness.current);
         if (this.pointer) {
             this.pointer.setRadius(this.thickness.current / 2);
-        }
-        if (this.stage) {
-            this.stage.draw();
         }
     }
 
