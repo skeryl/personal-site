@@ -1,11 +1,11 @@
 
 
 .post-container {
-    width: 100%;
+    width: calc(100% - 2rem);
     display: flex;
     flex-direction: column;
     height: 90vh;
-    padding: 0.5rem 1rem;
+    margin: 0.5rem 1rem;
 }
 
 .post-summary {

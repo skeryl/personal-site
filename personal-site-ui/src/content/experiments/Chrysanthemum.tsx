@@ -150,7 +150,7 @@ export class ChrysanthemumContent implements StageContent {
                 1000,
                 getSecondLocation,
                 secondHandSize,
-                0.03,
+                0.035,
             );
         }
 
