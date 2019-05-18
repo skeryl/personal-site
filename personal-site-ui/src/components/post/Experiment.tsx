@@ -51,19 +51,17 @@ export function ExperimentComponent(props: PostProps<Experiment>){
             props.post.stop();
             stage.clear();
         }
-        stage = null;
+        stage = undefined;
     }
 
-    function initialize() {
+    useEffect(function initialize() {
         setup();
         window.addEventListener("resize", onResize);
         return () => {
             tearDown();
             window.removeEventListener("resize", onResize);
         };
-    }
-
-    useEffect(initialize, [stage, containerRef.current]);
+    }, [stage, containerRef.current]);
 
     return (
         <div id={"experiment-canvas"} ref={containerRef}>

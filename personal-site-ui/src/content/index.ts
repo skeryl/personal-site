@@ -1,10 +1,17 @@
-import {Post, PostSummary, PostType, PostTypes} from "../../../personal-site-model/models";
+import {
+    ExperimentContent3D,
+    Post,
+    PostSummary,
+    PostType,
+    PostTypes,
+    StageContent
+} from "../../../personal-site-model/models";
 import {ComponentClass, ReactElement} from "react";
 import {ExperimentComponent} from "../components/post/Experiment";
 import {WriteUpComponent} from "../components/post/WriteUp";
 import {ProjectComponent} from "../components/post/Project";
-import {Stage} from "grraf";
 import {ExperimentSummary} from "../components/post/ExperimentSummary";
+import {ExperimentComponent3D} from "../components/post/Experiment3d";
 
 type ContentRenderers = {
     [key in PostType]: Renderer<key>;
@@ -26,6 +33,9 @@ export const Renderers: ContentRenderers = {
         main: ExperimentComponent,
         summary: ExperimentSummary
     },
+    [PostType.experiment3d]: {
+        main: ExperimentComponent3D
+    },
     [PostType.writeUp]: {
         main: WriteUpComponent,
     },
@@ -35,18 +45,19 @@ export interface StaticContent {
     render(): ReactElement<any> | null
 }
 
-export interface StageContent {
-    start(stage: Stage);
-    stop();
-}
-
 export type TypeExtras = {
     [PostType.project]: StaticContent,
     [PostType.writeUp]: StaticContent,
     [PostType.experiment]: StageContent,
+    [PostType.experiment3d]: ExperimentContent3D,
 };
 
 const sortByTimestamp = (a, b) => Math.sign(b.timestamp.getTime() - a.timestamp.getTime());
+
+interface AnyExperiment<T extends PostType.experiment | PostType.experiment3d> {
+    type: T,
+    experiment: PostTypes[T],
+}
 
 export class ContentDatabase {
 
@@ -54,7 +65,10 @@ export class ContentDatabase {
     static readonly posts: Map<string, Post> = new Map<string, Post>();
 
     private static getUri(id: string, postType: PostType) {
-        return `${postType.toString()}s/${id}`;
+        const prefix = (postType === PostType.experiment3d || postType === PostType.experiment) ?
+            PostType.experiment.toString() :
+            postType.toString();
+        return `${prefix}s/${id}`;
     }
 
     static add<T extends PostType>(postSummary: PostSummary, extras: TypeExtras[T]): PostTypes[T] {
@@ -82,6 +96,18 @@ export class ContentDatabase {
         return post as PostTypes[T];
     }
 
+    static getExperiment(id: string): AnyExperiment<PostType.experiment | PostType.experiment3d> | undefined {
+        const experiment = this.get(id, PostType.experiment);
+        if(experiment){
+            return { type: PostType.experiment, experiment };
+        }
+        const experiment3d = this.get(id, PostType.experiment3d);
+        if(experiment3d){
+            return { type: PostType.experiment3d, experiment: experiment3d };
+        }
+        return undefined;
+    }
+
     static get<TType extends PostType>(id: string, postType: TType | null = null): PostTypes[TType] | undefined {
         if(postType){
             return this.posts.get(this.getUri(id, postType)) as PostTypes[TType];
@@ -103,10 +129,11 @@ export class ContentDatabase {
         return sorted[0];
     }
 
-    static list<T extends PostType>(postType: T): Array<PostTypes[T]> {
-        return Array.from(this.posts.values())
-            .sort(sortByTimestamp)
-            .filter(post => post.type === postType) as Array<PostTypes[T]>;
+    static list<T extends PostType>(postType?: T): Array<PostTypes[T]> {
+        const sortedPosts = Array.from(this.posts.values())
+            .sort(sortByTimestamp);
+        return (postType ? sortedPosts
+            .filter(post => post.type === postType) : sortedPosts )as Array<PostTypes[T]>;
     }
 }
 

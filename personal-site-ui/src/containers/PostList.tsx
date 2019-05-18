@@ -1,22 +1,19 @@
-import * as React from "react";
-import {ContentDatabase} from "../content";
-import {PostType, PostTypes} from "../../../personal-site-model/models";
+import {Post} from "../../../personal-site-model/models";
 import {PostSummaryComponent} from "../components/post/PostSummary";
+import {ContentDatabase} from "../content";
+import * as React from "react";
 
-export function PostList<T extends PostType>(postType: T){
-    const Summary = PostSummaryComponent(postType);
-    return function (){
-        const posts: PostTypes[T][] = ContentDatabase.list<T>(postType);
-        return (
-            <div className="post-summary-container">
-                {
-                    posts.map(post => (
-                        <a href={post.uri} className="post-list-item">
-                            <Summary key={post.id} post={post} full={false}/>
-                        </a>
-                    ))
-                }
-            </div>
-        );
-    }
+export function PostList(){
+    const posts: Post[] = ContentDatabase.list();
+    return (
+        <div className="post-summary-container">
+        {
+            posts.map(post => (
+                <a href={post.uri} className="post-list-item">
+                    <PostSummaryComponent key={post.id} post={post} full={false}/>
+                </a>
+            ))
+        }
+        </div>
+    );
 }

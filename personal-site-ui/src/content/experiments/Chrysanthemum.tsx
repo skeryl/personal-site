@@ -1,6 +1,6 @@
 import * as React from "react";
-import {ContentDatabase, StageContent} from "../index";
-import {PostType} from "../../../../personal-site-model/models";
+import {ContentDatabase} from "../index";
+import {PostType, StageContent} from "../../../../personal-site-model/models";
 import {Circle, Color, DirectionalMagnitude, Stage, TimingFunction} from "grraf";
 import {WackySegment} from "../shapes/WackySegment";
 

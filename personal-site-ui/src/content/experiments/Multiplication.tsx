@@ -1,6 +1,6 @@
 import * as React from "react";
-import {ContentDatabase, StageContent} from "../index";
-import {PostType} from "../../../../personal-site-model/models";
+import {ContentDatabase} from "../index";
+import {PostType, StageContent} from "../../../../personal-site-model/models";
 import {Color, DirectionalMagnitude, MouseInfo, Stage} from "grraf";
 import {Edge} from "../shapes/Edge";
 import {Vertex, VERTEX_RADIUS} from "../shapes/Vertex";

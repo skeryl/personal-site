@@ -1,6 +1,6 @@
-import {ContentDatabase, StageContent} from "../index";
+import {ContentDatabase} from "../index";
 import {Color, Rectangle, Stage} from "grraf";
-import {PostType} from "../../../../personal-site-model/models";
+import {PostType, StageContent} from "../../../../personal-site-model/models";
 
 const rowSize = 80;
 
