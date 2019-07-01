@@ -2,18 +2,15 @@ import {PathLike} from "fs";
 import {Configuration} from "webpack";
 import webpack = require('webpack');
 import MemoryFileSystem = require("memory-fs");
-
 import * as ts from 'typescript';
 import * as fs from "fs";
-import {CompilerOptions} from 'typescript';
-
-const OUTPUT_FILE = 'output.js';
+import * as path from "path";
 
 const baseWebpackConfig: Configuration = {
     mode: 'development',
     output: {
         libraryTarget: 'commonjs',
-        filename: OUTPUT_FILE,
+        filename: '[name]',
     },
     resolve: {
         // Add '.ts' and '.tsx' as resolvable extensions.
@@ -29,32 +26,33 @@ const baseWebpackConfig: Configuration = {
                     configFileName: __dirname + '/../tsconfig.json'
                 },
                 exclude: [
-                    /\.(spec)\.ts$/
+                    /\.(spec)\.ts$/,
+                    /node_modules/
                 ]
             },
         ]
     }
 };
 
-const defaultOptions: CompilerOptions = {
-    module: ts.ModuleKind.CommonJS,
-    target: ts.ScriptTarget.ES2016,
-    lib: ["dom", "es2018"],
-    esModuleInterop: true,
-    jsx: ts.JsxEmit.React
-};
+type StringObject = { [key: string]: string };
 
-export function compileTypescript(path: PathLike, options: CompilerOptions = defaultOptions): Promise<string> {
-    const contents = fs.readFileSync(path);
-    const compiled = ts.transpileModule(contents.toString(), { compilerOptions: options });
-    return Promise.resolve(compiled.outputText);
+function getFileKey(fileName: string): string {
+    return fileName.split('.').slice(0, -1).join('.');
 }
 
-export function compileWebpack(path: PathLike): Promise<string> {
-    return new Promise<string>((resolve, reject) => {
+export function compileDirectory(dir: PathLike): Promise<StringObject>{
+    const fileNames = fs.readdirSync(dir);
+    const entry = fileNames.reduce(
+        (res: StringObject, fileName) => {
+            res[`/build/${getFileKey(fileName)}.js`] = path.join(dir.toString(), fileName);
+                return res;
+            },
+        {}
+    );
+    return new Promise<StringObject>((resolve, reject) => {
         const compiler = webpack({
             ...baseWebpackConfig,
-            entry: path.toString(),
+            entry: entry,
         });
 
         const memFs = new MemoryFileSystem();
@@ -70,15 +68,13 @@ export function compileWebpack(path: PathLike): Promise<string> {
                     const errorMessage = compilation.errors.join('\n\n');
                     reject(errorMessage);
                 } else {
-                    const outputFile = compilation.assets[OUTPUT_FILE];
-
-                    if(!outputFile){
-                        reject(`failed to find output file in file system. assets: ${compilation.assets}`);
-                        return;
-                    }
-
                     try {
-                        resolve(outputFile.source());
+                        const outputs = fileNames.reduce((res: StringObject, file: string) => {
+                            res[file] = compilation.assets[`/build/${getFileKey(file)}.js`].source();
+                            return res;
+                        }, {});
+
+                        resolve(outputs);
                     } catch (e) {
                         reject(e);
                     }

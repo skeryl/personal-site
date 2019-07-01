@@ -3,6 +3,7 @@
     "module": "commonjs",
     "target": "es2018",
     "lib": ["dom", "es2018"],
+    "skipLibCheck": true,
     "sourceMap": true,
     "jsx": "react",
     "strictNullChecks": true,

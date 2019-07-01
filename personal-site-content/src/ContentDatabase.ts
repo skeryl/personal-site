@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import {PathLike} from 'fs';
 import {PostSummary} from "personal-site-model";
-import {compileWebpack as compile} from "./compilation";
+import {compileDirectory} from "./compilation";
 import * as path from "path";
 import summaries from "./summaries";
 
@@ -20,23 +20,14 @@ export class ContentDatabase {
     }
 
     public async load(): Promise<void> {
-        const promises: Promise<void>[] = this.files.map(async file => {
-            const pathToCompile = path.join(this.rootPath.toString(), file);
-            console.debug(`starting compilation for: "${pathToCompile}"`);
-            try {
-                const compiled = await (compile(pathToCompile));
-                console.debug(`compilation successful for: "${pathToCompile}"`);
-
-                const post = summaries[file];
-                this.compiledPosts.set(post.id, post);
-                this.rawPosts.set(post.id, compiled);
-                console.info(`post "${post.title}" initialized.`);
-            } catch (e) {
-                console.error(`failed compilation for: "${pathToCompile}"`);
-                console.error(e);
-            }
+        const results = await (compileDirectory(this.rootPath));
+        Object.keys(results).map(fileName => {
+            const compiled = results[fileName];
+            const post = summaries[fileName];
+            this.compiledPosts.set(post.id, post);
+            this.rawPosts.set(post.id, compiled);
+            console.info(`post "${post.title}" initialized.`);
         });
-        await Promise.all(promises);
     }
 
     public getPostJS = (id: string): string | undefined => {

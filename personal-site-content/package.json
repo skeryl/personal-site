@@ -15,9 +15,7 @@
     "@types/jest": "^24.0.15",
     "@types/memory-fs": "^0.3.2",
     "jest": "^24.8.0",
-    "ts-jest": "^24.0.2"
-  },
-  "peerDependencies": {
+    "ts-jest": "^24.0.2",
     "awesome-typescript-loader": "^5.2.1"
   }
 }
