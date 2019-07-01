@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "start": "ts-node ./bin/www.ts",
-    "watch": "ts-node-dev ./bin/www.ts"
+    "watch": "ts-node-dev ./bin/www.ts",
+    "preinstall": "cd ../personal-site-model && npm install && cd ../personal-site-shapes && npm install && cd ../personal-site-content && npm install"
   },
   "dependencies": {
     "cookie-parser": "^1.4.3",
