@@ -1,7 +1,5 @@
-import * as React from "react";
-import {ContentDatabase} from "../index";
-import {PostType, StageContent} from "../../../../personal-site-model/models";
-import {add, Circle, Color, DirectionalMagnitude, MouseInfo, Path, Stage, subtract} from "grraf";
+import {Post, PostType, StageContent} from "personal-site-model";
+import {add, Circle, Color, DirectionalMagnitude, MouseInfo, Path, Stage} from "grraf";
 
 interface Thickness {
     min: number;
@@ -82,7 +80,7 @@ const colorC = new Color(207, 49, 179);
 
 const colors = [colorA, colorB, colorC];
 
-export class FollowContent implements StageContent {
+class FollowContent implements StageContent {
 
     private readonly thickness: Thickness = {
         min: 1,
@@ -104,6 +102,10 @@ export class FollowContent implements StageContent {
 
     start = (stage: Stage) => {
         const ctx = stage.canvas.getContext('2d');
+        if(!ctx){
+            console.error('canvas needs a context, dude');
+            return;
+        }
         ctx.lineJoin = 'round';
 
         this.stage = stage;
@@ -171,12 +173,15 @@ export class FollowContent implements StageContent {
     };
 }
 
-export const Follow = ContentDatabase.add<PostType.experiment>({
+const post: Post = {
+    summary: {
         id: 'follow',
         tags: ['fun', 'canvas', 'grraf', 'interactive'],
         title: 'Follow',
         timestamp: new Date(2019, 1, 16),
         type: PostType.experiment,
     },
-    new FollowContent(),
-);
+    content: () => new FollowContent(),
+};
+
+export default post;

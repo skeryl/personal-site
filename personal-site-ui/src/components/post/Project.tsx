@@ -1,11 +1,11 @@
 import * as React from "react";
-import {Project} from "../../../../personal-site-model/models";
+import {PostType} from "personal-site-model";
 import {PostProps} from "./Post";
 
-export function ProjectComponent(props: PostProps<Project>){
+export function ProjectComponent(props: PostProps<PostType.project>){
     return (
         <div className="project-container">
-            {props.post.render()}
+            {props.content.render()}
         </div>
     );
 }

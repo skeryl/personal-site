@@ -1,14 +1,13 @@
 import * as React from "react";
 import * as moment from "moment";
-import {Post} from "../../../../personal-site-model/models";
+import {Post, PostSummary} from "personal-site-model";
 import {Tags} from "../Tags";
 
-export interface PostProps<T extends Post> {
-    post: T;
-    full: boolean;
+export interface PostSummaryProps {
+    post: PostSummary;
 }
 
-export function PostSummaryComponent(props: PostProps<any>){
+export function PostSummaryComponent(props: PostSummaryProps){
     return (
         <div className="post-summary">
             <div className="post-header">

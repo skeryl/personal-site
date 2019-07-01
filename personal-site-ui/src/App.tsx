@@ -4,6 +4,7 @@ import {BrowserRouter, Route, Switch} from "react-router-dom";
 import {routes} from "./routes";
 import {Header} from "./components/Header";
 import {Stage} from "grraf";
+import {Home} from "./containers/Home";
 
 export function App() {
 

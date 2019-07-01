@@ -4,9 +4,9 @@
   "dependencies": {
     "grraf": "^1.0.16",
     "@types/react": "^16.7.21",
-    "three": "^0.104.0"
+    "three": "^0.106.1"
   },
   "devDependencies": {
-    "typescript": "^3.2.2"
+    "typescript": "^3.5.2"
   }
 }

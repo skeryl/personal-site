@@ -1,23 +1,13 @@
-import {ExperimentContent3D, PostType} from "../../../../personal-site-model/models";
-import {
-    BoxGeometry,
-    Camera, Color,
-    DoubleSide, Material,
-    Mesh,
-    MeshPhongMaterial,
-    PointLight,
-    Scene,
-    TorusGeometry
-} from "three";
-import {ContentDatabase} from "../index";
+import {ExperimentContent3D, Post, PostType} from "personal-site-model";
+import {BoxGeometry, Camera, DoubleSide, Mesh, MeshPhongMaterial, PointLight, Scene, TorusGeometry} from "three";
 
 class CubePegTorusHoleContent implements ExperimentContent3D {
 
-    private cube: Mesh;
-    private donut: Mesh;
-    private lights: PointLight[];
+    private cube: Mesh | undefined;
+    private donut: Mesh | undefined;
+    private lights: PointLight[] = [];
 
-    private scene: Scene;
+    private scene: Scene | undefined;
 
     start = (scene: Scene, camera: Camera) => {
         this.scene = scene;
@@ -39,11 +29,19 @@ class CubePegTorusHoleContent implements ExperimentContent3D {
 
     stop = () => {
         window.removeEventListener('mousemove', this.mouseMove);
-        this.scene.remove(this.cube);
-        this.scene.remove(this.donut);
+        const scene = this.scene;
+        if(!scene){
+            return;
+        }
+        if(this.cube){
+            scene.remove(this.cube);
+        }
+        if(this.donut){
+            scene.remove(this.donut);
+        }
         this.cube = undefined;
         this.donut = undefined;
-        this.lights.forEach(light => this.scene.remove(light));
+        this.lights.forEach(light => scene.remove(light));
     };
 
     private rotate = () => {
@@ -89,13 +87,15 @@ class CubePegTorusHoleContent implements ExperimentContent3D {
 }
 
 
-export const CubePegTorusHole = ContentDatabase.add(
-    {
+const post: Post = {
+    summary: {
         type: PostType.experiment3d,
         id: "cube-peg-torus-hole",
         title: "Cube Peg, Torus Hole",
         timestamp: new Date(2019, 4, 17),
         tags: ['3d'],
     },
-    new CubePegTorusHoleContent()
-);
+    content: () => new CubePegTorusHoleContent(),
+};
+
+export default post;

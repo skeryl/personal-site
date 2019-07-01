@@ -1,6 +1,4 @@
-import * as React from "react";
-import {ContentDatabase} from "../index";
-import {PostType, StageContent} from "../../../../personal-site-model/models";
+import {Post, PostType, StageContent} from "personal-site-model";
 import {Color, DirectionalMagnitude, MouseInfo, Path, Rectangle, Shape, ShapeProperties, Stage} from "grraf";
 
 const SEGMENT_LENGTH = 40;
@@ -15,10 +13,10 @@ const VERTICAL_SPACING = 40;
 const BORDER_WIDTH_PCT = 0.8;
 const BORDER_HEIGHT_PCT = 0.8;
 
-export class AnchoredSquiggle extends Shape {
+class AnchoredSquiggle extends Shape {
 
     private path: Path;
-    private target: DirectionalMagnitude = { x: this.x + SEGMENT_LENGTH, y: this.y };
+    private target: DirectionalMagnitude = {x: this.x + SEGMENT_LENGTH, y: this.y};
 
     constructor(stage: Stage, id: number, props: Partial<ShapeProperties>) {
         super(stage, id, props);
@@ -28,7 +26,7 @@ export class AnchoredSquiggle extends Shape {
     }
 
     setTarget(x: number, y: number): AnchoredSquiggle {
-        this.target = { x, y };
+        this.target = {x, y};
         return this;
     }
 
@@ -44,7 +42,7 @@ export class AnchoredSquiggle extends Shape {
 }
 
 
-export class SomethingPretty implements StageContent {
+class SomethingPretty implements StageContent {
 
     private stage: Stage | undefined;
     private mouse: MouseInfo | undefined;
@@ -66,7 +64,7 @@ export class SomethingPretty implements StageContent {
             y: (size.height - borderHeight) / 2,
         };
 
-        this.border = this.stage.createShape(Rectangle, { position: startingPosition, fill: transparent, layer: -1 })
+        this.border = this.stage.createShape(Rectangle, {position: startingPosition, fill: transparent, layer: -1})
             .setWidth(borderWidth)
             .setHeight(borderHeight)
             .setFill(transparent)
@@ -79,19 +77,19 @@ export class SomethingPretty implements StageContent {
         const initialX = this.border.position.x + (this.border.strokeWidth || 0);
         let next: DirectionalMagnitude | null = {
             x: initialX,
-            y: this.border.position.y  + (this.border.strokeWidth || 0)
+            y: this.border.position.y + (this.border.strokeWidth || 0)
         };
 
-        this.hypotenuse = Math.sqrt(borderWidth**2 + borderHeight**2);
+        this.hypotenuse = Math.sqrt(borderWidth ** 2 + borderHeight ** 2);
 
         let count = 0;
 
-        while(next !== null){
+        while (next !== null) {
             const currentX: number = next.x + SEGMENT_LENGTH;
             const currentY: number = next.y;
 
             const squiggle = this.stage.createShape(AnchoredSquiggle)
-                .setPosition({ x: next.x, y: next.y }) as AnchoredSquiggle;
+                .setPosition({x: next.x, y: next.y}) as AnchoredSquiggle;
 
             this.squiggles.push(squiggle);
 
@@ -122,7 +120,7 @@ export class SomethingPretty implements StageContent {
     };
 
     stop = () => {
-        if(this.stage){
+        if (this.stage) {
             this.stage.clear();
             this.stage = undefined;
         }
@@ -130,18 +128,19 @@ export class SomethingPretty implements StageContent {
     };
 
     private redrawLines = (): void => {
-        if(this.stage){
-            if(this.border && this.mouse){
+        if (this.stage) {
+            const border = this.border;
+            if (border && this.mouse) {
                 const position = this.mouse.position();
 
                 this.squiggles.forEach(squiggle => {
 
                     const progressFromCenter = Math.abs(
-                        (position.y - (this.border.y + (this.border.height/2)))
+                        (position.y - (border.y + (border.height / 2)))
                     );
 
                     squiggle.setTarget(Math.ceil(position.x), Math.ceil(position.y))
-                        .setStrokeWidth(Math.ceil((20*(progressFromCenter)/this.border.height)));
+                        .setStrokeWidth(Math.ceil((20 * (progressFromCenter) / border.height)));
                 });
             }
             this.stage.draw();
@@ -150,12 +149,15 @@ export class SomethingPretty implements StageContent {
     };
 }
 
-export const Squiggles = ContentDatabase.add<PostType.experiment>({
-    id: 'squiggles',
-    tags: ['fun', 'canvas', 'grraf', 'interactive'],
-    title: 'Squiggles',
-    timestamp: new Date(2019, 0, 29),
-    type: PostType.experiment,
-},
-    new SomethingPretty(),
-);
+const post: Post = {
+    summary: {
+        id: 'squiggles',
+        tags: ['fun', 'canvas', 'grraf', 'interactive'],
+        title: 'Squiggles',
+        timestamp: new Date(2019, 0, 29),
+        type: PostType.experiment,
+    },
+    content: () => new SomethingPretty(),
+};
+
+export default post;

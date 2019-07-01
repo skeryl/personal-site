@@ -1,0 +1,18 @@
+{
+  "name": "personal-site-shapes",
+  "version": "1.0.0",
+  "dependencies": {
+    "personal-site-model": "file:../personal-site-model",
+    "grraf": "^1.0.16",
+    "three": "^0.106.1"
+  },
+  "devDependencies": {
+    "typescript": "^3.5.2"
+  },
+  "scripts": {
+    "postinstall": "npm run build",
+    "build": "tsc --declaration"
+  },
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts"
+}

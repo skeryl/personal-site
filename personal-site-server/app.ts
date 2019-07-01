@@ -3,6 +3,7 @@ import express, {Application, NextFunction, Request, Response} from 'express';
 import cookieParser from 'cookie-parser';
 import logger from 'morgan';
 import * as path from "path";
+import {api} from "./api";
 
 export enum Env {
   dev = "dev",
@@ -30,6 +31,8 @@ export const appGenerator: AppGenerator = (params) => {
   app.use(cookieParser());
 
   app.use(express.static(publicDir));
+
+  app.use('/api', api);
 
   app.get('*', (req, res, next) => {
     res.sendFile(path.join(publicDir, 'index.html'));

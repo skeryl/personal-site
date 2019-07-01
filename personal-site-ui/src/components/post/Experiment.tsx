@@ -1,19 +1,21 @@
 import * as React from "react";
-import {Experiment} from "../../../../personal-site-model/models";
 import {useEffect, useRef} from "react";
+import {PostType} from "personal-site-model";
 import {Stage} from "grraf";
 import {PostProps} from "./Post";
 
 type Size = { height: number, width: number };
 
 function same(a: Size | undefined, b: Size | undefined): boolean {
-    return a && b && a.width === b.width &&
-        a.height === b.height;
+    return Boolean(
+        a && b && a.width === b.width &&
+        a.height === b.height
+    );
 }
 
 const resizeWaitPeriod = 500; //ms
 
-export function ExperimentComponent(props: PostProps<Experiment>){
+export function ExperimentComponent(props: PostProps<PostType.experiment>){
 
     let stage: Stage | undefined;
     let lastSize: Size | undefined;
@@ -41,14 +43,14 @@ export function ExperimentComponent(props: PostProps<Experiment>){
             stage = new Stage(container, true);
             stage.canvas.height = container.clientHeight;
             stage.canvas.width = container.clientWidth;
-            props.post.start(stage);
+            props.content.start(stage);
             lastSize = stage.getSize();
         }
     }
 
     function tearDown() {
         if(stage){
-            props.post.stop();
+            props.content.stop();
             stage.clear();
         }
         stage = undefined;

@@ -1,8 +1,6 @@
-import * as React from "react";
-import {ContentDatabase} from "../index";
-import {PostType, StageContent} from "../../../../personal-site-model/models";
+import {Post, PostType, StageContent} from "personal-site-model";
 import {Circle, Color, DirectionalMagnitude, Stage, TimingFunction} from "grraf";
-import {WackySegment} from "../shapes/WackySegment";
+import {WackySegment, WackySegmentProps} from "personal-site-shapes";
 
 const lightPink = new Color(255, 20, 150);
 
@@ -41,7 +39,7 @@ function getHourLocation(point: DirectionalMagnitude, radius: number) {
     };
 }
 
-export class MeanderingPath {
+class MeanderingPath {
 
     public segment: WackySegment;
 
@@ -69,7 +67,7 @@ export class MeanderingPath {
 
         const fill = Color.withOpacity(lightPink, this.opacity);
 
-        this.segment = stage.createShape(WackySegment, {
+        this.segment = stage.createShape<WackySegment, WackySegmentProps>(WackySegment, {
             a,
             b,
             fill,
@@ -117,9 +115,9 @@ export class MeanderingPath {
     };
 }
 
-export class ChrysanthemumContent implements StageContent {
+class ChrysanthemumContent implements StageContent {
 
-    private stage: Stage;
+    private stage: Stage | undefined;
     private isPlaying: boolean = false;
 
     start = (stage: Stage) => {
@@ -186,7 +184,7 @@ export class ChrysanthemumContent implements StageContent {
     };
 
     startDrawLoop = () => {
-        if(this.isPlaying){
+        if(this.isPlaying && this.stage){
             this.stage.draw();
             requestAnimationFrame(this.startDrawLoop);
         }
@@ -194,20 +192,24 @@ export class ChrysanthemumContent implements StageContent {
 
     stop = () => {
         this.isPlaying = false;
-        if(this.stage){
-            this.stage.shapes.forEach(shape => this.stage.removeShape(shape));
-            this.stage.clear();
+        const stage = this.stage;
+        if(stage){
+            stage.shapes.forEach(shape => stage.removeShape(shape));
+            stage.clear();
             this.stage = undefined;
         }
     };
 }
 
-export const Chrysanthemum = ContentDatabase.add<PostType.experiment>({
+const post: Post = {
+    summary: {
         id: 'chrysanthemum',
         tags: ['mothers-day', 'floral', 'time'],
         title: 'Chrysanthemum',
         timestamp: new Date(2019, 4, 5),
         type: PostType.experiment,
     },
-    new ChrysanthemumContent(),
-);
+    content: () => new ChrysanthemumContent()
+};
+
+export default post;

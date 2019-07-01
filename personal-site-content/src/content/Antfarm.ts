@@ -1,9 +1,7 @@
-import * as React from "react";
-import {ContentDatabase} from "../index";
-import {PostType, StageContent} from "../../../../personal-site-model/models";
-import {Animation, Circle, Color, DirectionalMagnitude, Rectangle, Stage} from "grraf";
+import {Post, PostType, StageContent} from "personal-site-model";
+import {Animation, Circle, Color, DirectionalMagnitude, FillStyle, Rectangle, Stage} from "grraf";
 
-const numColors = {
+const numColors: {[n: number]: Color} = {
     [0]: new Color(255, 237, 168),
     [1]: new Color(0, 147, 59),
     [2]: new Color(193, 61, 0),
@@ -35,7 +33,7 @@ function randomDirection(){
     };
 }
 
-export class Wanderer {
+class Wanderer {
 
     private isWandering = false;
     private cloneCount = 0;
@@ -135,15 +133,15 @@ export class Wanderer {
     };
 }
 
-export class AntFarmContent implements StageContent {
+class AntFarmContent implements StageContent {
 
     private squares: Rectangle[][] = [];
-    private stage: Stage;
+    private stage: Stage | undefined;
     private isPlaying: boolean = false;
 
     private readonly ongoingAnimations = new Map<number, Animation>();
 
-    private rowSize: number;
+    private rowSize: number = 0;
 
     start = (stage: Stage) => {
         this.stage = stage;
@@ -225,7 +223,7 @@ export class AntFarmContent implements StageContent {
     };
 
     startDrawLoop = () => {
-        if(this.isPlaying){
+        if(this.isPlaying && this.stage){
             this.stage.draw();
             requestAnimationFrame(this.startDrawLoop);
         }
@@ -240,26 +238,34 @@ export class AntFarmContent implements StageContent {
     }
 
     regenerate = () => {
-        if(this.isPlaying){
+        if(this.isPlaying && this.stage){
             const randomRow = Math.round(Math.random() * (this.numRows - 1));
             const randomCol = Math.round(Math.random() * (this.numCols - 1));
 
             const row = this.squares[randomRow];
             const randomSquare = row && row[randomCol];
 
-            const animation = this.stage.animate(randomSquare).transition("fill", {
+            const color = this.colorByPosition(randomRow, randomCol);
+
+            const setColor = (square: Rectangle, color: FillStyle) => {
+                square.setFill(color);
+            };
+            setTimeout(setColor.bind(null, randomSquare, color), 1500);
+
+            // Todo: fix this
+            /*const animation = this.stage.animate(randomSquare).transition("fill", {
                 0: randomSquare.fill,
                 1500: this.colorByPosition(randomRow, randomCol),
-            }).create({ manualDraw: true });
+            }).create({ manualDraw: true });*/
 
-            this.ongoingAnimations.set(randomSquare.id, animation);
-            animation.then(this.remove(randomSquare.id));
-            animation.start();
+            //this.ongoingAnimations.set(randomSquare.id, animation);
+            //animation.then(this.remove(randomSquare.id));
+            //animation.start();
             window.setTimeout(this.regenerate, 750);
         }
     };
 
-    private colorByPosition(row, col) {
+    private colorByPosition(row: number, col: number): Color {
         return new Color(
             (row / this.numRows) * 255,
             ((col / this.numCols) * 120),
@@ -275,7 +281,7 @@ export class AntFarmContent implements StageContent {
 
     stop = () => {
         this.isPlaying = false;
-        this.ongoingAnimations.forEach(animation => {
+        this.ongoingAnimations.forEach((animation: Animation) => {
             animation.cancel();
         });
         this.ongoingAnimations.clear();
@@ -286,12 +292,15 @@ export class AntFarmContent implements StageContent {
     };
 }
 
-export const Antfarm = ContentDatabase.add<PostType.experiment>({
+const post: Post = {
+    summary: {
         id: 'antfarm',
         tags: ['fun'],
         title: 'Ant Farm',
         timestamp: new Date(2019, 3, 27),
         type: PostType.experiment,
     },
-    new AntFarmContent(),
-);
+    content: () => new AntFarmContent(),
+};
+
+export default post;

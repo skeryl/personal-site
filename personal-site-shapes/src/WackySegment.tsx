@@ -1,6 +1,6 @@
 import {Color, DirectionalMagnitude, Shape, ShapeProperties, Stage} from "grraf";
 
-interface WackySegmentProps extends ShapeProperties {
+export interface WackySegmentProps extends ShapeProperties {
     a: DirectionalMagnitude;
     b: DirectionalMagnitude;
     cp1: DirectionalMagnitude;

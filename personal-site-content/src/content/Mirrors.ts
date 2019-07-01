@@ -1,7 +1,5 @@
-import * as React from "react";
-import {ContentDatabase} from "../index";
-import {PostType, StageContent} from "../../../../personal-site-model/models";
-import {add, Circle, Color, DirectionalMagnitude, MouseInfo, Path, Stage} from "grraf";
+import {Post, PostType, StageContent} from "personal-site-model";
+import {Circle, Color, DirectionalMagnitude, MouseInfo, Path, Stage} from "grraf";
 
 const blue = new Color(37, 150, 230);
 const bg = new Color(244,215,220);
@@ -90,6 +88,10 @@ export class MirrorsContent implements StageContent {
 
     start = (stage: Stage) => {
         const ctx = stage.canvas.getContext('2d');
+        if(!ctx){
+            console.error('canvas needs a context, dude');
+            return;
+        }
         ctx.lineJoin = 'round';
 
         window.addEventListener('wheel', this.handleMouseWheel);
@@ -107,7 +109,7 @@ export class MirrorsContent implements StageContent {
             ...(
                 new Array(3).fill(undefined).map((_, ix) => new Pen(
                     this.thickness.current,
-                    this.stage,
+                    stage,
                     ({ x, y }) => ({
                         x: x,
                         y: y + (20*ix),
@@ -121,7 +123,7 @@ export class MirrorsContent implements StageContent {
             ...(
                 new Array(3).fill(undefined).map((_, ix) => new Pen(
                     this.thickness.current,
-                    this.stage,
+                    stage,
                     ({ x, y }) => ({
                         x: reflection + (reflection - x),
                         y: y + (20*ix),
@@ -164,7 +166,7 @@ export class MirrorsContent implements StageContent {
 
         let position = { x: size.width/2, y: size.height/2 };
         let positionsInSet = [position];
-        this.interval = setInterval(() => {
+        this.interval = window.setInterval(() => {
             const avg = averageChange(positionsInSet);
             const newPosition = {
                 x: position.x + avg.x,
@@ -192,16 +194,18 @@ export class MirrorsContent implements StageContent {
         }, 2);
 
         this.stage.onMouseUpdate(mouse => {
-            this.pointer.setPosition(mouse.position());
-            if(mouse.isLeftDown()){
-                position = mouse.position();
+            if(this.pointer){
+                this.pointer.setPosition(mouse.position());
+                if(mouse.isLeftDown()){
+                    position = mouse.position();
+                }
             }
         });
 
         this.startDrawLoop();
     };
 
-    private handleMouseWheel = (e) => {
+    private handleMouseWheel = (e: WheelEvent) => {
         const additional = Math.ceil(e.deltaY/100);
         this.setThickness(additional);
     };
@@ -228,12 +232,15 @@ export class MirrorsContent implements StageContent {
     };
 }
 
-export const Mirrors = ContentDatabase.add<PostType.experiment>({
+export const post: Post = {
+    summary: {
         id: 'mirrors',
         tags: ['fun', 'canvas', 'grraf', 'interactive'],
         title: 'Mirrors',
         timestamp: new Date(2019, 1, 15),
         type: PostType.experiment,
     },
-    new MirrorsContent(),
-);
+    content: () => new MirrorsContent(),
+};
+
+export default post;

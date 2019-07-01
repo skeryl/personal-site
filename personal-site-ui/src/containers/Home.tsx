@@ -1,7 +1,9 @@
 import * as React from "react";
-import {ContentDatabase} from "../content";
 import {PostComponent} from "../components/post/Post";
 import {DirectionalMagnitude} from "grraf";
+import {useContext, useEffect, useState} from "react";
+import {ContentContext} from "../content/ContentContext";
+import {Post} from "../../../personal-site-model";
 
 export interface OverlayProps {
     position: DirectionalMagnitude;
@@ -20,7 +22,14 @@ interface HomeProps {
 }
 
 export function Home(props: HomeProps) {
-    let latestPost = ContentDatabase.latest();
+    const [latestPost, setLatest] = useState<Post | null>(null);
+    const contentService = useContext(ContentContext);
+
+    useEffect(() => {
+        contentService.getLatestPost().then(latest => {
+            setLatest(latest);
+        });
+    }, []);
 
     function renderOverlay(Overlay: React.ComponentType<OverlayProps>){
         return <Overlay position={{ x: 0, y: 0 }}/>;
@@ -30,7 +39,7 @@ export function Home(props: HomeProps) {
         <div className={'container'}>
         {props.overlay && renderOverlay(props.overlay)}
         {
-            latestPost && <PostComponent post={latestPost} full={false} />
+            latestPost && <PostComponent summary={latestPost.summary} content={latestPost.content()} full={false} />
         }
         </div>
     );

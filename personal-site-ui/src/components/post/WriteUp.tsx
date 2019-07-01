@@ -1,11 +1,11 @@
 import * as React from "react";
-import {WriteUp} from "../../../../personal-site-model/models";
+import {PostType} from "personal-site-model";
 import {PostProps} from "./Post";
 
-export function WriteUpComponent(props: PostProps<WriteUp>){
+export function WriteUpComponent(props: PostProps<PostType.writeUp>){
     return (
         <div className="write-up-container">
-            {props.post.render()}
+            {props.content.render()}
         </div>
     );
 }

@@ -19,9 +19,9 @@ export enum PostType {
 
 export type PostTypes = {
     [PostType.writeUp]: WriteUp,
-    [PostType.experiment]: Experiment,
-    [PostType.experiment3d]: Experiment3D,
-    [PostType.project]: Project,
+    [PostType.experiment]: StageContent,
+    [PostType.experiment3d]: ExperimentContent3D,
+    [PostType.project]: WriteUp,
 };
 
 export interface PostSummary extends Unique {
@@ -33,34 +33,25 @@ export interface PostSummary extends Unique {
     thumbnail?: string;
 }
 
-export interface Post extends PostSummary, Linkable {
+export type PostContent = StageContent | ExperimentContent3D | WriteUp;
+
+export type ContentGenerator = () => PostContent;
+
+export interface Post {
+    summary: PostSummary;
+    content: ContentGenerator;
 }
 
-export interface WriteUp extends Post {
-    type: PostType.writeUp;
+export interface WriteUp {
     render(): ReactElement<any> | null;
 }
 
 export interface StageContent {
-    start(stage: Stage);
-    stop();
+    start(stage: Stage): void;
+    stop(): void;
 }
 
 export interface ExperimentContent3D {
-    start(scene: Scene, camera: Camera);
-    stop();
-}
-
-export interface Experiment extends Post, StageContent {
-    type: PostType.experiment;
-    aspectRatio?: () => DirectionalMagnitude;
-}
-
-export interface Experiment3D extends Post, ExperimentContent3D {
-    type: PostType.experiment3d;
-}
-
-export interface Project extends Post {
-    type: PostType.project;
-    render(): ReactElement<any> | null;
+    start(scene: Scene, camera: Camera): void;
+    stop(): void;
 }

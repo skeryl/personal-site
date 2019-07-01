@@ -1,10 +1,9 @@
-import {ContentDatabase} from "../index";
 import {Color, Rectangle, Stage} from "grraf";
-import {PostType, StageContent} from "../../../../personal-site-model/models";
+import {Post, PostType, StageContent} from "personal-site-model";
 
 const rowSize = 80;
 
-const numColors = {
+const numColors: {[key: number]: Color} = {
     [2]: new Color(255, 237, 168),
     [3]: new Color(0, 147, 59),
     [5]: new Color(193, 61, 0),
@@ -14,24 +13,24 @@ const numColors = {
 };
 
 function getColor(seed: number): Color {
-    return seed in numColors ? numColors[seed] : new Color((Math.random()*125) + 130, (Math.random()*55)+85, (Math.random()*125)+130, 1);
+    return seed in numColors ? numColors[seed] : new Color((Math.random() * 125) + 130, (Math.random() * 55) + 85, (Math.random() * 125) + 130, 1);
 }
 
-export class PrimeColoringContent implements StageContent {
+class PrimeColoringContent implements StageContent {
 
-    private stage: Stage;
+    private stage: Stage | undefined;
     private stopped = false;
 
     private waitFor = async (ms: number) => {
         return new Promise((resolve, reject) => setTimeout(() => {
-            if(!this.stopped){
+            if (!this.stopped) {
                 resolve();
             }
         }, ms));
     };
 
     startDrawLoop = () => {
-        if(this.stage && !this.stopped){
+        if (this.stage && !this.stopped) {
             this.stage.draw();
             requestAnimationFrame(this.startDrawLoop);
         }
@@ -45,22 +44,22 @@ export class PrimeColoringContent implements StageContent {
 
         const squareSize = Math.floor(size.width / rowSize);
 
-        const squares: {[index: number]: Rectangle} = {};
+        const squares: { [index: number]: Rectangle } = {};
         const total = Math.floor(size.height / squareSize) * rowSize;
 
-        const actualWidth = (squareSize*rowSize);
+        const actualWidth = (squareSize * rowSize);
         const extra = (size.width - actualWidth) / 2;
 
-        for(let ix = 0; ix < total; ix++){
+        for (let ix = 0; ix < total; ix++) {
             const row = Math.floor(ix / rowSize);
             const col = ix % rowSize;
 
             const n = ix + 1;
 
             squares[n] = stage.createShape(Rectangle, {
-                position: { x: (col * squareSize) + extra, y: row * squareSize },
+                position: {x: (col * squareSize) + extra, y: row * squareSize},
                 fill: Color.transparent,
-                strokeStyle: new Color(0,0, 0, 0.5),
+                strokeStyle: new Color(0, 0, 0, 0.5),
                 strokeWidth: 1,
                 layer: 1
             })
@@ -68,24 +67,24 @@ export class PrimeColoringContent implements StageContent {
                 .setHeight(squareSize);
         }
 
-        const colors: {[index: number]: Color} = {};
+        const colors: { [index: number]: Color } = {};
 
         this.startDrawLoop();
 
-        for(let num = 2; num < total; num++){
+        for (let num = 2; num < total; num++) {
 
-            if(num in colors){
-               continue;
+            if (num in colors) {
+                continue;
             }
 
             colors[num] = getColor(num);
-            for(let multiple = num + num; multiple < total; multiple += num){
+            for (let multiple = num + num; multiple < total; multiple += num) {
                 const square = squares[multiple];
                 square.fill = square.fill === Color.transparent ? colors[num] : Color.mix([square.fill as Color, colors[num]]);
             }
 
             await this.waitFor(1);
-            if(this.stopped){
+            if (this.stopped) {
                 break;
             }
         }
@@ -93,19 +92,22 @@ export class PrimeColoringContent implements StageContent {
 
     public stop = () => {
         this.stopped = true;
-        if(this.stage){
+        if (this.stage) {
             this.stage.clear();
         }
     };
 
 }
 
-export const PrimeColoring = ContentDatabase.add<PostType.experiment>({
-    id: 'prime-coloring',
-    tags: ['math'],
-    title: 'Prime Coloring',
-    timestamp: new Date(2019, 3, 21),
-    type: PostType.experiment,
-},
-    new PrimeColoringContent()
-);
+export const post: Post = {
+    summary: {
+        id: 'prime-coloring',
+        tags: ['math'],
+        title: 'Prime Coloring',
+        timestamp: new Date(2019, 3, 21),
+        type: PostType.experiment,
+    },
+    content: () => new PrimeColoringContent(),
+};
+
+export default post;

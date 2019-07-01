@@ -1,9 +1,9 @@
 import * as React from "react";
-import {PostProps} from "./PostSummary";
-import {Experiment3D} from "../../../../personal-site-model/models";
+import {PostProps} from "./Post";
+import {PostType} from "personal-site-model";
 import {Camera, PerspectiveCamera, Renderer, Scene, WebGLRenderer} from "three";
 
-export class ExperimentComponent3D extends React.Component<PostProps<Experiment3D>> {
+export class ExperimentComponent3D extends React.Component<PostProps<PostType.experiment3d>> {
 
     private isRunning = false;
 
@@ -23,14 +23,14 @@ export class ExperimentComponent3D extends React.Component<PostProps<Experiment3
         window.addEventListener('resize', this.onResize);
 
         this.onResize();
-        this.props.post.start(this.scene, this.camera);
+        this.props.content.start(this.scene, this.camera);
         this.isRunning = true;
         this.animate();
     }
 
     componentWillUnmount(): void {
         this.isRunning = false;
-        this.props.post.stop();
+        this.props.content.stop();
         window.removeEventListener('resize', this.onResize);
     }
 
@@ -52,7 +52,7 @@ export class ExperimentComponent3D extends React.Component<PostProps<Experiment3
 
     private onResize = () => {
         const canvas = this.canvasRef.current;
-        if(this.renderer && canvas){
+        if(this.renderer && canvas && canvas.parentElement){
             this.renderer.setSize(canvas.parentElement.clientWidth, canvas.parentElement.clientHeight, true);
         }
     };
