@@ -1,13 +1,12 @@
+import * as fs from "fs";
 import {PathLike} from "fs";
-import {Configuration} from "webpack";
+import {Configuration, Stats} from "webpack";
+import * as ts from 'typescript';
+import * as path from "path";
 import webpack = require('webpack');
 import MemoryFileSystem = require("memory-fs");
-import * as ts from 'typescript';
-import * as fs from "fs";
-import * as path from "path";
 
 const baseWebpackConfig: Configuration = {
-    mode: 'development',
     output: {
         libraryTarget: 'commonjs',
         filename: '[name]',
@@ -34,22 +33,61 @@ const baseWebpackConfig: Configuration = {
     }
 };
 
-type StringObject = { [key: string]: string };
+export type CompilationOutput = { [key: string]: string };
+
+export interface CompilationResults {
+    error?: string | Error;
+    outputs: CompilationOutput;
+}
+
+export type ResultHandler = (results: CompilationResults) => void;
 
 function getFileKey(fileName: string): string {
     return fileName.split('.').slice(0, -1).join('.');
 }
 
-export function compileDirectory(dir: PathLike): Promise<StringObject>{
+function getWebPackEntry(fileNames: string[], dir: PathLike) {
+    return fileNames.reduce(
+        (res: CompilationOutput, fileName) => {
+            res[`/build/${getFileKey(fileName)}.js`] = path.join(dir.toString(), fileName);
+            return res;
+        },
+        {}
+    );
+}
+
+function collectResults(err: Error, stats: Stats, fileNames: string[]) {
+    const results: CompilationResults = {outputs: {}};
+    if (err) {
+        results.error = err;
+    } else {
+        const {compilation} = stats;
+        if (compilation.errors.length) {
+            results.error = compilation.errors.join('\n\n');
+        } else {
+            try {
+                results.outputs = fileNames.reduce((res: CompilationOutput, file: string) => {
+                    res[file] = compilation.assets[`/build/${getFileKey(file)}.js`].source();
+                    return res;
+                }, {});
+            } catch (e) {
+                results.error = e;
+            }
+        }
+    }
+    return results;
+}
+
+export function compileDirectory(dir: PathLike): Promise<CompilationResults>{
     const fileNames = fs.readdirSync(dir);
     const entry = fileNames.reduce(
-        (res: StringObject, fileName) => {
+        (res: CompilationOutput, fileName) => {
             res[`/build/${getFileKey(fileName)}.js`] = path.join(dir.toString(), fileName);
                 return res;
             },
         {}
     );
-    return new Promise<StringObject>((resolve, reject) => {
+    return new Promise<CompilationResults>((resolve, reject) => {
         const compiler = webpack({
             ...baseWebpackConfig,
             entry: entry,
@@ -59,27 +97,29 @@ export function compileDirectory(dir: PathLike): Promise<StringObject>{
         memFs.mkdirSync('/');
         compiler.outputFileSystem = memFs;
         compiler.run((err, stats) => {
-            if(err){
-                reject(err);
-            } else {
-                const { compilation } = stats;
-
-                if (compilation.errors.length) {
-                    const errorMessage = compilation.errors.join('\n\n');
-                    reject(errorMessage);
-                } else {
-                    try {
-                        const outputs = fileNames.reduce((res: StringObject, file: string) => {
-                            res[file] = compilation.assets[`/build/${getFileKey(file)}.js`].source();
-                            return res;
-                        }, {});
-
-                        resolve(outputs);
-                    } catch (e) {
-                        reject(e);
-                    }
-                }
-            }
+            resolve(
+                collectResults(err, stats, fileNames)
+            );
         });
     });
+}
+
+export function watchDirectory(dir: PathLike, handler: ResultHandler): void {
+    const fileNames = fs.readdirSync(dir);
+
+    const entry = getWebPackEntry(fileNames, dir);
+        const compiler = webpack({
+            ...baseWebpackConfig,
+            mode: "development",
+            entry: entry,
+        });
+
+        const memFs = new MemoryFileSystem();
+        memFs.mkdirSync('/');
+        compiler.outputFileSystem = memFs;
+        compiler.watch({}, (err, stats) => {
+            handler(
+                collectResults(err, stats, fileNames)
+            );
+        });
 }

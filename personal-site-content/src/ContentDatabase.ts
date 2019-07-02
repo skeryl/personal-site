@@ -1,7 +1,6 @@
-import * as fs from 'fs';
 import {PathLike} from 'fs';
 import {PostSummary} from "personal-site-model";
-import {compileDirectory} from "./compilation";
+import {compileDirectory, CompilationOutput, watchDirectory} from "./compilation";
 import * as path from "path";
 import summaries from "./summaries";
 
@@ -11,16 +10,13 @@ export class ContentDatabase {
 
     private readonly rawPosts = new Map<string, string>();
     private readonly compiledPosts = new Map<string, PostSummary>();
-    private readonly files: string[];
 
     constructor(
         private readonly rootPath: PathLike = path.join(__dirname, './content/')
     ){
-        this.files = fs.readdirSync(rootPath);
     }
 
-    public async load(): Promise<void> {
-        const results = await (compileDirectory(this.rootPath));
+    private setResults(results: CompilationOutput) {
         Object.keys(results).map(fileName => {
             const compiled = results[fileName];
             const post = summaries[fileName];
@@ -28,6 +24,27 @@ export class ContentDatabase {
             this.rawPosts.set(post.id, compiled);
             console.info(`post "${post.title}" initialized.`);
         });
+    }
+
+    public async load(): Promise<void> {
+        try {
+            const results = await (compileDirectory(this.rootPath));
+            this.setResults(results.outputs);
+            if(results.error){
+                console.error("error occurred during compilation!", results.error);
+            }
+        } catch (e) {
+            console.error('error occurred during compilation!', e);
+        }
+    }
+
+    public watch(): void {
+        watchDirectory(this.rootPath, (results => {
+            this.setResults(results.outputs);
+            if(results.error){
+                console.error("error on watch: ", results.error);
+            }
+        }));
     }
 
     public getPostJS = (id: string): string | undefined => {

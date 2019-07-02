@@ -102,7 +102,7 @@ class PrimeColoringContent implements StageContent {
 export const post: Post = {
     summary: {
         id: 'prime-coloring',
-        tags: ['math'],
+        tags: ['math', 'prime-numbers', 'color'],
         title: 'Prime Coloring',
         timestamp: new Date(2019, 3, 21),
         type: PostType.experiment,
