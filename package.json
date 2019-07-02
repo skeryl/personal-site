@@ -1,0 +1,11 @@
+{
+  "name": "personal-site",
+  "version": "1.0.0",
+  "dependencies": {},
+  "devDependencies": {},
+  "scripts": {
+    "preinstall": "npm --prefix ./personal-site-ui install ./personal-site-ui && npm --prefix ./personal-site-server install ./personal-site-server",
+    "postinstall": "cd ./personal-site-ui/ && npm run build",
+    "start": "npm --prefix ./personal-site-server run start"
+  }
+}

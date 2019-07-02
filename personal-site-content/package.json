@@ -1,6 +1,9 @@
 {
   "name": "personal-site-content",
   "version": "1.0.0",
+  "scripts": {
+    "preinstall": "npm --prefix ../personal-site-model install ../personal-site-model && npm --prefix ../personal-site-shapes install ../personal-site-shapes"
+  },
   "dependencies": {
     "personal-site-model": "file:../personal-site-model",
     "personal-site-shapes": "file:../personal-site-shapes",

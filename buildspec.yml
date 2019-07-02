@@ -4,11 +4,7 @@ version: 0.2
 phases:
   install:
     commands:
-      - cd $CODEBUILD_SRC_DIR/personal-site-model
-      - npm install
-      - cd $CODEBUILD_SRC_DIR/personal-site-ui
-      - npm install
-      - cd $CODEBUILD_SRC_DIR/personal-site-server
+      - cd $CODEBUILD_SRC_DIR
       - npm install
     pre_build:
       commands:
@@ -18,8 +14,6 @@ phases:
   build:
     commands:
       - echo Build started on `date`
-      - cd $CODEBUILD_SRC_DIR/personal-site-ui
-      - npm run build
       - cd $CODEBUILD_SRC_DIR
       - echo Building the Docker image...
       - docker build -t $REPOSITORY_URI:latest .
