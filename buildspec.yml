@@ -5,7 +5,8 @@ phases:
   install:
     commands:
       - cd $CODEBUILD_SRC_DIR
-      - npm install
+      - npm --prefix ./personal-site-server install ./personal-site-server
+      - npm --prefix ./personal-site-ui install ./personal-site-ui
     pre_build:
       commands:
         - echo Logging in to Amazon ECR...
@@ -14,6 +15,8 @@ phases:
   build:
     commands:
       - echo Build started on `date`
+      - cd $CODEBUILD_SRC_DIR/personal-site-ui
+      - npm run build
       - cd $CODEBUILD_SRC_DIR
       - echo Building the Docker image...
       - docker build -t $REPOSITORY_URI:latest .
