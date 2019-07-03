@@ -5,6 +5,9 @@ phases:
   install:
     commands:
       - cd $CODEBUILD_SRC_DIR
+      - npm --prefix ./personal-site-model install ./personal-site-model
+      - npm --prefix ./personal-site-shapes install ./personal-site-shapes
+      - npm --prefix ./personal-site-content install ./personal-site-content
       - npm --prefix ./personal-site-server install ./personal-site-server
       - npm --prefix ./personal-site-ui install ./personal-site-ui
     pre_build:

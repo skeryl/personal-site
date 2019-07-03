@@ -6,7 +6,7 @@
   "scripts": {
     "build": "webpack",
     "watch": "webpack --watch",
-    "preinstall": "npm --prefix ../personal-site-model install ../personal-site-model"
+    "install-deps": "npm --prefix ../personal-site-model install ../personal-site-model"
   },
   "author": "Shane Carroll",
   "license": "ISC",

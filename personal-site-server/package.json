@@ -6,7 +6,7 @@
     "start": "ts-node ./bin/www.ts",
     "watch-content": "ts-node ./bin/www.ts --watch",
     "watch": "ts-node-dev ./bin/www.ts",
-    "preinstall": "npm --prefix ../personal-site-content install ../personal-site-content"
+    "install-deps": "npm --prefix ../personal-site-content install ../personal-site-content"
   },
   "dependencies": {
     "cookie-parser": "^1.4.3",
