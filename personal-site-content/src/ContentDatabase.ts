@@ -2,9 +2,13 @@ import {PathLike} from 'fs';
 import {PostSummary} from "personal-site-model";
 import {compileDirectory, CompilationOutput, watchDirectory} from "./compilation";
 import * as path from "path";
-import summaries from "./summaries";
 
 const sortByTimeCreated = (a: PostSummary, b: PostSummary) => Math.sign(b.timestamp.getTime() - a.timestamp.getTime());
+
+async function getSummary(fileName: string): Promise<PostSummary> {
+    const post = await (import (`./content/${fileName}`));
+    return post.default.summary;
+}
 
 export class ContentDatabase {
 
@@ -16,20 +20,21 @@ export class ContentDatabase {
     ){
     }
 
-    private setResults(results: CompilationOutput) {
-        Object.keys(results).map(fileName => {
+    private async setResults(results: CompilationOutput) {
+        const promises = Object.keys(results).map(async fileName => {
             const compiled = results[fileName];
-            const post = summaries[fileName];
+            const post: PostSummary = await getSummary(fileName);
             this.compiledPosts.set(post.id, post);
             this.rawPosts.set(post.id, compiled);
             console.info(`post "${post.title}" initialized.`);
         });
+        await Promise.all(promises);
     }
 
     public async load(): Promise<void> {
         try {
             const results = await (compileDirectory(this.rootPath));
-            this.setResults(results.outputs);
+            await this.setResults(results.outputs);
             if(results.error){
                 console.error("error occurred during compilation!", results.error);
             }

@@ -16,7 +16,7 @@ export class ExperimentComponent3D extends React.Component<PostProps<PostType.ex
     componentDidMount(): void {
         const canvas = this.canvasRef.current as HTMLCanvasElement;
 
-        this.renderer = new WebGLRenderer({ canvas: canvas, alpha: true });
+        this.renderer = new WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
         this.scene = new Scene();
         this.camera = new PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
 
