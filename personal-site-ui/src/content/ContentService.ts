@@ -27,6 +27,8 @@ export class ContentService {
     async listPosts(): Promise<PostSummary[]> {
         const response = await fetch(`/api/posts`);
         const rawJson = await (response.json());
-        return rawJson as PostSummary[];
+        return (rawJson.map((rawSummary: any) => {
+            return {...rawSummary, timestamp: new Date(rawSummary.timestamp) };
+        })) as PostSummary[];
     }
 }

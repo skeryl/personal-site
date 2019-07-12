@@ -1,13 +1,9 @@
-import {DirectionalMagnitude, Stage} from "grraf";
+import {Stage} from "grraf";
 import {ReactElement} from "react";
 import {Camera, Scene} from "three";
 
 export interface Unique {
     id: string;
-}
-
-export interface Linkable {
-    uri: string;
 }
 
 export enum PostType {
