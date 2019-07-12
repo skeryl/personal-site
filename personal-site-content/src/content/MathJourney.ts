@@ -101,18 +101,19 @@ class MathJourneyContent implements ExperimentContent3D {
             camera.lookAt(0, 0, 0);
             this.cameraRotation.addScalar(0.001);
 
-            const geo = this.geometry as BufferGeometry;
+            // ToDo: turn this on if not on mobile.
+            /*const geo = this.geometry as BufferGeometry;
             if(geo){
                 const positionAttr = geo.attributes.position as BufferAttribute;
 
                 for(let i = 0; i < positionAttr.array.length; i++){
-                    const newY = func(positionAttr.getX(i), positionAttr.getZ(i)) * Math.sin(this.cameraRotation.x) * 1.5;
+                    const newY = func(positionAttr.getX(i), positionAttr.getZ(i)) * Math.sin(this.cameraRotation.x + this.cameraRotation.y + this.cameraRotation.z) * 1.5;
                     if(!Number.isNaN(newY)){
                         positionAttr.setY(i, newY);
                     }
                 }
                 positionAttr.needsUpdate = true;
-            }
+            }*/
         }
         window.requestAnimationFrame(this.animate);
     };
