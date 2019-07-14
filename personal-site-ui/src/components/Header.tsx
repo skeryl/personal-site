@@ -8,7 +8,7 @@ export function Header(){
         <div id="header-container">
             <a href="/" className={classes('/', 'logo-name')}><h1>Shane Carroll</h1></a>
             {/*<a href="/about" className={classes('/about')}>about</a>*/}
-            <a href="/experiments" className={classes('/experiments')}>other experiments</a>
+            <a href="/posts" className={classes('/posts')}>other posts</a>
         </div>
     )
 }

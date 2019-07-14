@@ -10,7 +10,7 @@ export interface Props {
     id: string;
 }
 
-export function ExperimentDetail(props: RouteComponentProps<Props>){
+export function PostDetail(props: RouteComponentProps<Props>){
     const [summary, setSummary] = useState<PostSummary | null>(null);
     const [experiment, setExperiment] = useState<StageContent | null>(null);
     const contentService = useContext(ContentContext);

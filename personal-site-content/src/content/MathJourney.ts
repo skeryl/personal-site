@@ -55,6 +55,7 @@ class MathJourneyContent implements ExperimentContent3D {
     private geometry: BufferGeometry | Geometry | undefined;
 
     start = (scene: Scene, camera: Camera) => {
+        scene.background = new Color(0xf4dbce);
         this.scene = scene;
         const material = new ShaderMaterial( {
             uniforms: {

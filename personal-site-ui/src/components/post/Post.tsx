@@ -19,11 +19,9 @@ export function PostComponent<T extends PostType>(props: PostProps<T>) {
             <div className="post-header">
                 <div className="post-title">
                     <div>
-                        <span>this experiment is called</span>
                         <h1>{props.summary.title}</h1>
                     </div>
                     <div>
-                        <span>and was published</span>
                         <span className="timestamp">{`${moment(props.summary.timestamp).format("LL")}`}</span>
                     </div>
                     <div><Tags tags={props.summary.tags} /></div>

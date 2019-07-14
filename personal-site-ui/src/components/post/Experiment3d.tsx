@@ -1,15 +1,32 @@
 import * as React from "react";
 import {PostProps} from "./Post";
 import {PostType} from "personal-site-model";
-import {Camera, PerspectiveCamera, Renderer, Scene, WebGLRenderer} from "three";
+import {PerspectiveCamera, Renderer, Scene, WebGLRenderer} from "three";
+import {FullScreenButton} from "../FullScreenButton";
+import {MouseActiveTracker} from "../../utils/MouseActiveTracker";
+import {ActionsTray} from "../ActionsTray";
 
-export class ExperimentComponent3D extends React.Component<PostProps<PostType.experiment3d>> {
+interface State {
+    isMouseActive: boolean;
+}
+
+function isFullscreen(): boolean {
+    return Boolean(document.fullscreenElement);
+}
+
+export class ExperimentComponent3D extends React.Component<PostProps<PostType.experiment3d>, State> {
+
+    state = {
+        isMouseActive: false,
+        isFullScreen: false,
+    };
 
     private isRunning = false;
 
     private scene: Scene | undefined;
-    private camera: Camera | undefined;
+    private camera: PerspectiveCamera | undefined;
     private renderer: Renderer | undefined;
+    private mouseActiveTracker: MouseActiveTracker | undefined;
 
     private readonly canvasRef = React.createRef<HTMLCanvasElement>();
 
@@ -21,7 +38,7 @@ export class ExperimentComponent3D extends React.Component<PostProps<PostType.ex
         this.camera = new PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
 
         window.addEventListener('resize', this.onResize);
-
+        this.mouseActiveTracker = new MouseActiveTracker(canvas, this.onMouseActiveChange, 3000);
         this.onResize();
         this.props.content.start(this.scene, this.camera);
         this.isRunning = true;
@@ -36,12 +53,30 @@ export class ExperimentComponent3D extends React.Component<PostProps<PostType.ex
 
     render(){
         return (
-            <div id="experiment-canvas-3d">
+            <div id="experiment-canvas-3d" className={`mouse-tracker mouse-${this.state.isMouseActive ? 'active' : 'inactive'}`}>
                 <canvas ref={this.canvasRef}>
                 </canvas>
+                <ActionsTray show={this.state.isMouseActive}>
+                    <FullScreenButton onClick={this.onFullScreenClicked}/>
+                </ActionsTray>
             </div>
         );
     }
+
+    onMouseActiveChange = (status: boolean) => {
+        this.setState({ isMouseActive: status });
+    };
+
+    onFullScreenClicked = () => {
+        if(isFullscreen()){
+            document.exitFullscreen();
+        } else {
+            const elem = this.canvasRef.current && this.canvasRef.current.parentElement;
+            if(elem){
+                elem.requestFullscreen();
+            }
+        }
+    };
 
     private animate = () => {
         if(this.isRunning && this.renderer && this.scene && this.camera){
@@ -52,8 +87,15 @@ export class ExperimentComponent3D extends React.Component<PostProps<PostType.ex
 
     private onResize = () => {
         const canvas = this.canvasRef.current;
-        if(this.renderer && canvas && canvas.parentElement){
-            this.renderer.setSize(canvas.parentElement.clientWidth, canvas.parentElement.clientHeight, true);
+        const camera = this.camera;
+        if(this.renderer && canvas && canvas.parentElement && camera){
+            const width = canvas.parentElement.clientWidth;
+            const height = canvas.parentElement.clientHeight;
+
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+
+            this.renderer.setSize(width, height, true);
         }
     };
 }

@@ -1,5 +1,5 @@
 import {ExperimentContent3D, Post, PostType} from "personal-site-model";
-import {BoxGeometry, Camera, DoubleSide, Mesh, MeshPhongMaterial, PointLight, Scene, TorusGeometry} from "three";
+import {BoxGeometry, Camera, Color, DoubleSide, Mesh, MeshPhongMaterial, PointLight, Scene, TorusGeometry} from "three";
 
 class CubePegTorusHoleContent implements ExperimentContent3D {
 
@@ -10,6 +10,7 @@ class CubePegTorusHoleContent implements ExperimentContent3D {
     private scene: Scene | undefined;
 
     start = (scene: Scene, camera: Camera) => {
+        scene.background = new Color(0xf4dbce);
         this.scene = scene;
         const material = new MeshPhongMaterial(  { color: 0xce4a04, emissive: 0x6d5f58, side: DoubleSide, flatShading: true });
 

@@ -2,9 +2,18 @@
 #experiment-canvas, #experiment-canvas-3d {
     flex: 1;
     overflow: hidden;
+    position: relative;
 }
 
 #experiment-canvas-3d canvas {
     width: 100%;
     height: 100%;
+}
+
+.mouse-tracker.mouse-active {
+    cursor: auto;
+}
+
+.mouse-tracker.mouse-inactive {
+    cursor: none;
 }

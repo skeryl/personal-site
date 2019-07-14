@@ -18,7 +18,7 @@ export function PostList(){
         <div className="post-summary-container">
         {
             posts && posts.map(post => (
-                <a href={`/experiments/${post.id}`} className="post-list-item">
+                <a href={`/posts/${post.id}`} className="post-list-item">
                     <PostSummaryComponent key={post.id} post={post}/>
                 </a>
             ))

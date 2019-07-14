@@ -1,8 +1,7 @@
 import {RouteProps} from 'react-router-dom';
-import {Home, /*HomeWithOverlay*/} from "./containers/Home";
+import {Home,} from "./containers/Home";
 import {PostList} from "./containers/PostList";
-import {AboutOverlay} from "./overlays/AboutOverlay";
-import {ExperimentDetail} from "./containers/ExperimentDetail";
+import {PostDetail} from "./containers/PostDetail";
 
 export type NavRoute = RouteProps & { name: string };
 
@@ -13,9 +12,9 @@ const index: RouteProps = {
 };
 
 const experiments: NavRoute = {
-    name: 'experiments',
+    name: 'posts',
     exact: true,
-    path: '/experiments',
+    path: '/posts',
     component: PostList,
 };
 
@@ -27,8 +26,8 @@ const experiments: NavRoute = {
 };*/
 
 const experimentDetail: RouteProps = {
-    path: '/experiments/:id',
-    component: ExperimentDetail,
+    path: '/posts/:id',
+    component: PostDetail,
 };
 
 export const routes = [
