@@ -9,8 +9,7 @@ import {
     Light,
     Points,
     Scene,
-    ShaderMaterial,
-    Vector3
+    ShaderMaterial
 } from "three";
 
 function getGeometry(func: (x: number, z: number) => number): BufferGeometry {
@@ -54,7 +53,6 @@ class MathJourneyContent implements ExperimentContent3D {
     private camera: Camera | undefined;
     private scene: Scene | undefined;
     private geometry: BufferGeometry | Geometry | undefined;
-    private cameraRotation: Vector3 = new Vector3(0, 0, 0);
 
     start = (scene: Scene, camera: Camera) => {
         this.scene = scene;
@@ -93,27 +91,13 @@ class MathJourneyContent implements ExperimentContent3D {
     };
 
     animate = () => {
+        const time = new Date().getTime() / 1000 / 15;
         const camera = this.camera;
         if(camera){
-            camera.position.x = Math.sin(this.cameraRotation.x)*20;
-            camera.position.z = Math.cos(this.cameraRotation.z)*20;
-            camera.position.y = Math.cos(this.cameraRotation.y)*30;
+            camera.position.x = Math.sin(time)*20;
+            camera.position.z = Math.cos(time)*20;
+            camera.position.y = Math.cos(time)*30;
             camera.lookAt(0, 0, 0);
-            this.cameraRotation.addScalar(0.001);
-
-            // ToDo: turn this on if not on mobile.
-            /*const geo = this.geometry as BufferGeometry;
-            if(geo){
-                const positionAttr = geo.attributes.position as BufferAttribute;
-
-                for(let i = 0; i < positionAttr.array.length; i++){
-                    const newY = func(positionAttr.getX(i), positionAttr.getZ(i)) * Math.sin(this.cameraRotation.x + this.cameraRotation.y + this.cameraRotation.z) * 1.5;
-                    if(!Number.isNaN(newY)){
-                        positionAttr.setY(i, newY);
-                    }
-                }
-                positionAttr.needsUpdate = true;
-            }*/
         }
         window.requestAnimationFrame(this.animate);
     };
