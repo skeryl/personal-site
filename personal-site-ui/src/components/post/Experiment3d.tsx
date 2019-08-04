@@ -25,7 +25,7 @@ export class ExperimentComponent3D extends React.Component<PostProps<PostType.ex
 
     private scene: Scene | undefined;
     private camera: PerspectiveCamera | undefined;
-    private renderer: Renderer | undefined;
+    private renderer: WebGLRenderer | undefined;
     private mouseActiveTracker: MouseActiveTracker | undefined;
 
     private readonly canvasRef = React.createRef<HTMLCanvasElement>();
@@ -34,13 +34,14 @@ export class ExperimentComponent3D extends React.Component<PostProps<PostType.ex
         const canvas = this.canvasRef.current as HTMLCanvasElement;
 
         this.renderer = new WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+        this.renderer.shadowMap.enabled = true;
         this.scene = new Scene();
         this.camera = new PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
 
         window.addEventListener('resize', this.onResize);
         this.mouseActiveTracker = new MouseActiveTracker(canvas, this.onMouseActiveChange, 3000);
         this.onResize();
-        this.props.content.start(this.scene, this.camera);
+        this.props.content.start(this.scene, this.camera, this.renderer);
         this.isRunning = true;
         this.animate();
     }
@@ -69,11 +70,19 @@ export class ExperimentComponent3D extends React.Component<PostProps<PostType.ex
 
     onFullScreenClicked = () => {
         if(isFullscreen()){
-            document.exitFullscreen();
+            document.exitFullscreen().then(() => {
+                if(this.props.content.onFullScreenChange){
+                    this.props.content.onFullScreenChange(false);
+                }
+            });
         } else {
             const elem = this.canvasRef.current && this.canvasRef.current.parentElement;
             if(elem){
-                elem.requestFullscreen();
+                elem.requestFullscreen().then(() => {
+                    if(this.props.content.onFullScreenChange){
+                        this.props.content.onFullScreenChange(true);
+                    }
+                });
             }
         }
     };
@@ -81,6 +90,9 @@ export class ExperimentComponent3D extends React.Component<PostProps<PostType.ex
     private animate = () => {
         if(this.isRunning && this.renderer && this.scene && this.camera){
             this.renderer.render(this.scene, this.camera);
+            if(this.props.content.onRender){
+                this.props.content.onRender();
+            }
             requestAnimationFrame(this.animate);
         }
     };
