@@ -13,7 +13,7 @@ export const postRoutes = (router: Router, contentDatabase: ContentDatabase) => 
     })),
 
     router.get('/:id', (req, res) => {
-        const post = contentDatabase.getPostJS(req.params.id);
+        const post = contentDatabase.getPostJS((req.params as any)["id"]);
         res.send(post);
     }),
 
