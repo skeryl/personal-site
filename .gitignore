@@ -1,4 +1,4 @@
 /.idea/*
 /node_modules/
 /**/node_modules/
-personal-site-ui/public/scripts/
+packages/personal-site-ui/public/scripts/

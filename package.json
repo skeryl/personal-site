@@ -1,11 +1,15 @@
 {
   "name": "personal-site",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "dependencies": {},
-  "devDependencies": {},
+  "devDependencies": {
+    "yarn": "^1.22.4",
+    "prettier": "^2.0.5"
+  },
   "scripts": {
-    "preinstall": "npm --prefix ./personal-site-ui install ./personal-site-ui && npm --prefix ./personal-site-server install ./personal-site-server",
-    "postinstall": "cd ./personal-site-ui/ && npm run build",
-    "start": "npm --prefix ./personal-site-server run start"
-  }
+    "start": "yarn workspace personal-site-server run start",
+    "format": "prettier --trailing-comma all --write \"./packages/**/*.ts\""
+  },
+  "private": true,
+  "workspaces": ["packages/*"]
 }
