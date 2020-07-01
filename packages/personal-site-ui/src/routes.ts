@@ -1,9 +1,17 @@
+import { lazy } from "react";
 import { RouteProps } from "react-router-dom";
-import { Home } from "./containers/Home";
-import { PostList } from "./containers/PostList";
-import { PostDetail } from "./containers/PostDetail";
 
-export type NavRoute = RouteProps & { name: string };
+const PostList = lazy(() => import("./containers/PostList"));
+const PostDetail = lazy(() => import("./containers/PostDetail"));
+const Home = lazy(() => import("./containers/Home"));
+const SynthBuilder = lazy(() => import("project-synth-builder"));
+
+export type NavRoute = RouteProps & {
+  path: string;
+  name: string;
+  description: string;
+  hidden?: boolean;
+};
 
 const index: RouteProps = {
   exact: true,
@@ -11,28 +19,34 @@ const index: RouteProps = {
   component: Home,
 };
 
-const experiments: NavRoute = {
-  name: "posts",
+const posts: NavRoute = {
+  name: "art",
   exact: true,
-  path: "/posts",
+  path: "/art",
   component: PostList,
+  description: "snippets of saucy software",
 };
 
-/*const about: NavRoute = {
-    name: 'about',
-    exact: true,
-    path: '/about',
-    component: HomeWithOverlay(AboutOverlay),
-};*/
-
-const experimentDetail: RouteProps = {
-  path: "/posts/:id",
+const postDetail: RouteProps = {
+  path: "/art/:id",
   component: PostDetail,
+};
+
+const synthBuilder: NavRoute = {
+  name: "synth builder",
+  description: "craft your own synth, make your own jams",
+  exact: true,
+  path: "/synth-builder",
+  component: SynthBuilder,
+  hidden: true,
 };
 
 export const routes = [
   index,
   //about,
-  experiments,
-  experimentDetail,
+  posts,
+  postDetail,
+  synthBuilder,
 ];
+
+export const navRoutes: NavRoute[] = [posts, synthBuilder];

@@ -5,12 +5,11 @@
 @import 'components/index.css';
 
 * {
-    color: rgb(85, 73, 0);
     font-family: 'Arial', 'sans-serif';
 }
 
 body {
-    background-color: rgb(244, 219, 206);
+    background-color: rgba(255, 251, 227, 0.37);
     margin: 0;
     overflow-x: hidden;
     overflow-y: scroll;

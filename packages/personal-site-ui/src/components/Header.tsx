@@ -1,14 +1,36 @@
-import * as React from "react";
+import React, { createRef, useEffect } from "react";
+import { HeaderContainer, Title } from "./Header.styles";
 
-export function Header(){
-    function classes(path: string, extra?: string){
-        return `${window.location.pathname === path ? 'active ' : ''}${extra ? extra : ''}`;
-    }
-    return (
-        <div id="header-container">
-            <a href="/" className={classes('/', 'logo-name')}><h1>Shane Carroll</h1></a>
-            {/*<a href="/about" className={classes('/about')}>about</a>*/}
-            <a href="/posts" className={classes('/posts')}>other posts</a>
-        </div>
-    )
+export function Header() {
+  const dot = <span className={"dot"}>.</span>;
+  const shanes = <span className={"hidden"}>hane's</span>;
+  const computer = <span className={"hidden"}>omputer</span>;
+  const titleRef = createRef<HTMLAnchorElement>();
+
+  useEffect(() => {
+    setTimeout(() => {
+      if (titleRef.current) {
+        titleRef.current.classList.remove("expanded");
+      }
+    }, 1000);
+  }, []);
+  const atHome = window.location.pathname === "/";
+  return (
+    <HeaderContainer>
+      <Title
+        href={atHome ? "#" : "/"}
+        ref={titleRef}
+        className={atHome ? "expanded" : ""}
+      >
+        <h1>
+          s{shanes}
+          {dot}
+        </h1>
+        <h1>
+          c{computer}
+          {dot}
+        </h1>
+      </Title>
+    </HeaderContainer>
+  );
 }
