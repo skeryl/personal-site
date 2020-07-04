@@ -1,2 +1,2 @@
-export * from "./AudioNodeComponent";
+export * from "./node";
 export * from "./SynthBuilder";

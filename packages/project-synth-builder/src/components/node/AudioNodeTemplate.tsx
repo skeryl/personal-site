@@ -1,6 +1,6 @@
 import React from "react";
 import styled from "styled-components";
-import { NodeConfig } from "../model/nodes";
+import { NodeConfig } from "../../model/nodes";
 import { useDrag } from "react-dnd";
 
 interface Props {

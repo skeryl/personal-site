@@ -2,26 +2,26 @@ import React from "react";
 import styled from "styled-components";
 import { useDrop } from "react-dnd";
 import { DropTargetMonitor } from "react-dnd/lib/interfaces/monitors";
-import { NodeFunction } from "../model/nodes";
+import { NodeFunction } from "../../model/nodes";
 
 interface StyleProps {
   isOver: boolean;
   canDrop: boolean;
 }
 
-const NodeSinkContainer = styled("div")``;
+const NodeSinkContainer = styled("div")`
+  display: flex;
+`;
 
 const NodeSink = styled("div")<StyleProps>`
-  display: block;
-  width: 100px;
-  height: 100px;
-  border-width: 4px;
+  width: 35px;
+  height: 35px;
+  border-width: 2px;
   border-color: ${(props) =>
     props.isOver ? (props.canDrop ? "blue" : "red") : "black"};
   border-style: ${(props) => (props.isOver ? "dashed" : "solid")};
-  position: absolute;
-  top: -4px;
-  left: -4px;
+  border-radius: 100%;
+  align-self: center;
 `;
 
 interface Props {
