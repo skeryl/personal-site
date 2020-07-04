@@ -1,5 +1,5 @@
 
-Welcome to Shane Carroll's personal [website](http://shane.carroll.studio)!
+Welcome to Shane Carroll's personal [website](http://www.shanes.computer)!
 
 ## concept
 This is an experiment for what a developer-centric CMS would be for visual experiments and project write-ups.
