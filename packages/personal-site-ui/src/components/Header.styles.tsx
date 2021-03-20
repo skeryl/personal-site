@@ -22,18 +22,18 @@ export const HeaderContainer = styled("div")`
   z-index: 2;
   position: fixed;
   width: 100%;
-  background-color: #442f14;
+  background-color: #32493a;
   overflow: hidden;
   display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: flex-end;
   height: 25px;
-  border-bottom: groove #ffbc00 0.5rem;
+  border-bottom: groove #99cfcf 0.5rem;
 
   span {
     font-family: "PlayfairDisplay", "serif";
-    transition: opacity, max-width ease-out 325ms;
+    transition: max-width ease-out 4025ms;
   }
 
   span.hidden {
@@ -42,12 +42,14 @@ export const HeaderContainer = styled("div")`
   }
 
   span.dot {
+    transition: opacity ease-out 725ms;
     opacity: 1;
   }
 
   :hover,
   .expanded {
     span.hidden {
+      transition: max-width ease-out 1025ms;
       max-width: 100px;
     }
     span.dot {
@@ -62,7 +64,7 @@ export const HeaderContainer = styled("div")`
   }
 
   a {
-    color: rgb(255, 233, 173) !important;
+    color: #88b3cb !important;
     text-decoration: none;
     text-align: right;
     height: 1.75rem;
@@ -70,6 +72,6 @@ export const HeaderContainer = styled("div")`
   }
 
   a:hover {
-    text-shadow: 2px 2px #ff8100e3;
+    text-shadow: 2px 2px rgba(0, 164, 255, 0.6);
   }
 `;

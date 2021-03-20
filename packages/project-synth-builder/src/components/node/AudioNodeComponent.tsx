@@ -13,15 +13,14 @@ interface Props {
   label?: string;
   node: IAudioGraphNode;
   onNodeChange: (node: IAudioGraphNode) => void;
-  /*onRootChange: (node: IAudioGraphNode) => void;*/
 }
 
 export function AudioNodeComponent(props: Props) {
   const { node } = props;
 
-  /*function onInputSinkDropped(item: any, monitor: DropTargetMonitor) {
-    props.onRootChange(props.node.insertInput(item.nodeType));
-  }*/
+  function onInputSinkDropped(item: any, monitor: DropTargetMonitor) {
+    props.onNodeChange(props.node.insertInput(item.nodeType));
+  }
 
   function onOutputSinkDropped(item: any, monitor: DropTargetMonitor) {
     props.onNodeChange(
@@ -43,12 +42,12 @@ export function AudioNodeComponent(props: Props) {
       {/*
       I need to figure out what to do with nodes that have many inputs (channel merger).
       */}
-      {/*config.numberOfInputs >= 1 && (
+      {config.numberOfInputs > 1 && (
         <AudioNodeSink
           onDrop={onInputSinkDropped}
           functions={NodeFunction.Effect}
         />
-      )*/}
+      )}
       {config && (
         <FilledNode
           node={node}

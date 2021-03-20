@@ -1,14 +1,14 @@
 import { IAudioGraphNode, MINIMUM_GAIN, NodeTypes } from "../model/nodes";
 import { AudioGraphNode } from "./nodes/AudioGraphNode";
 import { KeyboardController } from "./KeyboardController";
-import { NoteHertzValues, Notes } from "../model/notes";
+import { Pitch, PitchInformation } from "../model/notes";
 
 type SynthNodes = [OscillatorNode, GainNode];
 
 export class Synth implements KeyboardController {
   private ctx: AudioContext | undefined;
-  private readonly notes = new Map<Notes, SynthNodes>();
-  private readonly playing = new Set<Notes>();
+  private readonly pitches = new Map<Pitch, SynthNodes>();
+  private readonly playing = new Set<Pitch>();
 
   constructor(
     private osc: IAudioGraphNode = AudioGraphNode.createOscillator().connectNode(
@@ -17,6 +17,10 @@ export class Synth implements KeyboardController {
       ),
     ),
   ) {}
+
+  public get notesPlaying(): ReadonlySet<Pitch> {
+    return new Set(this.playing);
+  }
 
   public get oscillator(): IAudioGraphNode {
     return this.osc;
@@ -28,7 +32,7 @@ export class Synth implements KeyboardController {
     notesToRestart.forEach((note) => {
       this.stopPlaying(note);
     });
-    this.notes.clear();
+    this.pitches.clear();
     notesToRestart.forEach((note) => this.startPlaying(note));
   }
 
@@ -46,8 +50,18 @@ export class Synth implements KeyboardController {
       ? this.oscillator.withProperty("frequency", frequency)
       : this.oscillator;
 
-    const { node, outputs } = osc.build<OscillatorNode>(context);
-    node.start(0);
+    const { node, outputs, inputs } = osc.build<OscillatorNode>(context);
+    if (node.start) {
+      node.start(0);
+    } else {
+      if (inputs.length) {
+        inputs.forEach((inp) => {
+          if (inp.node.start) {
+            inp.node.start(0);
+          }
+        });
+      }
+    }
 
     // oscillators are only allowed one output, in this case we need it to always be the gain node
     const gainNode = outputs[0].node as GainNode;
@@ -63,29 +77,29 @@ export class Synth implements KeyboardController {
     return this.ctx;
   }
 
-  startPlaying(note: Notes) {
-    if (!this.notes.has(note)) {
+  startPlaying(pitch: Pitch) {
+    if (!this.pitches.has(pitch)) {
       const [oscillator, gainNode] = this.buildNode(
         this.context,
-        NoteHertzValues[note],
+        PitchInformation[pitch].hertz,
       );
-      this.notes.set(note, [oscillator, gainNode]);
+      this.pitches.set(pitch, [oscillator, gainNode]);
     }
-    if (this.playing.has(note)) {
+    if (this.playing.has(pitch)) {
       return;
     }
-    const [, gainNode] = this.notes.get(note) as SynthNodes;
+    const [, gainNode] = this.pitches.get(pitch) as SynthNodes;
     gainNode.gain.setValueAtTime(gainNode.gain.value, this.context.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(
       this.maxGain,
       this.context.currentTime + 0.03,
     );
-    this.playing.add(note);
+    this.playing.add(pitch);
   }
 
-  stopPlaying(note: Notes) {
-    if (this.playing.has(note) && this.notes.has(note)) {
-      const [, gainNode] = this.notes.get(note) as SynthNodes;
+  stopPlaying(note: Pitch) {
+    if (this.playing.has(note) && this.pitches.has(note)) {
+      const [, gainNode] = this.pitches.get(note) as SynthNodes;
       gainNode.gain.setValueAtTime(
         gainNode.gain.value,
         this.context.currentTime,

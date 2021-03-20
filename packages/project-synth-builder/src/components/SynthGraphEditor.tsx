@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { IAudioGraphNode } from "../model/nodes";
 import { AudioNodeComponent } from "./node/AudioNodeComponent";
 import { KeyboardComponent } from "./KeyboardComponent";
-import { Notes } from "../model/notes";
+import { Pitch } from "../model/notes";
 import { Synth } from "../core/Synth";
 
 interface Props {}
@@ -33,13 +33,13 @@ export function SynthGraphEditor(props: Props) {
     setRootNode(node);
   };
 
-  const startPlaying = (note: Notes) => {
+  const startPlaying = (note: Pitch) => {
     if (rootNode) {
       synth.current.startPlaying(note);
     }
   };
 
-  const stopPlaying = (note: Notes) => {
+  const stopPlaying = (note: Pitch) => {
     if (rootNode) {
       synth.current.stopPlaying(note);
     }

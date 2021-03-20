@@ -1,6 +1,6 @@
-import { Notes } from "../model/notes";
+import { Pitch } from "../model/notes";
 
 export interface KeyboardController {
-  startPlaying(note: Notes): void;
-  stopPlaying(note: Notes): void;
+  startPlaying(note: Pitch): void;
+  stopPlaying(note: Pitch): void;
 }

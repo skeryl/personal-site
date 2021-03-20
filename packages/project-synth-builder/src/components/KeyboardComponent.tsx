@@ -1,24 +1,27 @@
 import React, { useEffect } from "react";
-import { DefaultKeyMapping, KeyNoteMapping, Notes } from "../model/notes";
+import { DefaultKeyMapping, KeyNoteMapping, Pitch } from "../model/notes";
 
 interface Props {
-  startPlaying: (note: Notes) => void;
-  stopPlaying: (note: Notes) => void;
+  startPlaying: (note: Pitch) => void;
+  stopPlaying: (note: Pitch) => void;
   keyMap?: KeyNoteMapping;
+  keyMapLow?: KeyNoteMapping;
 }
 
 export function KeyboardComponent(props: Props) {
   const keyMapping = props.keyMap || DefaultKeyMapping;
 
-  function getNote(ev: KeyboardEvent): Notes | undefined {
+  function getNote(ev: KeyboardEvent): Pitch | undefined {
     return keyMapping[ev.key.toLowerCase()];
   }
+
   function onKeyDown(ev: KeyboardEvent) {
     const note = getNote(ev);
     if (note) {
       props.startPlaying(note);
     }
   }
+
   function onKeyUp(ev: KeyboardEvent) {
     const note = getNote(ev);
     if (note) {

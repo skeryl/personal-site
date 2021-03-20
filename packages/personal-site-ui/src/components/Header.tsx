@@ -12,7 +12,7 @@ export function Header() {
       if (titleRef.current) {
         titleRef.current.classList.remove("expanded");
       }
-    }, 1000);
+    }, 3500);
   }, []);
   const atHome = window.location.pathname === "/";
   return (

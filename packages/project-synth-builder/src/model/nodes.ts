@@ -327,6 +327,7 @@ export type PropertyValue = string | number;
 export type BuildOutput<T extends AudioNode> = {
   node: T;
   outputs: BuildOutput<any>[];
+  inputs: BuildOutput<any>[];
 };
 
 export interface IAudioGraphNode {
@@ -338,7 +339,7 @@ export interface IAudioGraphNode {
 
   connectNode(config: IAudioGraphNode): IAudioGraphNode;
   connect(config: NodeConfig | NodeTypes): IAudioGraphNode;
-  //insertInput(config: NodeConfig | NodeTypes): IAudioGraphNode;
+  insertInput(config: NodeConfig | NodeTypes): IAudioGraphNode;
   insertOutput(config: NodeConfig): IAudioGraphNode;
 
   build<T extends AudioNode>(context: AudioContext): BuildOutput<T>;
@@ -349,7 +350,11 @@ export interface IAudioGraphNode {
     outputIndex?: number,
   ): IAudioGraphNode;
   withProperty(propertyName: string, value: PropertyValue): IAudioGraphNode;
+  cloneWithoutConnections(): IAudioGraphNode;
   cloneWithoutInputs(): IAudioGraphNode;
+
+  find(nodeType: NodeTypes): IAudioGraphNode[];
+  findClosest(nodeType: NodeTypes): IAudioGraphNode | undefined;
 }
 
 export const MINIMUM_GAIN = 0.0001;

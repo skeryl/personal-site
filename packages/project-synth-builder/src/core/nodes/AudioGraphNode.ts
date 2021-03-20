@@ -22,7 +22,7 @@ function replaceImmutably<T>(
 }
 
 export class AudioGraphNode implements IAudioGraphNode {
-  private constructor(
+  constructor(
     public readonly functions: NodeFunction | NodeFunction[],
     public readonly config: NodeConfig,
     public readonly inputs?: ReadonlyArray<IAudioGraphNode>,
@@ -56,6 +56,43 @@ export class AudioGraphNode implements IAudioGraphNode {
     return this.connectNode(new AudioGraphNode(this.functions, config));
   }
 
+  find(nodeType: NodeTypes): IAudioGraphNode[] {
+    if (!this.outputs) {
+      return [];
+    }
+    const directChildren = this.outputs!.filter(
+      (node) => node.config.type === nodeType,
+    );
+    return directChildren?.concat(
+      this.outputs
+        ? this.outputs.reduce(
+            (res: IAudioGraphNode[], output) =>
+              res.concat(output.find(nodeType)),
+            [],
+          )
+        : [],
+    );
+  }
+
+  findClosest(nodeType: NodeTypes): IAudioGraphNode | undefined {
+    if (!this.outputs) {
+      return undefined;
+    }
+    const directChildren = this.outputs!.find(
+      (node) => node.config.type === nodeType,
+    );
+    if (directChildren) {
+      return directChildren;
+    }
+
+    for (const output of this.outputs) {
+      const childResult = output.findClosest(nodeType);
+      if (childResult) {
+        return childResult;
+      }
+    }
+  }
+
   insertOutput(config: NodeConfig): IAudioGraphNode {
     if (this.config.numberOfOutputs === 0 || !this.outputs) {
       throw new Error("Unable to insert an output into this node.");
@@ -74,28 +111,50 @@ export class AudioGraphNode implements IAudioGraphNode {
   }
 
   /*
-  * this isn't fully working yet...
-  * * * * * * * * * * * * * * * * * *
-  *
+   * this isn't fully working yet...
+   * * * * * * * * * * * * * * * * * *
+   *
+   */
   insertInput(config: NodeConfig | NodeTypes): IAudioGraphNode {
     if (typeof config === "string") {
       return this.insertInput(NodeConfigs[config as NodeTypes]);
     }
     if (!this.inputs) {
       throw new Error(
-          "Can't insert an input in front of a node that doesn't already have inputs.",
+        "Can't insert an input in front of a node that doesn't already have inputs.",
       );
     }
     const newInputNode = new AudioGraphNode(this.functions, config);
     const newGraph = newInputNode.connectNode(this);
     const inputIndex =
-        this.config.numberOfInputs === 1 ? 0 : (this.inputs.length || 1) - 1;
+      this.config.numberOfInputs === 1 ? 0 : (this.inputs.length || 1) - 1;
     const foundInput = this.inputs[inputIndex];
     if (!foundInput) {
       throw new Error("Unable to find an input to insert into!");
     }
     return foundInput.connectNode(newGraph);
-  }*/
+  }
+
+  private buildUnison<T extends AudioNode>(
+    context: AudioContext,
+  ): BuildOutput<T> {
+    const { unison, ...propsToClone } = this.properties;
+    const inputNodes = new Array(unison as number).fill(undefined).map(() => {
+      return new AudioGraphNode(
+        this.functions,
+        this.config,
+        undefined,
+        undefined,
+        { ...propsToClone, detune: Math.random() * 1200 },
+      );
+    });
+
+    return (this.outputs || [])
+      .reduce((finalNode, currentOut, ix) => {
+        return finalNode.withOutput(currentOut, ix);
+      }, AudioGraphNode.merge(...inputNodes))
+      .build(context);
+  }
 
   build<T extends AudioNode>(context: AudioContext): BuildOutput<T> {
     const nodeConfig = this.config;
@@ -104,16 +163,36 @@ export class AudioGraphNode implements IAudioGraphNode {
         `Unable to build a node that doesn't have a config or factory!`,
       );
     }
+
+    if (nodeConfig.type === NodeTypes.Oscillator) {
+      if (this.properties?.unison > 1) {
+        return this.buildUnison(context);
+      }
+    }
+
     const node = nodeConfig.factory(context) as T;
     if (nodeConfig.propertySetter) {
       nodeConfig.propertySetter(node, this.properties);
     }
+
+    let inputs: BuildOutput<any>[] = [];
+    if (nodeConfig.type === NodeTypes.ChannelMerger) {
+      if (!this.inputs || !this.inputs.length) {
+        throw new Error("ChannelMerger must have some inputs!");
+      }
+      inputs = this.inputs.map((inp, ix) => {
+        const inputBuild = inp.build(context);
+        inputBuild.node.connect(node, 0, ix);
+        return inputBuild;
+      });
+    }
+
     const outputs = (this.outputs || []).map((output) => {
       const outputNode = output.build(context);
       node.connect(outputNode.node);
       return outputNode;
     });
-    return { node, outputs };
+    return { node, outputs, inputs };
   }
 
   withInput(inputNode: IAudioGraphNode, inputIndex?: number): IAudioGraphNode {
@@ -140,12 +219,31 @@ export class AudioGraphNode implements IAudioGraphNode {
   }
 
   withProperty(propertyName: string, value: PropertyValue): IAudioGraphNode {
+    if (this.config.type === NodeTypes.ChannelMerger) {
+      return new AudioGraphNode(
+        this.functions,
+        this.config,
+        this.inputs?.map((inp) => inp.withProperty(propertyName, value)),
+        this.outputs,
+        { ...this.properties, [propertyName]: value },
+      );
+    }
     return new AudioGraphNode(
       this.functions,
       this.config,
       this.inputs,
       this.outputs,
       { ...this.properties, [propertyName]: value },
+    );
+  }
+
+  cloneWithoutConnections(): IAudioGraphNode {
+    return new AudioGraphNode(
+      this.functions,
+      this.config,
+      undefined,
+      undefined,
+      { ...this.properties },
     );
   }
 
@@ -156,6 +254,13 @@ export class AudioGraphNode implements IAudioGraphNode {
       undefined,
       this.outputs,
       { ...this.properties },
+    );
+  }
+
+  static merge(...nodes: IAudioGraphNode[]): IAudioGraphNode {
+    return nodes.reduce(
+      (result, node, ix) => result.withInput(node, ix),
+      AudioGraphNode.create(NodeTypes.ChannelMerger),
     );
   }
 
@@ -185,3 +290,16 @@ export class AudioGraphNode implements IAudioGraphNode {
     return new AudioGraphNode(type.nodeFunction, type);
   }
 }
+
+const degrees = Math.PI / 180;
+
+const Curves = {
+  distortion: (k: number, samples: number) => {
+    const curve = new Float32Array(samples);
+    for (let i = 0; i < samples; ++i) {
+      const x = (i * 2) / samples - 1;
+      curve[i] = ((3 + k) * x * 20 * degrees) / (Math.PI + k * Math.abs(x));
+    }
+    return curve;
+  },
+};
