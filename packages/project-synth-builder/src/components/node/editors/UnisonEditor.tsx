@@ -13,7 +13,7 @@ export function UnisonEditor(props: NodeEditorProps) {
       </Box>
       <Box display="flex" flexDirection="row" flexBasis="100%" p={1}>
         <Slider
-          value={props.node.properties?.unison as number}
+          defaultValue={props.node.properties?.unison as number}
           onChange={onUnisonChange}
           aria-labelledby="unison-slider"
           min={1}

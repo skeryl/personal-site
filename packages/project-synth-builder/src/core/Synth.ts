@@ -1,14 +1,62 @@
-import { IAudioGraphNode, MINIMUM_GAIN, NodeTypes } from "../model/nodes";
+import { IAudioGraphNode, MINIMUM_GAIN } from "../model/nodes";
 import { AudioGraphNode } from "./nodes/AudioGraphNode";
 import { KeyboardController } from "./KeyboardController";
 import { Pitch, PitchInformation } from "../model/notes";
 
 type SynthNodes = [OscillatorNode, GainNode];
 
+export interface SynthesizerSettings {
+  attack: number; // 0 - 1
+  minAttackTime: number; // minimum amount of time (in milliseconds) to delay before ramping up to play a note
+  maxAttackTime: number; // maximum amount of time (in milliseconds) to delay before ramping up to play a note
+
+  /* similar to "attack" but for the tail end of a note's sound */
+  release: number;
+  minReleaseTime: number;
+  maxReleaseTime: number;
+}
+
+export const SYNTH_DEFAULT_SETTINGS: SynthesizerSettings = {
+  attack: 1,
+  minAttackTime: 0.03,
+  maxAttackTime: 5,
+
+  release: 1,
+  minReleaseTime: 0.05,
+  maxReleaseTime: 20,
+};
+
+/**
+ * Uses the "attack" setting to generate a literal time delay during which the sound should "ramp up" to the {maxGain}
+ * */
+export function getAttackTime(
+  settings: Pick<
+    SynthesizerSettings,
+    "attack" | "maxAttackTime" | "minAttackTime"
+  >,
+): number {
+  const attackSafe = Math.max(0, Math.min(1, settings.attack));
+  return (1 - attackSafe) * settings.maxAttackTime + settings.minAttackTime;
+}
+
+/**
+ * Uses the "release" setting to generate a literal time delay during which the sound should "ramp down" to nothing
+ * */
+export function getReleaseTime(
+  settings: Pick<
+    SynthesizerSettings,
+    "release" | "maxReleaseTime" | "minReleaseTime"
+  >,
+): number {
+  const releaseSafe = Math.max(0, Math.min(1, settings.release));
+  return (1 - releaseSafe) * settings.maxReleaseTime + settings.minReleaseTime;
+}
+
 export class Synth implements KeyboardController {
   private ctx: AudioContext | undefined;
   private readonly pitches = new Map<Pitch, SynthNodes>();
   private readonly playing = new Set<Pitch>();
+  public settings: SynthesizerSettings;
 
   constructor(
     private osc: IAudioGraphNode = AudioGraphNode.createOscillator().connectNode(
@@ -16,7 +64,14 @@ export class Synth implements KeyboardController {
         AudioGraphNode.createDestination(),
       ),
     ),
-  ) {}
+    settings: Partial<SynthesizerSettings> = {},
+  ) {
+    this.settings = { ...SYNTH_DEFAULT_SETTINGS, ...settings };
+  }
+
+  public changeSettings(newSettings: Partial<SynthesizerSettings>): void {
+    this.settings = { ...this.settings, ...newSettings };
+  }
 
   public get notesPlaying(): ReadonlySet<Pitch> {
     return new Set(this.playing);
@@ -92,7 +147,7 @@ export class Synth implements KeyboardController {
     gainNode.gain.setValueAtTime(gainNode.gain.value, this.context.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(
       this.maxGain,
-      this.context.currentTime + 0.03,
+      this.context.currentTime + getAttackTime(this.settings),
     );
     this.playing.add(pitch);
   }
@@ -106,7 +161,7 @@ export class Synth implements KeyboardController {
       );
       gainNode.gain.exponentialRampToValueAtTime(
         MINIMUM_GAIN,
-        this.context.currentTime + 0.05,
+        this.context.currentTime + getReleaseTime(this.settings),
       );
       this.playing.delete(note);
     }

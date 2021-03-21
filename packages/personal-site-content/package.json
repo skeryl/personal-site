@@ -17,6 +17,7 @@
     "@types/webpack": "^4.4.33",
     "@types/jest": "^24.0.15",
     "@types/memory-fs": "^0.3.2",
+    "@types/three": "^0.126.1",
     "jest": "^24.8.0",
     "ts-jest": "^24.0.2",
     "awesome-typescript-loader": "^5.2.1"

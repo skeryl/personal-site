@@ -1,8 +1,8 @@
 import { KeyboardComponent } from "./KeyboardComponent";
 import React, { useEffect, useRef, useState } from "react";
-import { Synth } from "../core/Synth";
+import { Synth, SynthesizerSettings } from "../core/Synth";
 import { IAudioGraphNode, NodeTypes } from "../model/nodes";
-import { Pitch, PitchInformation } from "../model/notes";
+import { Pitch } from "../model/notes";
 import { AudioGraphNode } from "../core/nodes/AudioGraphNode";
 import styled from "styled-components";
 import SynthNoteVisualizer from "./visualizers/SynthNoteVisualizer";
@@ -71,6 +71,13 @@ export default function SynthComponent() {
     setRootNode(rootNode.withOutput(node, 0));
   }
 
+  function onGenericSynthSettingChange<
+    K extends keyof SynthesizerSettings,
+    V extends SynthesizerSettings[K]
+  >(key: K, value: V) {
+    synth.current.changeSettings({ [key]: value });
+  }
+
   return (
     <Box
       display="flex"
@@ -85,6 +92,14 @@ export default function SynthComponent() {
         onGainChange={onGainChanged}
         rootNode={rootNode}
         onRootNodeChange={onRootNodeChange}
+        attack={synth.current.settings.attack}
+        release={synth.current.settings.release}
+        onAttackChange={(newAttack) =>
+          onGenericSynthSettingChange("attack", newAttack)
+        }
+        onReleaseChange={(newRelease) =>
+          onGenericSynthSettingChange("release", newRelease)
+        }
       />
       <KeyboardComponent
         startPlaying={startPlaying}

@@ -254,6 +254,7 @@ export const NodeConfigs: Record<NodeTypes, NodeConfig> = {
     propertySetter: (oscillatorNode: OscillatorNode, properties) => {
       setIfDefined("type", oscillatorNode, properties);
       setAudioParamIfDefined("frequency", oscillatorNode, properties);
+      setAudioParamIfDefined("detune", oscillatorNode, properties);
     },
     nodeFunction: NodeFunction.Input,
     numberOfInputs: 0,

@@ -139,13 +139,17 @@ export class AudioGraphNode implements IAudioGraphNode {
     context: AudioContext,
   ): BuildOutput<T> {
     const { unison, ...propsToClone } = this.properties;
-    const inputNodes = new Array(unison as number).fill(undefined).map(() => {
+    const unisonAmount = unison as number;
+    const inputNodes = new Array(unisonAmount).fill(undefined).map(() => {
       return new AudioGraphNode(
         this.functions,
         this.config,
         undefined,
         undefined,
-        { ...propsToClone, detune: Math.random() * 1200 },
+        {
+          ...propsToClone,
+          detune: Math.random() * 50,
+        },
       );
     });
 
