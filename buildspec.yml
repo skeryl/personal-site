@@ -1,8 +1,14 @@
 
 version: 0.2
 
+env:
+  secrets-manager:
+    DOCKERHUB_ACCESS_TOKEN: "arn:aws:secretsmanager:us-east-1:276223127361:secret:dockerhub-O6vEbf"
+
 phases:
   install:
+    runtime-versions:
+      nodejs: 12
     commands:
       - cd $CODEBUILD_SRC_DIR
       - npm i -g yarn@1.22.4
@@ -17,6 +23,7 @@ phases:
       - echo Build started on `date`
       - yarn workspace personal-site-ui run build
       - echo Building the Docker image...
+      - docker login --username skeryl --password $DOCKERHUB_ACCESS_TOKEN
       - docker build -t $REPOSITORY_URI:latest .
       - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
   post_build:
