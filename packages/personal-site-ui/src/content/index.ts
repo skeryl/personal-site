@@ -1,10 +1,4 @@
-import {
-  ExperimentContent3D,
-  PostSummary,
-  PostType,
-  PostTypes,
-  StageContent,
-} from "../../../personal-site-model";
+import { PostType, PostTypes } from "personal-site-model";
 import { ComponentClass, ReactElement } from "react";
 import { ProjectComponent } from "../components/post/Project";
 import { ExperimentComponent } from "../components/post/Experiment";

@@ -1,21 +1,23 @@
 import { Router } from "express";
-import { ContentDatabase } from "personal-site-content";
+import { ContentDatabase } from "../content/ContentDatabase";
 
 export const postRoutes = (
   router: Router,
   contentDatabase: ContentDatabase,
 ) => [
-  router.get("/", (req, res) => {
+  router.get("/", async (req, res) => {
     const isLatest = "latest" in req.query && req.query.latest !== "false";
     if (isLatest) {
-      res.send(contentDatabase.latest());
+      const latestPost = await contentDatabase.latest();
+      res.send(latestPost);
     } else {
-      res.send(contentDatabase.listSummaries());
+      const allSummaries = await contentDatabase.listSummaries();
+      res.send(allSummaries);
     }
   }),
 
-  router.get("/:id", (req, res) => {
-    const post = contentDatabase.getPostJS((req.params as any)["id"]);
+  router.get("/:id", async (req, res) => {
+    const post = await contentDatabase.getSummary((req.params as any)["id"]);
     res.send(post);
   }),
 ];

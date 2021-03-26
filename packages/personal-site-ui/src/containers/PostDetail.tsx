@@ -18,8 +18,10 @@ export default function PostDetail(props: RouteComponentProps<Props>) {
 
   useEffect(() => {
     contentService.getPost(props.match.params.id).then((post) => {
-      setSummary(post.summary);
-      setExperiment(post.content() as StageContent);
+      if (post) {
+        setSummary(post.summary);
+        setExperiment(post.content() as StageContent);
+      }
     });
   }, []);
 

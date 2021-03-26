@@ -3,29 +3,24 @@ import { Post, PostSummary } from "personal-site-model";
 export class ContentService {
   constructor() {}
 
-  async getPost(id: string): Promise<Post> {
-    const response = await fetch(`/api/posts/${id}`);
-    const rawJs = await response.text();
-    let exports: any = {};
-    (function (this: any, ex: any) {
-      (window as any).exports = {};
-      eval(rawJs);
-    }.call(
-      {
-        /*exports: {}*/
-      },
-      exports,
-    ));
-    return exports.default as Post;
+  async getPost(id: string): Promise<Post | undefined> {
+    try {
+      const post = await import(`./posts/${id}`);
+      console.log("post: ", post);
+      return post.default as Post;
+    } catch (e) {
+      console.error("failed to load post.");
+      return undefined;
+    }
   }
 
-  async getLatestPost(): Promise<Post> {
+  /*async getLatestPost(): Promise<Post> {
     const response = await fetch(`/api/posts?latest`);
     const rawJson = await response.json();
     const summary = rawJson as PostSummary;
 
     return await this.getPost(summary.id);
-  }
+  }*/
 
   async listPosts(): Promise<PostSummary[]> {
     const response = await fetch(`/api/posts`);

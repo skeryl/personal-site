@@ -346,7 +346,7 @@ class AntFarmContent implements StageContent {
 
 const post: Post = {
   summary: {
-    id: "antfarm",
+    id: "ant-farm",
     tags: ["fun"],
     title: "Ant Farm",
     timestamp: new Date(2019, 3, 27),

@@ -18,7 +18,7 @@ export type AppGenerator = (params: AppParams) => Application;
 
 export const appGenerator: AppGenerator = (params) => {
   const uiDir = path.join(__dirname, "../personal-site-ui/");
-  const publicDir = path.join(uiDir, "public/");
+  const publicDir = path.join(uiDir, "./public/");
 
   const app = express();
 
@@ -32,6 +32,12 @@ export const appGenerator: AppGenerator = (params) => {
   app.use(express.static(publicDir));
 
   app.use("/api", api);
+
+  /*app.get("scripts/!*", (req, res) => {
+    const requestedScript = path.join(publicDir, `./${req.path}`);
+    console.log("SCRIPT: ", requestedScript);
+    res.sendFile(requestedScript);
+  });*/
 
   app.get("*", (req, res, next) => {
     res.sendFile(path.join(publicDir, "index.html"));

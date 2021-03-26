@@ -5,7 +5,6 @@ import {
   BufferGeometry,
   Camera,
   Color,
-  Geometry,
   Light,
   Points,
   Scene,
@@ -51,7 +50,7 @@ class MathJourneyContent implements ExperimentContent3D {
 
   private camera: Camera | undefined;
   private scene: Scene | undefined;
-  private geometry: BufferGeometry | Geometry | undefined;
+  private geometry: BufferGeometry | undefined;
 
   start = (scene: Scene, camera: Camera) => {
     scene.background = new Color(0xf4dbce);
