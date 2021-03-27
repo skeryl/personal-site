@@ -29,8 +29,7 @@ export function GainEditor(props: NodeEditorProps) {
             aria-labelledby="continuous-slider"
             min={0}
             step={0.01}
-            scale={(x) => Math.pow(x, 8)}
-            max={1}
+            max={0.5}
           />
         </Box>
         <Box flexBasis="10%" flexGrow={0}>

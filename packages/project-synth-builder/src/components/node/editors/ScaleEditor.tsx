@@ -1,5 +1,5 @@
 import React, { ChangeEvent } from "react";
-import { Box, InputLabel, Slider } from "@material-ui/core";
+import { Box, InputLabel, Slider, SliderProps } from "@material-ui/core";
 
 interface ScaleEditProps {
   label: string;
@@ -10,9 +10,10 @@ interface ScaleEditProps {
   marks?: boolean;
   value?: number;
   scale?: (input: number) => number;
+  valueLabelFormat?: SliderProps["valueLabelFormat"];
 }
 
-const defaultScale = (x: number) => Math.pow(x, 8);
+const defaultScale = (x: number) => x;
 
 export function ScaleEditor(props: ScaleEditProps) {
   function onChange(e: ChangeEvent<{}>, value: number | number[]) {
@@ -35,6 +36,8 @@ export function ScaleEditor(props: ScaleEditProps) {
           step={props.step || 0.05}
           marks={props.marks}
           scale={props.scale || defaultScale}
+          valueLabelDisplay="auto"
+          valueLabelFormat={props.valueLabelFormat}
         />
       </Box>
     </Box>

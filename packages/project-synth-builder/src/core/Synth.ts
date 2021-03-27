@@ -1,9 +1,10 @@
-import { IAudioGraphNode, MINIMUM_GAIN } from "../model/nodes";
+import { BuildOutput, IAudioGraphNode, MINIMUM_GAIN } from "../model/nodes";
 import { AudioGraphNode } from "./nodes/AudioGraphNode";
 import { KeyboardController } from "./KeyboardController";
 import { Pitch, PitchInformation } from "../model/notes";
+import { TimeSensitiveMap } from "./utils/TimeSensitiveMap";
 
-type SynthNodes = [OscillatorNode, GainNode];
+type SynthNodes = [OscillatorNode, GainNode, AnalyserNode | undefined];
 
 export interface SynthesizerSettings {
   attack: number; // 0 - 1
@@ -18,11 +19,11 @@ export interface SynthesizerSettings {
 
 export const SYNTH_DEFAULT_SETTINGS: SynthesizerSettings = {
   attack: 1,
-  minAttackTime: 0.03,
+  minAttackTime: 0.01,
   maxAttackTime: 5,
 
   release: 1,
-  minReleaseTime: 0.05,
+  minReleaseTime: 0.01,
   maxReleaseTime: 20,
 };
 
@@ -58,6 +59,17 @@ export class Synth implements KeyboardController {
   private readonly playing = new Set<Pitch>();
   public settings: SynthesizerSettings;
 
+  onReleaseFinished = (pitch: Pitch, audioParam: AudioParam) => {
+    audioParam.cancelScheduledValues(this.context.currentTime);
+  };
+
+  private readonly attacking = new TimeSensitiveMap<Pitch, AudioParam>();
+  private readonly releasing = new TimeSensitiveMap<Pitch, AudioParam>(
+    this.onReleaseFinished,
+  );
+  private node: OscillatorNode | undefined;
+  private inputs: BuildOutput<any>[] | undefined;
+
   constructor(
     private osc: IAudioGraphNode = AudioGraphNode.createOscillator().connectNode(
       AudioGraphNode.createGain().connectNode(
@@ -82,13 +94,59 @@ export class Synth implements KeyboardController {
   }
 
   public set oscillator(osc: IAudioGraphNode) {
-    this.osc = osc;
     const notesToRestart = Array.from(this.playing.values());
+    if (this.osc && this.osc !== osc) {
+      this.destroy();
+    }
+    this.osc = osc;
     notesToRestart.forEach((note) => {
       this.stopPlaying(note);
     });
     this.pitches.clear();
     notesToRestart.forEach((note) => this.startPlaying(note));
+  }
+
+  public getAnalyserData(): Float32Array | undefined {
+    const analysers = Array.from(this.pitches.values()).reduce(
+      (result, synthNodes) => {
+        const [_, __, analyser] = synthNodes;
+        if (analyser) {
+          return [...result, analyser];
+        }
+        return result;
+      },
+      new Array<AnalyserNode>(),
+    );
+
+    if (analysers.length) {
+      const result = new Float32Array(analysers[0].fftSize);
+      const intermediateResult = new Float32Array(analysers[0].fftSize);
+
+      analysers.forEach((analyser) => {
+        analyser.getFloatTimeDomainData(intermediateResult);
+        for (let i = 0; i < result.length; i++) {
+          result[i] = result[i] + intermediateResult[i];
+        }
+      });
+      return result;
+    }
+    return undefined;
+  }
+
+  private destroy() {
+    this.osc.destroy();
+    if (this.node?.stop) {
+      this.node.stop(0);
+    }
+    this.inputs?.forEach((inp) => {
+      if (inp.node.stop) {
+        inp.node.stop(0);
+      }
+    });
+    Array.from(this.playing.values()).forEach((playing) =>
+      this.stopPlaying(playing),
+    );
+    this.releasing.clear();
   }
 
   private get maxGain(): number {
@@ -116,13 +174,20 @@ export class Synth implements KeyboardController {
           }
         });
       }
+      this.node = node;
+      this.inputs = inputs;
     }
 
     // oscillators are only allowed one output, in this case we need it to always be the gain node
-    const gainNode = outputs[0].node as GainNode;
+    const gainBuild = outputs[0];
+    const gainNode = gainBuild.node as GainNode;
+
+    const gainOutput = gainBuild.outputs[0];
+    const analyser =
+      gainOutput.node instanceof AnalyserNode ? gainOutput.node : undefined;
 
     gainNode.gain.value = MINIMUM_GAIN;
-    return [node, gainNode];
+    return [node, gainNode, analyser];
   }
 
   public get context(): AudioContext {
@@ -133,37 +198,47 @@ export class Synth implements KeyboardController {
   }
 
   startPlaying(pitch: Pitch) {
+    if (this.releasing.has(pitch)) {
+      this.releasing.delete(pitch);
+    }
     if (!this.pitches.has(pitch)) {
-      const [oscillator, gainNode] = this.buildNode(
+      const [oscillator, gainNode, analyser] = this.buildNode(
         this.context,
         PitchInformation[pitch].hertz,
       );
-      this.pitches.set(pitch, [oscillator, gainNode]);
+      this.pitches.set(pitch, [oscillator, gainNode, analyser]);
     }
     if (this.playing.has(pitch)) {
       return;
     }
     const [, gainNode] = this.pitches.get(pitch) as SynthNodes;
     gainNode.gain.setValueAtTime(gainNode.gain.value, this.context.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(
+    const attackTime = getAttackTime(this.settings);
+    const rampUp = gainNode.gain.exponentialRampToValueAtTime(
       this.maxGain,
-      this.context.currentTime + getAttackTime(this.settings),
+      this.context.currentTime + attackTime,
     );
+    this.attacking.set(pitch, rampUp, attackTime * 1000);
     this.playing.add(pitch);
   }
 
-  stopPlaying(note: Pitch) {
-    if (this.playing.has(note) && this.pitches.has(note)) {
-      const [, gainNode] = this.pitches.get(note) as SynthNodes;
+  stopPlaying(pitch: Pitch) {
+    if (this.attacking.has(pitch)) {
+      this.attacking.delete(pitch);
+    }
+    if (this.playing.has(pitch) && this.pitches.has(pitch)) {
+      const [, gainNode] = this.pitches.get(pitch) as SynthNodes;
       gainNode.gain.setValueAtTime(
         gainNode.gain.value,
         this.context.currentTime,
       );
-      gainNode.gain.exponentialRampToValueAtTime(
+      const releaseTime = getReleaseTime(this.settings);
+      const rampDown = gainNode.gain.exponentialRampToValueAtTime(
         MINIMUM_GAIN,
-        this.context.currentTime + getReleaseTime(this.settings),
+        this.context.currentTime + releaseTime,
       );
-      this.playing.delete(note);
+      this.releasing.set(pitch, rampDown, releaseTime * 1000);
+      this.playing.delete(pitch);
     }
   }
 }

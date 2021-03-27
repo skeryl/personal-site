@@ -32,6 +32,8 @@ export class AudioGraphNode implements IAudioGraphNode {
     },
   ) {}
 
+  destroy(): void {}
+
   connectNode(node: IAudioGraphNode): IAudioGraphNode {
     if (this.outputs?.find((out) => out === node)) {
       return this;

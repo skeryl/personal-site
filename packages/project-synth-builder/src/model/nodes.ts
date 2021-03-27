@@ -80,6 +80,12 @@ export const NodeConfigs: Record<NodeTypes, NodeConfig> = {
     name: "Analyser",
     type: NodeTypes.Analyser,
     factory: (ctx) => ctx.createAnalyser(),
+    propertySetter: (audioNode, properties) => {
+      setIfDefined("minDecibels", audioNode, properties);
+      setIfDefined("maxDecibels", audioNode, properties);
+      setIfDefined("smoothingTimeConstant", audioNode, properties);
+      setIfDefined("fftSize", audioNode, properties);
+    },
     nodeFunction: NodeFunction.Analyzer,
     hidden: true,
     outputOptional: true,
@@ -356,6 +362,8 @@ export interface IAudioGraphNode {
 
   find(nodeType: NodeTypes): IAudioGraphNode[];
   findClosest(nodeType: NodeTypes): IAudioGraphNode | undefined;
+
+  destroy(): void;
 }
 
-export const MINIMUM_GAIN = 0.0001;
+export const MINIMUM_GAIN = 0.00005;

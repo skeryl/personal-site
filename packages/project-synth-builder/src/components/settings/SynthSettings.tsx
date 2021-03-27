@@ -5,16 +5,19 @@ import { GainEditor } from "../node/editors/GainEditor";
 import { OscillatorEditor } from "../node/editors/OscillatorEditor";
 import { UnisonEditor } from "../node/editors/UnisonEditor";
 import { ScaleEditor } from "../node/editors/ScaleEditor";
+import {
+  getAttackTime,
+  getReleaseTime,
+  SynthesizerSettings,
+} from "../../core/Synth";
 
 export type NodeChangeHandler = (node: IAudioGraphNode) => void;
 
-export interface SynthSettingsProps {
+export interface SynthSettingsProps extends SynthesizerSettings {
   gainNode: IAudioGraphNode;
   onGainChange: NodeChangeHandler;
   rootNode: IAudioGraphNode;
   onRootNodeChange: NodeChangeHandler;
-  attack: number;
-  release: number;
   onAttackChange: (val: number) => void;
   onReleaseChange: (val: number) => void;
 }
@@ -39,13 +42,47 @@ export function SynthSettings(props: SynthSettingsProps) {
         <OscillatorEditor node={rootNode} onChange={onRootNodeChange} />
       </Box>
       <Box flexBasis="10%" p={2}>
-        <ScaleEditor label="Attack" value={attack} onChange={onAttackChange} />
+        <ScaleEditor
+          label="Attack"
+          value={attack}
+          onChange={onAttackChange}
+          min={0.7}
+          max={1}
+          step={0.01}
+          valueLabelFormat={(val) =>
+            `${
+              Math.round(
+                10 *
+                  getAttackTime({
+                    attack: val,
+                    minAttackTime: props.minReleaseTime,
+                    maxAttackTime: props.maxReleaseTime,
+                  }),
+              ) / 10
+            }s`
+          }
+        />
       </Box>
       <Box flexBasis="10%" p={2}>
         <ScaleEditor
           label="Release"
           value={release}
           onChange={onReleaseChange}
+          min={0.7}
+          max={1}
+          step={0.01}
+          valueLabelFormat={(val) =>
+            `${
+              Math.round(
+                10 *
+                  getReleaseTime({
+                    release: val,
+                    minReleaseTime: props.minReleaseTime,
+                    maxReleaseTime: props.maxReleaseTime,
+                  }),
+              ) / 10
+            }s`
+          }
         />
       </Box>
       <Box flexBasis="20%" p={2}>

@@ -20,6 +20,8 @@ export function UnisonEditor(props: NodeEditorProps) {
           step={1}
           max={6}
           marks
+          valueLabelDisplay="auto"
+          valueLabelFormat={(value) => value || 1}
         />
       </Box>
     </Box>

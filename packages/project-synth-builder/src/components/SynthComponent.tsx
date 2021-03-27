@@ -4,23 +4,10 @@ import { Synth, SynthesizerSettings } from "../core/Synth";
 import { IAudioGraphNode, NodeTypes } from "../model/nodes";
 import { Pitch } from "../model/notes";
 import { AudioGraphNode } from "../core/nodes/AudioGraphNode";
-import styled from "styled-components";
 import SynthNoteVisualizer from "./visualizers/SynthNoteVisualizer";
 import { SynthSettings } from "./settings/SynthSettings";
 import { Box } from "@material-ui/core";
-
-const SynthContainer = styled("div")`
-  margin: calc(2rem + 42px) 2rem 2rem 2rem;
-  width: calc(100% - 4rem);
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-
-  > * {
-    display: flex;
-    flex-basis: 100%;
-  }
-`;
+import { AudioVisualizer } from "./visualizers/AudioVisualizer";
 
 function startingNode() {
   const osc = AudioGraphNode.createOscillator().withProperty("type", "sine");
@@ -28,12 +15,19 @@ function startingNode() {
   return osc.connectNode(
     AudioGraphNode.createGain()
       .withProperty("maxGain", 0.12)
-      .connectNode(AudioGraphNode.createDestination()),
+      .connectNode(
+        AudioGraphNode.create(NodeTypes.Analyser)
+          .withProperty("minDecibels", -40)
+          .withProperty("fftSize", 1024)
+          .connectNode(AudioGraphNode.createDestination()),
+      ),
   );
 }
 
 export default function SynthComponent() {
-  const synth = useRef<Synth>(new Synth(startingNode()));
+  const synth = useRef<Synth>(
+    new Synth(startingNode(), { attack: 0.96, release: 0.93 }),
+  );
   const [playing, setPlaying] = useState(synth.current.notesPlaying);
 
   const [rootNode, setRootNode] = useState<IAudioGraphNode>(
@@ -78,6 +72,10 @@ export default function SynthComponent() {
     synth.current.changeSettings({ [key]: value });
   }
 
+  function getData() {
+    return synth.current.getAnalyserData();
+  }
+
   return (
     <Box
       display="flex"
@@ -92,8 +90,7 @@ export default function SynthComponent() {
         onGainChange={onGainChanged}
         rootNode={rootNode}
         onRootNodeChange={onRootNodeChange}
-        attack={synth.current.settings.attack}
-        release={synth.current.settings.release}
+        {...synth.current.settings}
         onAttackChange={(newAttack) =>
           onGenericSynthSettingChange("attack", newAttack)
         }
@@ -105,7 +102,14 @@ export default function SynthComponent() {
         startPlaying={startPlaying}
         stopPlaying={stopPlaying}
       />
-      <SynthNoteVisualizer playing={playing} />
+      <Box display="flex" flexDirection="row" width="100%">
+        <Box flexBasis="65%">
+          <SynthNoteVisualizer playing={playing} />
+        </Box>
+        <Box flexBasis="35%">
+          <AudioVisualizer getTimeDomainData={getData} />
+        </Box>
+      </Box>
     </Box>
   );
 }
