@@ -106,31 +106,48 @@ export class Synth implements KeyboardController {
     notesToRestart.forEach((note) => this.startPlaying(note));
   }
 
-  public getAnalyserData(): Float32Array | undefined {
-    const analysers = Array.from(this.pitches.values()).reduce(
-      (result, synthNodes) => {
-        const [_, __, analyser] = synthNodes;
-        if (analyser) {
-          return [...result, analyser];
-        }
-        return result;
-      },
-      new Array<AnalyserNode>(),
-    );
+  private getAnalysers(): AnalyserNode[] {
+    return Array.from(this.pitches.values()).reduce((result, synthNodes) => {
+      const [_, __, analyser] = synthNodes;
+      if (analyser) {
+        return [...result, analyser];
+      }
+      return result;
+    }, new Array<AnalyserNode>());
+  }
 
+  private getAnalyserData(
+    dataFunction: keyof Pick<
+      AnalyserNode,
+      "getFloatTimeDomainData" | "getFloatFrequencyData"
+    >,
+  ): Float32Array | undefined {
+    const analysers = this.getAnalysers();
     if (analysers.length) {
       const result = new Float32Array(analysers[0].fftSize);
       const intermediateResult = new Float32Array(analysers[0].fftSize);
-
       analysers.forEach((analyser) => {
-        analyser.getFloatTimeDomainData(intermediateResult);
+        analyser[dataFunction](intermediateResult);
         for (let i = 0; i < result.length; i++) {
           result[i] = result[i] + intermediateResult[i];
         }
       });
+      if (dataFunction === "getFloatFrequencyData" && analysers.length > 1) {
+        for (let i = 0; i < result.length; i++) {
+          result[i] = result[i] / analysers.length;
+        }
+      }
       return result;
     }
     return undefined;
+  }
+
+  public getTimeDomainData(): Float32Array | undefined {
+    return this.getAnalyserData("getFloatTimeDomainData");
+  }
+
+  public getFrequencyData(): Float32Array | undefined {
+    return this.getAnalyserData("getFloatFrequencyData");
   }
 
   private destroy() {

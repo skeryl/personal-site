@@ -1,6 +1,7 @@
 import React, { createRef, useEffect, useMemo, useRef } from "react";
 import { Box } from "@material-ui/core";
 import { Color, Path, Stage } from "grraf";
+import styled from "styled-components";
 
 export interface AudioVisualizerProps {
   getTimeDomainData: () => Float32Array | undefined;
@@ -33,11 +34,17 @@ function cleanUp(x: number) {
   return Math.round(x * 100) / 100 + 0.5;
 }
 
+const CanvasContainer = styled("div")`
+  canvas {
+    width: 100%;
+  }
+`;
+
 export function AudioVisualizer({ getTimeDomainData }: AudioVisualizerProps) {
   const isDrawing = useRef(true);
   const stageRef = useRef<Stage | undefined>();
   const pathRef = useRef<Path | undefined>();
-  const canvasRef = createRef<HTMLCanvasElement>();
+  const canvasContainerRef = createRef<HTMLDivElement>();
 
   function setupPath(stage: Stage) {
     const { height, width } = stage.getSize();
@@ -48,11 +55,14 @@ export function AudioVisualizer({ getTimeDomainData }: AudioVisualizerProps) {
       .lineTo(width, halfHeight)
       .setStrokeStyle(Color.black)
       .setLineCap("round")
-      .setStrokeWidth(1);
+      .setStrokeWidth(2);
   }
 
   useEffect(() => {
-    const stage = new Stage(canvasRef.current, false, 0);
+    const container = canvasContainerRef.current as HTMLDivElement;
+    const stage = new Stage(container, true);
+    stage.canvas.width = container.clientWidth;
+    stage.canvas.height = Math.round(window.document.body.clientHeight / 2);
     stageRef.current = stage;
     pathRef.current = setupPath(stage);
     reDraw();
@@ -66,24 +76,18 @@ export function AudioVisualizer({ getTimeDomainData }: AudioVisualizerProps) {
     const { height, width } = stage.getSize();
     const halfHeight = height / 2;
     const waveHeight = height * 0.4;
-    const margin = height - waveHeight;
     const data = getTimeDomainData();
     if (!data) {
       return;
     }
     path.resetPath().moveTo(0, halfHeight);
-    /*const start = 400;
-    const end = data.length / 2;*/
-    const slicedData = data; // data.slice(start, end);
-    const extrema = getExtrema(slicedData);
-
-    const binXDimension = width / slicedData.length;
-    for (let i = 0; i < slicedData.length; i++) {
-      const value = slicedData[i];
-      const scaledValue = getScaledValue(value, extrema);
+    const binXDimension = width / data.length;
+    for (let i = 0; i < data.length; i++) {
+      const value = data[i];
+      const scaledValue = value * 2;
       const x = (i + 1) * binXDimension;
-      const y = scaledValue * waveHeight + margin / 2;
-      path.lineTo(cleanUp(x), cleanUp(y));
+      const y = scaledValue * waveHeight + halfHeight; /* + margin / 2*/
+      path.lineTo(x, y);
     }
   }
 
@@ -101,14 +105,11 @@ export function AudioVisualizer({ getTimeDomainData }: AudioVisualizerProps) {
 
   return (
     <Box flexBasis="100%">
-      <canvas
-        ref={canvasRef}
-        id={"audio-viz-canvas"}
-        width="100%"
+      <CanvasContainer
+        ref={canvasContainerRef}
+        id={"audio-viz-canvas-container"}
         style={{ minHeight: "200px", width: "100%" }}
-      >
-        you should get a better browser
-      </canvas>
+      />
     </Box>
   );
 }

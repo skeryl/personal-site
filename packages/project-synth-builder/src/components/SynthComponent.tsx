@@ -26,7 +26,7 @@ function startingNode() {
 
 export default function SynthComponent() {
   const synth = useRef<Synth>(
-    new Synth(startingNode(), { attack: 0.96, release: 0.93 }),
+    new Synth(startingNode(), { attack: 0.99, release: 0.93 }),
   );
   const [playing, setPlaying] = useState(synth.current.notesPlaying);
 
@@ -72,8 +72,8 @@ export default function SynthComponent() {
     synth.current.changeSettings({ [key]: value });
   }
 
-  function getData() {
-    return synth.current.getAnalyserData();
+  function getData(): Float32Array | undefined {
+    return synth.current.getTimeDomainData();
   }
 
   return (
