@@ -11,6 +11,7 @@ import { MutableAudioNode as AudioGraphNode } from "../../core/nodes/MutableAudi
 import { ISynth } from "../../services/synths";
 import { GainEditor } from "../node/editors/GainEditor";
 import SaveIcon from "@material-ui/icons/Save";
+import DeleteIcon from "@material-ui/icons/Delete";
 import { useKeyboardController } from "../../hooks/keyboard";
 
 export function startingGraph() {
@@ -41,6 +42,7 @@ export interface SynthComponentProps {
   onNameChange: (name: string) => void;
   onSettingsChange: (settings: SynthesizerSettings) => void;
   onSave: (synth: ISynth, changes: SynthEdits) => void;
+  onDelete: (synth: ISynth) => void;
 }
 
 export function hasEdits(edits: SynthEdits): boolean {
@@ -56,6 +58,7 @@ export default function SynthComponent({
   onNameChange,
   onSettingsChange,
   onSave,
+  onDelete,
 }: SynthComponentProps) {
   const { name: editedName, settings: editedSettings } = edits;
   const [playing, setPlaying] = useState(synth.notesPlaying);
@@ -96,27 +99,30 @@ export default function SynthComponent({
       flexDirection="column"
       flexBasis="100%"
       width="100%"
-      p={2}
       pt={0}
     >
       <Box display="flex" flexDirection="row">
-        <Box flexGrow={1}>
+        <Box>
           <TextField
             label="name"
             variant="outlined"
-            value={editedName || synth.metadata.name}
+            value={editedName === undefined ? synth.metadata.name : editedName}
             onChange={(e) => onNameChange(e.target.value)}
           />
+        </Box>
+
+        <Box flexGrow={1} pl={2}>
+          <GainEditor synth={synth} />
         </Box>
 
         <Box
           display="flex"
           flexShrink={0}
-          alignSelf="flex-end"
           flexBasis="55%"
+          alignSelf="flex-start"
           alignItems="center"
         >
-          <Box>
+          <Box pl={2}>
             <Tooltip
               title={isSaveDisabled ? "No changes to save" : "Save changes"}
               aria-label="save"
@@ -137,19 +143,28 @@ export default function SynthComponent({
               last saved at {synth.metadata.lastUpdated.toLocaleString()}
             </Typography>
           </Box>
+
+          <Box display="flex" justifyContent="flex-end" flexGrow={1} pr={2}>
+            <Tooltip title="Delete" aria-label="delete">
+              <Button
+                variant="contained"
+                startIcon={<DeleteIcon />}
+                onClick={() => onDelete(synth)}
+              >
+                Delete
+              </Button>
+            </Tooltip>
+          </Box>
         </Box>
       </Box>
-      <Box display="flex" flexDirection="row" width="100%" pt={2}>
-        <Box flexBasis="45%">
+      <Box display="flex" flexDirection="row" width="100%">
+        <Box flexBasis="45%" py={4}>
           <SynthSettings
             onGenericSynthSettingChange={onGenericSynthSettingChange}
             {...(editedSettings || synth.settings)}
           />
         </Box>
         <Box flexBasis="55%" p={2}>
-          <Box flexBasis="100%">
-            <GainEditor synth={synth} />
-          </Box>
           <AudioVisualizer synth={synth} />
         </Box>
       </Box>

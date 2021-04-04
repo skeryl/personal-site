@@ -15,30 +15,25 @@ export function GainEditor({ synth }: GainEditorProps) {
     synth.setGain(gain);
   }
   return (
-    <Box display="flex" flexDirection="column">
-      <Box display="flex" flexBasis="100%">
-        <InputLabel id="volume-slider">Volume</InputLabel>
+    <Box display="flex" flexDirection="row" flexBasis="100%" p={1}>
+      <Box flexBasis="10%" flexGrow={0}>
+        <VolumeDown />
       </Box>
-      <Box display="flex" flexDirection="row" flexBasis="100%" p={1}>
-        <Box flexBasis="10%" flexGrow={0}>
-          <VolumeDown />
-        </Box>
-        <Box flexBasis="80%" flexGrow={1} pl={2} pr={2}>
-          <Slider
-            defaultValue={
-              synth.audioGraph.findClosest(NodeTypes.Gain)!.properties
-                ?.maxGain as number
-            }
-            onChange={onGainChange}
-            aria-labelledby="continuous-slider"
-            min={0}
-            step={0.01}
-            max={0.5}
-          />
-        </Box>
-        <Box flexBasis="10%" flexGrow={0}>
-          <VolumeUp />
-        </Box>
+      <Box flexBasis="80%" flexGrow={1} pl={2} pr={2}>
+        <Slider
+          defaultValue={
+            synth.audioGraph.findClosest(NodeTypes.Gain)!.properties
+              ?.maxGain as number
+          }
+          onChange={onGainChange}
+          aria-labelledby="continuous-slider"
+          min={0}
+          step={0.01}
+          max={0.5}
+        />
+      </Box>
+      <Box flexBasis="10%" flexGrow={0}>
+        <VolumeUp />
       </Box>
     </Box>
   );

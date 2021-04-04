@@ -9,6 +9,9 @@ import {
   ListItem,
   ListItemSecondaryAction,
   ListItemText,
+  Paper,
+  Tab,
+  Tabs,
   Typography,
 } from "@material-ui/core";
 import DeleteIcon from "@material-ui/icons/Delete";
@@ -22,49 +25,55 @@ export interface SynthsListProps {
   onSynthSelected: (synth: ISynth) => void;
   activeSynth: ISynth | undefined;
   onNewSynth: () => void;
-  onDelete: (synth: ISynth) => void;
 }
 export const SynthsList: FC<SynthsListProps> = ({
   synths,
   onSynthSelected,
   activeSynth,
   onNewSynth,
-  onDelete,
 }) => {
   return (
-    <>
-      <Box display="flex" flexDirection="row" alignItems="flex-start" p={2}>
-        <Box display="flex" flexGrow={1}>
-          <Typography variant="h6">Synths</Typography>
-        </Box>
-        <Box display="flex" alignSelf="flex-end" flexShrink={0}>
+    <Box
+      height="100%"
+      display="flex"
+      flexDirection="column"
+      flexBasis="100%"
+      flexGrow={1}
+    >
+      <Paper variant="outlined" square style={{ height: "100%" }}>
+        <Box
+          display="flex"
+          flexDirection="row"
+          alignItems="flex-start"
+          p={2}
+          pb={1}
+        >
           <Button
-            variant="contained"
+            variant="outlined"
             startIcon={<AddIcon />}
             onClick={onNewSynth}
             color="default"
+            fullWidth
           >
             New
           </Button>
         </Box>
-      </Box>
-      <List component="nav">
-        {synths.map((s) => (
-          <ListItem
-            button
-            key={s.id}
-            onClick={() => onSynthSelected(s)}
-            selected={s === activeSynth}
-          >
-            <ListItemText>{s.metadata.name}</ListItemText>
-            <ListItemSecondaryAction>
-              <IconButton onClick={() => onDelete(s)}>
-                <DeleteIcon />
-              </IconButton>
-            </ListItemSecondaryAction>
-          </ListItem>
-        ))}
-      </List>
-    </>
+        <Tabs
+          orientation="vertical"
+          variant="scrollable"
+          value={activeSynth?.id}
+        >
+          {synths.map((s) => (
+            <Tab
+              key={s.id}
+              value={s.metadata.id}
+              label={s.metadata.name}
+              onClick={() => onSynthSelected(s)}
+              selected={s === activeSynth}
+            />
+          ))}
+        </Tabs>
+      </Paper>
+    </Box>
   );
 };

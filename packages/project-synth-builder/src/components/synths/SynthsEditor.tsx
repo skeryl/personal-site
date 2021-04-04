@@ -105,27 +105,20 @@ export function SynthsEditor(props: SynthsEditorProps) {
       </Async.Rejected>
       <Async.Fulfilled>
         {(synths: ISynth[]) => (
-          <Box
-            display="flex"
-            flexDirection="row"
-            flexBasis="100%"
-            width="100%"
-            mt={6}
-            px={2}
-          >
+          <Box display="flex" flexDirection="row" flexBasis="100%" width="100%">
             <Box flexBasis="12.5%">
               <SynthsList
                 synths={synths}
                 onSynthSelected={onSynthSelected}
                 activeSynth={currentSynth}
-                onDelete={onDelete}
                 onNewSynth={onNewSynth}
               />
             </Box>
-            <Box flexGrow={1}>
+            <Box flexGrow={1} p={2}>
               {currentSynth ? (
                 <SynthComponent
                   onSave={onSave}
+                  onDelete={onDelete}
                   synth={currentSynth}
                   edits={edits}
                   onNameChange={onNameChange}
