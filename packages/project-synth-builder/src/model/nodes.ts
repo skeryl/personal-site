@@ -31,10 +31,11 @@ export interface NodeFactory {
   (ctx: AudioContext, ...args: any[]): AudioNode;
 }
 
-export type NodeProperties = Readonly<Record<string, PropertyValue>>;
+export type NodeProperties = Record<string, PropertyValue>;
+export type ImmutableNodeProperties = Readonly<NodeProperties>;
 
 export interface PropertySetter<T extends AudioNode> {
-  (audioNode: T, properties: NodeProperties): void;
+  (audioNode: T, properties: ImmutableNodeProperties): void;
 }
 
 export interface NodeConfig {
@@ -44,7 +45,7 @@ export interface NodeConfig {
   factory?: NodeFactory;
   propertySetter?: PropertySetter<any>;
   nodeFunction: NodeFunction;
-  defaultProperties?: NodeProperties;
+  defaultProperties?: ImmutableNodeProperties;
   hidden?: boolean;
   numberOfInputs: number;
   numberOfOutputs: number;
@@ -337,12 +338,18 @@ export type BuildOutput<T extends AudioNode> = {
   inputs: BuildOutput<any>[];
 };
 
+export interface SerializedNode {
+  type: NodeTypes;
+  properties: ImmutableNodeProperties;
+  inputs: SerializedNode[];
+}
+
 export interface IAudioGraphNode {
   readonly functions: NodeFunction | NodeFunction[];
   readonly config: NodeConfig;
   readonly inputs?: ReadonlyArray<IAudioGraphNode>;
   readonly outputs?: ReadonlyArray<IAudioGraphNode>;
-  readonly properties: NodeProperties;
+  readonly properties: ImmutableNodeProperties;
 
   connectNode(config: IAudioGraphNode): IAudioGraphNode;
   connect(config: NodeConfig | NodeTypes): IAudioGraphNode;
@@ -364,6 +371,10 @@ export interface IAudioGraphNode {
   findClosest(nodeType: NodeTypes): IAudioGraphNode | undefined;
 
   destroy(): void;
+  toSerializableStructure(): SerializedNode;
+  serialize(): string;
+
+  setOutput(resultNode: IAudioGraphNode): ThisType<IAudioGraphNode>;
 }
 
 export const MINIMUM_GAIN = 0.00005;

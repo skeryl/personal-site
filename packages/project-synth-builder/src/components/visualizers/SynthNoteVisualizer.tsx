@@ -16,7 +16,9 @@ interface NoteContainerProps {
 
 const NoteContainer = styled("div")`
   display: flex;
-  flex-basis: calc(8% - 2px);
+  flex-shrink: 1;
+  flex-grow: 1;
+  flex-basis: 2.5%;
   height: 100px;
   margin: 30px 2px;
   border-radius: 30px;

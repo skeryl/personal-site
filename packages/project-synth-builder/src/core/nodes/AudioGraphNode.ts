@@ -4,8 +4,10 @@ import {
   NodeConfig,
   NodeConfigs,
   NodeFunction,
+  ImmutableNodeProperties,
   NodeTypes,
   PropertyValue,
+  SerializedNode,
 } from "../../model/nodes";
 
 function replaceImmutably<T>(
@@ -263,6 +265,41 @@ export class AudioGraphNode implements IAudioGraphNode {
     );
   }
 
+  toSerializableStructure() {
+    return {
+      type: this.config.type,
+      properties: this.properties,
+      inputs:
+        this.inputs?.map((input) => input.toSerializableStructure()) || [],
+    };
+  }
+
+  serialize(): string {
+    return JSON.stringify(
+      this.findClosest(NodeTypes.AudioDestination)?.toSerializableStructure(),
+    );
+  }
+
+  static deserialize(nodeString: string): IAudioGraphNode {
+    console.log(nodeString);
+    const asObject = JSON.parse(nodeString);
+    return this.structureToNode(asObject);
+  }
+
+  static structureToNode(structure: SerializedNode): IAudioGraphNode {
+    const nodeConfig = NodeConfigs[structure.type];
+    const inputs = structure.inputs.map((inp) => this.structureToNode(inp));
+    const resultNode = new AudioGraphNode(
+      nodeConfig.nodeFunction,
+      nodeConfig,
+      inputs,
+      [],
+      structure.properties,
+    );
+    inputs.forEach((inp) => inp.setOutput(resultNode));
+    return resultNode;
+  }
+
   static merge(...nodes: IAudioGraphNode[]): IAudioGraphNode {
     return nodes.reduce(
       (result, node, ix) => result.withInput(node, ix),
@@ -294,6 +331,11 @@ export class AudioGraphNode implements IAudioGraphNode {
       return AudioGraphNode.create(config);
     }
     return new AudioGraphNode(type.nodeFunction, type);
+  }
+
+  setOutput(resultNode: IAudioGraphNode): this {
+    (this.outputs as Array<IAudioGraphNode>)?.splice(0, 0, resultNode);
+    return this;
   }
 }
 

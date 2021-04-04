@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { DefaultKeyMapping, KeyNoteMapping, Pitch } from "../model/notes";
 
 interface Props {
@@ -8,7 +8,7 @@ interface Props {
   keyMapLow?: KeyNoteMapping;
 }
 
-export function KeyboardComponent(props: Props) {
+export function useKeyboardController(props: Props, deps: any[]) {
   const keyMapping = props.keyMap || DefaultKeyMapping;
 
   function getNote(ev: KeyboardEvent): Pitch | undefined {
@@ -35,6 +35,5 @@ export function KeyboardComponent(props: Props) {
       document.removeEventListener("keypress", onKeyDown);
       document.removeEventListener("keyup", onKeyUp);
     };
-  }, []);
-  return null;
+  }, deps);
 }

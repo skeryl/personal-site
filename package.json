@@ -1,6 +1,12 @@
 {
   "name": "personal-site",
   "version": "0.0.0",
+  "license": "UNLICENSED",
+  "author": {
+    "name": "shane",
+    "url": "https://github.com/skeryl"
+  },
+  "description": "This is my personal site, playground, experimentation zone, research center for artistic computer science. Please have a look around. Try not to steal ideas outright (that's just uncool). If you see something you like and want to expand on, please reach out. Odds are I'll be happy to work with you!",
   "dependencies": {},
   "devDependencies": {
     "yarn": "^1.22.4",

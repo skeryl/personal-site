@@ -1,14 +1,12 @@
 import React from "react";
-import { NodeEditorProps } from "./index";
+import { EditorProps } from "./index";
 import { Box, Select, InputLabel, MenuItem } from "@material-ui/core";
 
 const options: OscillatorType[] = ["sine", "sawtooth", "square", "triangle"];
 
-export function OscillatorEditor(props: NodeEditorProps) {
+export function OscillatorEditor(props: EditorProps<OscillatorType>) {
   function onTypeChange(event: React.ChangeEvent<{ value: unknown }>) {
-    props.onChange(
-      props.node.withProperty("type", event.target.value as string),
-    );
+    props.onChange(event.target.value as OscillatorType);
   }
   return (
     <Box flexGrow={1}>
@@ -18,7 +16,7 @@ export function OscillatorEditor(props: NodeEditorProps) {
         fullWidth
         labelId="wave-form-selector"
         onChange={onTypeChange}
-        value={(props.node.properties["type"] as string) || "sine"}
+        value={props.value || "sine"}
       >
         {options.map((opt) => (
           <MenuItem key={opt} value={opt}>

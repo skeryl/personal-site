@@ -1,10 +1,11 @@
-import { BuildOutput, IAudioGraphNode, MINIMUM_GAIN } from "../model/nodes";
-import { AudioGraphNode } from "./nodes/AudioGraphNode";
-import { KeyboardController } from "./KeyboardController";
+import { BuildOutput, MINIMUM_GAIN, NodeTypes } from "../model/nodes";
 import { Pitch, PitchInformation } from "../model/notes";
 import { TimeSensitiveMap } from "./utils/TimeSensitiveMap";
-
-type SynthNodes = [OscillatorNode, GainNode, AnalyserNode | undefined];
+import { IAudioGraph, WithSource } from "./nodes";
+import { IAudioNode, MutableAudioNode } from "./nodes/MutableAudioNode";
+import { MutableAudioGraph } from "./nodes/MutableAudioGraph";
+import { ISynth, SynthMetadata } from "../services/synths";
+import { startingGraph } from "../components/synths/SynthComponent";
 
 export interface SynthesizerSettings {
   attack: number; // 0 - 1
@@ -15,6 +16,11 @@ export interface SynthesizerSettings {
   release: number;
   minReleaseTime: number;
   maxReleaseTime: number;
+
+  unison: number;
+  unisonDetune: number;
+
+  waveType: OscillatorType;
 }
 
 export const SYNTH_DEFAULT_SETTINGS: SynthesizerSettings = {
@@ -25,7 +31,18 @@ export const SYNTH_DEFAULT_SETTINGS: SynthesizerSettings = {
   release: 1,
   minReleaseTime: 0.01,
   maxReleaseTime: 20,
+
+  unison: 1,
+  unisonDetune: 0.25,
+
+  waveType: "sine",
 };
+
+interface SynthNodes {
+  oscillators: WithSource<OscillatorNode>[];
+  gains: WithSource<GainNode>[];
+  analysers: WithSource<AnalyserNode>[];
+}
 
 /**
  * Uses the "attack" setting to generate a literal time delay during which the sound should "ramp up" to the {maxGain}
@@ -53,66 +70,119 @@ export function getReleaseTime(
   return (1 - releaseSafe) * settings.maxReleaseTime + settings.minReleaseTime;
 }
 
-export class Synth implements KeyboardController {
+type GraphTransform = (
+  settings: SynthesizerSettings,
+  audioGraph: IAudioGraph,
+) => IAudioGraph;
+
+type TransformSettings = keyof Pick<SynthesizerSettings, "unison">;
+
+const GraphTransformations: Record<TransformSettings, GraphTransform> = {
+  unison: (settings, audioGraph) => {
+    const { unison, unisonDetune } = settings;
+
+    if (unison <= 1) {
+      return audioGraph;
+    }
+
+    // prior to "unison" there should only be one oscillator
+    const oscillator = audioGraph.findClosest(NodeTypes.Oscillator)!;
+
+    const mergeNode = MutableAudioNode.create(NodeTypes.ChannelMerger, {
+      numberOfInputs: settings.unison,
+    });
+
+    const newOscillators = new Array(unison).fill(undefined).map((_, ix) => {
+      const osc = MutableAudioNode.create(NodeTypes.Oscillator, {
+        ...oscillator.properties,
+        detune: Math.random() * unisonDetune * 200,
+      });
+      osc.connect(mergeNode, 0, ix % 2);
+      return osc;
+    });
+
+    mergeNode.connect(oscillator.connections[0].node);
+
+    return MutableAudioGraph.create(...newOscillators);
+  },
+};
+
+const EMPTY_METADATA: SynthMetadata = {
+  id: "",
+  lastUpdated: new Date(),
+  name: "",
+};
+
+export class Synth implements ISynth {
   private ctx: AudioContext | undefined;
   private readonly pitches = new Map<Pitch, SynthNodes>();
   private readonly playing = new Set<Pitch>();
   public settings: SynthesizerSettings;
 
-  onReleaseFinished = (pitch: Pitch, audioParam: AudioParam) => {
-    audioParam.cancelScheduledValues(this.context.currentTime);
+  onReleaseFinished = (pitch: Pitch, audioParams: AudioParam[]) => {
+    audioParams.forEach((audioParam) =>
+      audioParam.cancelScheduledValues(this.context.currentTime),
+    );
   };
 
-  private readonly attacking = new TimeSensitiveMap<Pitch, AudioParam>();
-  private readonly releasing = new TimeSensitiveMap<Pitch, AudioParam>(
+  private readonly attacking = new TimeSensitiveMap<Pitch, AudioParam[]>();
+  private readonly releasing = new TimeSensitiveMap<Pitch, AudioParam[]>(
     this.onReleaseFinished,
   );
   private node: OscillatorNode | undefined;
   private inputs: BuildOutput<any>[] | undefined;
 
   constructor(
-    private osc: IAudioGraphNode = AudioGraphNode.createOscillator().connectNode(
-      AudioGraphNode.createGain().connectNode(
-        AudioGraphNode.createDestination(),
-      ),
-    ),
+    public audioGraph: IAudioGraph,
     settings: Partial<SynthesizerSettings> = {},
+    public metadata = EMPTY_METADATA,
   ) {
     this.settings = { ...SYNTH_DEFAULT_SETTINGS, ...settings };
   }
 
-  public changeSettings(newSettings: Partial<SynthesizerSettings>): void {
-    this.settings = { ...this.settings, ...newSettings };
+  public get id(): string {
+    return this.metadata.id;
+  }
+
+  public changeSettings(
+    newSettings: Partial<SynthesizerSettings>,
+  ): SynthesizerSettings {
+    const oldSettings = this.settings;
+    this.settings = { ...oldSettings, ...newSettings };
+
+    if (oldSettings.waveType !== this.settings.waveType) {
+      this.oscillators.forEach((osc) => {
+        osc.setProperty("type", this.settings.waveType);
+      });
+    }
+
+    this.pitches.clear();
+    return this.settings;
   }
 
   public get notesPlaying(): ReadonlySet<Pitch> {
     return new Set(this.playing);
   }
 
-  public get oscillator(): IAudioGraphNode {
-    return this.osc;
+  public get oscillators(): IAudioNode[] {
+    return this.audioGraph.sources.filter(
+      (source) => source.type === NodeTypes.Oscillator,
+    );
   }
 
-  public set oscillator(osc: IAudioGraphNode) {
-    const notesToRestart = Array.from(this.playing.values());
-    if (this.osc && this.osc !== osc) {
-      this.destroy();
-    }
-    this.osc = osc;
-    notesToRestart.forEach((note) => {
-      this.stopPlaying(note);
-    });
+  public setGain(gain: number): void {
+    const gainNode = this.audioGraph.findClosest(NodeTypes.Gain)!;
+    gainNode.setProperty("maxGain", gain);
     this.pitches.clear();
-    notesToRestart.forEach((note) => this.startPlaying(note));
+  }
+
+  public get gainNodes(): IAudioNode[] {
+    return this.audioGraph.find(NodeTypes.Gain);
   }
 
   private getAnalysers(): AnalyserNode[] {
     return Array.from(this.pitches.values()).reduce((result, synthNodes) => {
-      const [_, __, analyser] = synthNodes;
-      if (analyser) {
-        return [...result, analyser];
-      }
-      return result;
+      return [...result, ...synthNodes.analysers.map((an) => an.node)];
     }, new Array<AnalyserNode>());
   }
 
@@ -151,7 +221,7 @@ export class Synth implements KeyboardController {
   }
 
   private destroy() {
-    this.osc.destroy();
+    // this.osc.destroy();
     if (this.node?.stop) {
       this.node.stop(0);
     }
@@ -166,9 +236,8 @@ export class Synth implements KeyboardController {
     this.releasing.clear();
   }
 
-  private get maxGain(): number {
-    const gainGraphNode = this.osc.outputs?.[0];
-    const definedMaxGain = gainGraphNode?.properties["maxGain"];
+  private getMaxGain(gainNode: IAudioNode): number {
+    const definedMaxGain = gainNode.properties["maxGain"];
     return Math.max(
       definedMaxGain === undefined ? 1 : (definedMaxGain as number),
       MINIMUM_GAIN,
@@ -176,35 +245,29 @@ export class Synth implements KeyboardController {
   }
 
   buildNode(context: AudioContext, frequency?: number): SynthNodes {
-    const osc = frequency
-      ? this.oscillator.withProperty("frequency", frequency)
-      : this.oscillator;
-
-    const { node, outputs, inputs } = osc.build<OscillatorNode>(context);
-    if (node.start) {
-      node.start(0);
-    } else {
-      if (inputs.length) {
-        inputs.forEach((inp) => {
-          if (inp.node.start) {
-            inp.node.start(0);
-          }
-        });
-      }
-      this.node = node;
-      this.inputs = inputs;
+    if (frequency) {
+      this.oscillators.forEach((osc) => {
+        osc.setProperty("frequency", frequency);
+      });
     }
 
-    // oscillators are only allowed one output, in this case we need it to always be the gain node
-    const gainBuild = outputs[0];
-    const gainNode = gainBuild.node as GainNode;
+    const graph: IAudioGraph = this.transformGraph();
 
-    const gainOutput = gainBuild.outputs[0];
-    const analyser =
-      gainOutput.node instanceof AnalyserNode ? gainOutput.node : undefined;
+    const { context: buildContext } = graph.build(context);
 
-    gainNode.gain.value = MINIMUM_GAIN;
-    return [node, gainNode, analyser];
+    buildContext.oscillatorNodes().forEach((nodeBuild) => {
+      nodeBuild.node.start(0);
+    });
+
+    buildContext.gainNodes().forEach((nodeBuild) => {
+      nodeBuild.node.gain.value = MINIMUM_GAIN;
+    });
+
+    return {
+      analysers: buildContext.analyserNodes(),
+      gains: buildContext.gainNodes(),
+      oscillators: buildContext.oscillatorNodes(),
+    };
   }
 
   public get context(): AudioContext {
@@ -219,22 +282,27 @@ export class Synth implements KeyboardController {
       this.releasing.delete(pitch);
     }
     if (!this.pitches.has(pitch)) {
-      const [oscillator, gainNode, analyser] = this.buildNode(
+      const { oscillators, gains, analysers } = this.buildNode(
         this.context,
         PitchInformation[pitch].hertz,
       );
-      this.pitches.set(pitch, [oscillator, gainNode, analyser]);
+      this.pitches.set(pitch, { oscillators, gains, analysers });
     }
     if (this.playing.has(pitch)) {
       return;
     }
-    const [, gainNode] = this.pitches.get(pitch) as SynthNodes;
-    gainNode.gain.setValueAtTime(gainNode.gain.value, this.context.currentTime);
+    const { gains } = this.pitches.get(pitch) as SynthNodes;
     const attackTime = getAttackTime(this.settings);
-    const rampUp = gainNode.gain.exponentialRampToValueAtTime(
-      this.maxGain,
-      this.context.currentTime + attackTime,
-    );
+    const rampUp = gains.map((gainNode) => {
+      gainNode.node.gain.setValueAtTime(
+        gainNode.node.gain.value,
+        this.context.currentTime,
+      );
+      return gainNode.node.gain.exponentialRampToValueAtTime(
+        this.getMaxGain(gainNode.source),
+        this.context.currentTime + attackTime,
+      );
+    });
     this.attacking.set(pitch, rampUp, attackTime * 1000);
     this.playing.add(pitch);
   }
@@ -244,18 +312,41 @@ export class Synth implements KeyboardController {
       this.attacking.delete(pitch);
     }
     if (this.playing.has(pitch) && this.pitches.has(pitch)) {
-      const [, gainNode] = this.pitches.get(pitch) as SynthNodes;
-      gainNode.gain.setValueAtTime(
-        gainNode.gain.value,
-        this.context.currentTime,
-      );
+      const { gains } = this.pitches.get(pitch) as SynthNodes;
       const releaseTime = getReleaseTime(this.settings);
-      const rampDown = gainNode.gain.exponentialRampToValueAtTime(
-        MINIMUM_GAIN,
-        this.context.currentTime + releaseTime,
-      );
+      const rampDown = gains.map((gainBuild) => {
+        const gainNode = gainBuild.node;
+        gainNode.gain.setValueAtTime(
+          gainNode.gain.value,
+          this.context.currentTime,
+        );
+        return gainNode.gain.exponentialRampToValueAtTime(
+          MINIMUM_GAIN,
+          this.context.currentTime + releaseTime,
+        );
+      });
       this.releasing.set(pitch, rampDown, releaseTime * 1000);
       this.playing.delete(pitch);
     }
+  }
+
+  private transformGraph() {
+    const transformKeys = Object.keys(GraphTransformations) as Array<
+      TransformSettings
+    >;
+    return transformKeys.reduce<IAudioGraph>(
+      (result, transform: TransformSettings) => {
+        return GraphTransformations[transform](this.settings, result);
+      },
+      this.audioGraph,
+    );
+  }
+
+  static createBasic(): Synth {
+    return new Synth(
+      startingGraph(),
+      { attack: 0.99, release: 0.93 },
+      { name: "Basic Synth", lastUpdated: new Date(), id: "" },
+    );
   }
 }

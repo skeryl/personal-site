@@ -1,10 +1,11 @@
-import React, { createRef, useEffect, useMemo, useRef } from "react";
-import { Box } from "@material-ui/core";
+import React, { createRef, useEffect, useRef } from "react";
+import { Box, Paper } from "@material-ui/core";
 import { Color, Path, Stage } from "grraf";
 import styled from "styled-components";
+import { ISynth } from "../../services/synths";
 
 export interface AudioVisualizerProps {
-  getTimeDomainData: () => Float32Array | undefined;
+  synth: ISynth;
 }
 
 interface Extrema {
@@ -40,7 +41,7 @@ const CanvasContainer = styled("div")`
   }
 `;
 
-export function AudioVisualizer({ getTimeDomainData }: AudioVisualizerProps) {
+export function AudioVisualizer({ synth }: AudioVisualizerProps) {
   const isDrawing = useRef(true);
   const stageRef = useRef<Stage | undefined>();
   const pathRef = useRef<Path | undefined>();
@@ -65,18 +66,19 @@ export function AudioVisualizer({ getTimeDomainData }: AudioVisualizerProps) {
     stage.canvas.height = Math.round(window.document.body.clientHeight / 2);
     stageRef.current = stage;
     pathRef.current = setupPath(stage);
+    isDrawing.current = true;
     reDraw();
     return () => {
       isDrawing.current = false;
       stageRef.current?.clear();
     };
-  }, []);
+  }, [synth]);
 
   function updatePath(stage: Stage, path: Path) {
     const { height, width } = stage.getSize();
     const halfHeight = height / 2;
     const waveHeight = height * 0.4;
-    const data = getTimeDomainData();
+    const data = synth.getTimeDomainData();
     if (!data) {
       return;
     }
@@ -104,12 +106,14 @@ export function AudioVisualizer({ getTimeDomainData }: AudioVisualizerProps) {
   }
 
   return (
-    <Box flexBasis="100%">
-      <CanvasContainer
-        ref={canvasContainerRef}
-        id={"audio-viz-canvas-container"}
-        style={{ minHeight: "200px", width: "100%" }}
-      />
+    <Box flexBasis="100%" p={2}>
+      <Paper variant="outlined">
+        <CanvasContainer
+          ref={canvasContainerRef}
+          id={"audio-viz-canvas-container"}
+          style={{ minHeight: "200px", width: "100%" }}
+        />
+      </Paper>
     </Box>
   );
 }

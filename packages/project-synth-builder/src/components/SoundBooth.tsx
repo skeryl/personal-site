@@ -1,6 +1,11 @@
 import React from "react";
-import SynthComponent from "./SynthComponent";
+import { Box } from "@material-ui/core";
+import { SynthsEditor } from "./synths/SynthsEditor";
 
 export default function SoundBooth() {
-  return <SynthComponent />;
+  return (
+    <Box display="flex" flexDirection="row" width="100%">
+      <SynthsEditor />
+    </Box>
+  );
 }

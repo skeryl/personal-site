@@ -28,7 +28,7 @@ export function ScaleEditor(props: ScaleEditProps) {
       </Box>
       <Box display="flex" flexDirection="row" flexBasis="100%" p={1}>
         <Slider
-          defaultValue={props.value}
+          value={props.value}
           onChange={onChange}
           aria-labelledby={id}
           min={props.min || 0}

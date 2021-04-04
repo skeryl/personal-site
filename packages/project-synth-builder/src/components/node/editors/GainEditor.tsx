@@ -1,17 +1,18 @@
 import React, { ChangeEvent } from "react";
-import { NodeEditorProps } from "./index";
 import { Box, InputLabel, Slider } from "@material-ui/core";
 import VolumeUp from "@material-ui/icons/VolumeUp";
 import VolumeDown from "@material-ui/icons/VolumeDown";
+import { ISynth } from "../../../services/synths";
+import { NodeTypes } from "../../../model/nodes";
 
-export function GainEditor(props: NodeEditorProps) {
+interface GainEditorProps {
+  synth: ISynth;
+}
+
+export function GainEditor({ synth }: GainEditorProps) {
   function onGainChange(e: ChangeEvent<{}>, value: number | number[]) {
-    props.onChange(
-      props.node.withProperty(
-        "maxGain",
-        Math.round((value as number) * 100) / 100,
-      ),
-    );
+    const gain = Math.round((value as number) * 100) / 100;
+    synth.setGain(gain);
   }
   return (
     <Box display="flex" flexDirection="column">
@@ -24,7 +25,10 @@ export function GainEditor(props: NodeEditorProps) {
         </Box>
         <Box flexBasis="80%" flexGrow={1} pl={2} pr={2}>
           <Slider
-            value={props.node.properties?.maxGain as number}
+            defaultValue={
+              synth.audioGraph.findClosest(NodeTypes.Gain)!.properties
+                ?.maxGain as number
+            }
             onChange={onGainChange}
             aria-labelledby="continuous-slider"
             min={0}
