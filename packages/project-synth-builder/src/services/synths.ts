@@ -4,7 +4,7 @@ import { IAudioGraph } from "../core/nodes";
 import { v4 as uuid } from "uuid";
 import { Pitch } from "../model/notes";
 import { IAudioNode } from "../core/nodes/MutableAudioNode";
-import { KeyboardController } from "../core/KeyboardController";
+import { Instrument } from "../core/Instrument";
 
 export interface SynthMetadata {
   id: string;
@@ -16,7 +16,7 @@ interface PersistedSynthMetadata extends Pick<SynthMetadata, "id" | "name"> {
   lastUpdated: string;
 }
 
-export interface ISynth extends KeyboardController {
+export interface ISynth extends Instrument {
   id: string | undefined;
   settings: SynthesizerSettings;
   audioGraph: IAudioGraph;
@@ -54,7 +54,7 @@ function serializeSynthMetadata({
 export interface SynthService {
   listSynths(): Promise<ISynth[]>;
   saveSynth(synth: ISynth): Promise<ISynth>;
-  deleteSynth(synthId: string): Promise<void>;
+  deleteSynth(synthId: string): Promise<ISynth | undefined>;
   getSynth(id: string): Promise<ISynth | undefined>;
 }
 
@@ -147,14 +147,19 @@ export class LocalSynthService implements SynthService {
     return Promise.resolve(this.synths.get(id));
   }
 
-  async deleteSynth(synthId: string): Promise<void> {
-    if (this.synths.delete(synthId)) {
-      localStorage.removeItem(`${LocalSynthService.KEY}:${synthId}`);
+  async deleteSynth(synthId: string): Promise<ISynth | undefined> {
+    const synth = this.synths.get(synthId);
+    if (synth) {
+      if (this.synths.delete(synthId)) {
+        localStorage.removeItem(`${LocalSynthService.KEY}:${synthId}`);
 
-      localStorage.setItem(
-        LocalSynthService.KEY,
-        JSON.stringify(Array.from(this.synths.keys())),
-      );
+        localStorage.setItem(
+          LocalSynthService.KEY,
+          JSON.stringify(Array.from(this.synths.keys())),
+        );
+      }
+      return synth;
     }
+    return undefined;
   }
 }

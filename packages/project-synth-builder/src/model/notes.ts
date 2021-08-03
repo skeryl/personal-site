@@ -109,7 +109,7 @@ export enum Pitch {
   B8 = "B8",
 }
 
-enum Notes {
+export enum Notes {
   C = "C",
   CSharp = "CSharp",
   D = "D",

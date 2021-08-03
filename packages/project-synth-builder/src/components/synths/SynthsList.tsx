@@ -1,24 +1,7 @@
-import React, { FC, useState } from "react";
-import { Async, AsyncProps } from "react-async";
-import { Skeleton } from "@material-ui/lab";
-import {
-  Box,
-  Button,
-  IconButton,
-  List,
-  ListItem,
-  ListItemSecondaryAction,
-  ListItemText,
-  Paper,
-  Tab,
-  Tabs,
-  Typography,
-} from "@material-ui/core";
-import DeleteIcon from "@material-ui/icons/Delete";
+import React, { FC } from "react";
+import { Box, Button, Paper, Tab, Tabs } from "@material-ui/core";
 import AddIcon from "@material-ui/icons/AddBox";
-import { useSynthService } from "../../hooks/synth-service";
-import { ISynth, SynthService } from "../../services/synths";
-import { Synth } from "../../core/Synth";
+import { ISynth } from "../../services/synths";
 
 export interface SynthsListProps {
   synths: ISynth[];

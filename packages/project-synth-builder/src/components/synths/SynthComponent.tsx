@@ -13,6 +13,7 @@ import { GainEditor } from "../node/editors/GainEditor";
 import SaveIcon from "@material-ui/icons/Save";
 import DeleteIcon from "@material-ui/icons/Delete";
 import { useKeyboardController } from "../../hooks/keyboard";
+import { useSynthController } from "../../hooks/synth-controller";
 
 export function startingGraph() {
   const osc = AudioGraphNode.createOscillator().setProperty("type", "sine");
@@ -61,17 +62,6 @@ export default function SynthComponent({
   onDelete,
 }: SynthComponentProps) {
   const { name: editedName, settings: editedSettings } = edits;
-  const [playing, setPlaying] = useState(synth.notesPlaying);
-
-  function startPlaying(note: Pitch) {
-    synth.startPlaying(note);
-    setPlaying(synth.notesPlaying);
-  }
-
-  function stopPlaying(note: Pitch) {
-    synth.stopPlaying(note);
-    setPlaying(synth.notesPlaying);
-  }
 
   function onGenericSynthSettingChange<
     K extends keyof SynthesizerSettings,
@@ -84,13 +74,9 @@ export default function SynthComponent({
     onSave(synth, edits);
   }
 
-  useKeyboardController(
-    {
-      startPlaying,
-      stopPlaying,
-    },
-    [synth],
-  );
+  const { playing } = useSynthController({
+    synth,
+  });
 
   const isSaveDisabled = !hasEdits(edits);
   return (

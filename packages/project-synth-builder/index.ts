@@ -1,2 +1,2 @@
-import SynthBuilder from "./src/components/SynthBuilder";
-export default SynthBuilder;
+import SoundBoothWrapper from "./src/components/SoundBoothWrapper";
+export default SoundBoothWrapper;

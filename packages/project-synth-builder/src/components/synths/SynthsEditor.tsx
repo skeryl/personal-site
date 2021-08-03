@@ -3,20 +3,38 @@ import { Box } from "@material-ui/core";
 import { Skeleton } from "@material-ui/lab";
 import SynthComponent, { SynthEdits } from "./SynthComponent";
 import { SynthsList } from "./SynthsList";
-import { ISynth, SynthService } from "../../services/synths";
+import { ISynth } from "../../services/synths";
 import { Synth, SynthesizerSettings } from "../../core/Synth";
-import { Async, AsyncProps } from "react-async";
-import { useSynthService } from "../../hooks/synth-service";
+import { connect } from "react-redux";
+import { State } from "../../redux/state";
+import { getSynths } from "../../redux/selectors/synths";
+import { Dispatch } from "redux";
+import {
+  createSynthAction,
+  SynthActionTypes,
+} from "../../redux/actions/synths";
 
-interface SynthsEditorProps {}
-
-function loadSynths({ service }: AsyncProps<ISynth[]>) {
-  return (service as SynthService).listSynths();
+interface DispatchProps {
+  loadSynths: () => void;
+  saveSynth: (synth: ISynth) => void;
+  deleteSynth: (synth: ISynth) => void;
 }
 
-export function SynthsEditor(props: SynthsEditorProps) {
-  const synthService = useSynthService();
-  const [shouldRefetch, setShouldRefetch] = useState(false);
+interface StateProps {
+  synths: ISynth[];
+}
+
+type SynthsEditorProps = StateProps & DispatchProps;
+
+export function SynthsEditor({
+  synths,
+  loadSynths,
+  saveSynth,
+  deleteSynth,
+}: SynthsEditorProps) {
+  useEffect(() => {
+    loadSynths();
+  }, [loadSynths]);
 
   const allEdits = useMemo(() => new Map<string, SynthEdits>(), []);
 
@@ -32,24 +50,8 @@ export function SynthsEditor(props: SynthsEditorProps) {
     }
   }, [currentSynth]);
 
-  const onResolve = (synths: ISynth[]) => {
-    setShouldRefetch(false);
-    if (!currentSynth && synths) {
-      onSynthSelected(synths[0]);
-    }
-  };
-
   const onNewSynth = () => {
-    synthService.saveSynth(Synth.createBasic()).then((newSynth) => {
-      onSynthSelected(newSynth);
-      setShouldRefetch(true);
-    });
-  };
-
-  const onDelete = (s: ISynth) => {
-    synthService.deleteSynth(s.metadata.id).then(() => {
-      setShouldRefetch(true);
-    });
+    saveSynth(Synth.createBasic());
   };
 
   function onNameChange(name: string) {
@@ -77,6 +79,18 @@ export function SynthsEditor(props: SynthsEditorProps) {
     setEdits({});
   }
 
+  useEffect(() => {
+    if (synths?.length) {
+      const latest = synths.reduce((mostRecentSynth, currentSynth) =>
+        mostRecentSynth.metadata.lastUpdated.getTime() >
+        currentSynth.metadata.lastUpdated.getTime()
+          ? mostRecentSynth
+          : currentSynth,
+      );
+      setCurrentSynth(latest);
+    }
+  }, [synths]);
+
   function onSave(synth: ISynth, edits: SynthEdits) {
     if (edits.name) {
       synth.metadata.name = edits.name;
@@ -84,53 +98,52 @@ export function SynthsEditor(props: SynthsEditorProps) {
     if (edits.settings) {
       synth.changeSettings(edits.settings);
     }
-    synthService.saveSynth(synth).then(() => {
-      resetEdits(synth);
-      setShouldRefetch(true);
-    });
+    saveSynth(synth);
+    resetEdits(synth); // todo: handle this after save is successful.
   }
 
   return (
-    <Async
-      promiseFn={loadSynths}
-      service={synthService}
-      watch={shouldRefetch}
-      onResolve={onResolve}
-    >
-      <Async.Pending>
-        <Skeleton animation="wave" />
-      </Async.Pending>
-      <Async.Rejected>
-        {(error) => `Something went wrong: ${error.message}`}
-      </Async.Rejected>
-      <Async.Fulfilled>
-        {(synths: ISynth[]) => (
-          <Box display="flex" flexDirection="row" flexBasis="100%" width="100%">
-            <Box flexBasis="12.5%">
-              <SynthsList
-                synths={synths}
-                onSynthSelected={onSynthSelected}
-                activeSynth={currentSynth}
-                onNewSynth={onNewSynth}
-              />
-            </Box>
-            <Box flexGrow={1} p={2}>
-              {currentSynth ? (
-                <SynthComponent
-                  onSave={onSave}
-                  onDelete={onDelete}
-                  synth={currentSynth}
-                  edits={edits}
-                  onNameChange={onNameChange}
-                  onSettingsChange={onSettingsChange}
-                />
-              ) : (
-                <Skeleton />
-              )}
-            </Box>
-          </Box>
+    <Box display="flex" flexDirection="row" flexBasis="100%" width="100%">
+      <Box flexBasis="12.5%">
+        <SynthsList
+          synths={synths}
+          onSynthSelected={onSynthSelected}
+          activeSynth={currentSynth}
+          onNewSynth={onNewSynth}
+        />
+      </Box>
+      <Box flexGrow={1} p={2}>
+        {currentSynth ? (
+          <SynthComponent
+            onSave={onSave}
+            onDelete={deleteSynth}
+            synth={currentSynth}
+            edits={edits}
+            onNameChange={onNameChange}
+            onSettingsChange={onSettingsChange}
+          />
+        ) : (
+          <Skeleton />
         )}
-      </Async.Fulfilled>
-    </Async>
+      </Box>
+    </Box>
   );
 }
+
+function mapStateToProps(state: State): StateProps {
+  return {
+    synths: getSynths(state),
+  };
+}
+
+function mapDispatchToProps(dispatch: Dispatch): DispatchProps {
+  return {
+    loadSynths: () => dispatch(createSynthAction(SynthActionTypes.loadSynths)),
+    deleteSynth: (synth) =>
+      dispatch(createSynthAction(SynthActionTypes.deleteSynth, { synth })),
+    saveSynth: (synth) =>
+      dispatch(createSynthAction(SynthActionTypes.saveSynth, { synth })),
+  };
+}
+
+export default connect(mapStateToProps, mapDispatchToProps)(SynthsEditor);

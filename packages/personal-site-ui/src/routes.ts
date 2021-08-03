@@ -6,7 +6,7 @@ const PostDetail = lazy(() => import("./containers/PostDetail"));
 const Home = lazy(() => import("./containers/Home"));
 
 const SoundBooth = lazy(() =>
-  import("project-synth-builder/src/components/SoundBooth"),
+  import("project-synth-builder/src/components/SoundBoothWrapper"),
 );
 
 export type NavRoute = RouteProps & {
