@@ -15,7 +15,7 @@
     "@types/react-router-dom": "^5.1.7",
     "@types/styled-components": "^5.1.0",
     "@types/three": "^0.126.1",
-    "awesome-typescript-loader": "^5.2.1",
+    "ts-loader": "^8.1.0",
     "html-webpack-plugin": "^5.3.1",
     "source-map-loader": "^0.2.4",
     "styled-components": "^5.1.1",

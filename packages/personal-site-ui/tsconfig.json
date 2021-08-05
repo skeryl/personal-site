@@ -1,15 +1,12 @@
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "module": "commonjs",
-    "target": "es2016",
     "lib": ["dom", "es2018"],
-    "sourceMap": true,
     "jsx": "react",
-    "strict": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true
+    "typeRoots": ["./typings", "./node_modules/@types", "../../node_modules/@types"]
   },
   "exclude": [
     "node_modules"
-  ]
+  ],
+  "include": ["./src/**/*.ts"]
 }

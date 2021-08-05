@@ -58,7 +58,7 @@ export class ExperimentComponent3D extends React.Component<
     this.props.content.start(this.scene, this.camera, this.renderer);
     this.isRunning = true;
     this.animate();
-    window.setTimeout(() => this.onResize());
+    window.setTimeout(() => this.onResize(), 1);
   }
 
   componentWillUnmount(): void {
