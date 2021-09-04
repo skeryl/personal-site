@@ -1,5 +1,6 @@
 import { ExperimentContent3D } from "personal-site-model";
 import {
+  BufferAttribute,
   BufferGeometry,
   Camera,
   Clock,
@@ -27,17 +28,31 @@ export abstract class BookOfShadersContent implements ExperimentContent3D {
 
   private readonly clock = new Clock(false);
 
-  private onWindowResize = () => {
+  protected onResize?: (resolution: Vector2) => void = () => {};
+
+  protected handleResize = () => {
     if (this.renderer) {
-      this.renderer.setSize(window.innerWidth, window.innerHeight);
-      this.uniforms.u_resolution.value.x = this.renderer.domElement.width;
-      this.uniforms.u_resolution.value.y = this.renderer.domElement.height;
+      this.renderer.getSize(this.uniforms.u_resolution.value);
+      this.uniforms.u_resolution.value.needsUpdate = true;
+      if (this.onResize) {
+        this.onResize(this.uniforms.u_resolution.value);
+      }
+      console.log("resolution: ", this.uniforms.u_resolution.value);
     }
+  };
+
+  onFullScreenChange = () => {
+    this.handleResize();
+  };
+
+  private onWindowResize = () => {
+    this.handleResize();
   };
 
   private onMouseMove = (e: MouseEvent) => {
     this.uniforms.u_mouse.value.x = e.pageX;
-    this.uniforms.u_mouse.value.y = e.pageY;
+    this.uniforms.u_mouse.value.y =
+      (this.renderer?.domElement.height || 0) - e.pageY;
   };
 
   protected getVertexShader =
@@ -78,6 +93,8 @@ export abstract class BookOfShadersContent implements ExperimentContent3D {
 
     document.addEventListener("mousemove", this.onMouseMove.bind(this));
     this.clock.start();
+
+    this.handleResize();
   }
 
   public onRender() {

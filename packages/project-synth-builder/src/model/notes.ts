@@ -124,7 +124,7 @@ export enum Notes {
   B = "B",
 }
 
-interface PitchInfo {
+export interface PitchInfo {
   hertz: number;
   note: Notes;
   nameShort: string;

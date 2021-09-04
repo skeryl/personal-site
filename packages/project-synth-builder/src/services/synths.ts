@@ -29,6 +29,8 @@ export interface ISynth extends Instrument {
   gainNodes: IAudioNode[];
   getTimeDomainData: () => Float32Array | undefined;
   getFrequencyData: () => Float32Array | undefined;
+  getTimeDomainDataByPitch: () => Map<Pitch, Float32Array>;
+  getFrequencyDataByPitch: () => Map<Pitch, Float32Array>;
 }
 
 interface PersistedSynth {

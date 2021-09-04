@@ -27,6 +27,7 @@ export interface PostSummary extends Unique {
   tags: string[];
   timestamp: Date;
   thumbnail?: string;
+  isHidden?: boolean;
 }
 
 export type PostContent = StageContent | ExperimentContent3D | WriteUp;

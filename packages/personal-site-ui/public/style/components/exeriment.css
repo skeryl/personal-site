@@ -1,5 +1,6 @@
 
 #experiment-canvas, #experiment-canvas-3d {
+    display: flex;
     flex: 1;
     overflow: hidden;
     position: relative;

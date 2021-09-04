@@ -42,6 +42,7 @@ interface SynthNodes {
   oscillators: WithSource<OscillatorNode>[];
   gains: WithSource<GainNode>[];
   analysers: WithSource<AnalyserNode>[];
+  pitch: Pitch;
 }
 
 /**
@@ -113,6 +114,16 @@ const EMPTY_METADATA: SynthMetadata = {
   name: "",
 };
 
+export interface PitchAnalyserNode {
+  pitch: Pitch;
+  analyser: AnalyserNode;
+}
+
+type AnalyserDataFunction = keyof Pick<
+  AnalyserNode,
+  "getFloatTimeDomainData" | "getFloatFrequencyData"
+>;
+
 export class Synth implements ISynth {
   private ctx: AudioContext | undefined;
   private readonly pitches = new Map<Pitch, SynthNodes>();
@@ -180,19 +191,22 @@ export class Synth implements ISynth {
     return this.audioGraph.find(NodeTypes.Gain);
   }
 
-  private getAnalysers(): AnalyserNode[] {
+  private getAnalysers(): PitchAnalyserNode[] {
     return Array.from(this.pitches.values()).reduce((result, synthNodes) => {
-      return [...result, ...synthNodes.analysers.map((an) => an.node)];
-    }, new Array<AnalyserNode>());
+      return [
+        ...result,
+        ...synthNodes.analysers.map((an) => ({
+          pitch: synthNodes.pitch,
+          analyser: an.node,
+        })),
+      ];
+    }, new Array<PitchAnalyserNode>());
   }
 
   private getAnalyserData(
-    dataFunction: keyof Pick<
-      AnalyserNode,
-      "getFloatTimeDomainData" | "getFloatFrequencyData"
-    >,
+    dataFunction: AnalyserDataFunction,
   ): Float32Array | undefined {
-    const analysers = this.getAnalysers();
+    const analysers = this.getAnalysers().map((v) => v.analyser);
     if (analysers.length) {
       const result = new Float32Array(analysers[0].fftSize);
       const intermediateResult = new Float32Array(analysers[0].fftSize);
@@ -212,12 +226,43 @@ export class Synth implements ISynth {
     return undefined;
   }
 
+  private getAnalyserDataByPitch(
+    dataFunction: AnalyserDataFunction,
+    data: Map<Pitch, Float32Array>,
+  ): Map<Pitch, Float32Array> {
+    this.getAnalysers().forEach((an) => {
+      if (!data.has(an.pitch)) {
+        data.set(an.pitch, new Float32Array(an.analyser.fftSize));
+      }
+      an.analyser[dataFunction](data.get(an.pitch) as Float32Array);
+    });
+    return data;
+  }
+
   public getTimeDomainData(): Float32Array | undefined {
     return this.getAnalyserData("getFloatTimeDomainData");
   }
 
   public getFrequencyData(): Float32Array | undefined {
     return this.getAnalyserData("getFloatFrequencyData");
+  }
+
+  public getTimeDomainDataByPitch(
+    buffer?: Map<Pitch, Float32Array>,
+  ): Map<Pitch, Float32Array> {
+    return this.getAnalyserDataByPitch(
+      "getFloatTimeDomainData",
+      buffer ?? new Map<Pitch, Float32Array>(),
+    );
+  }
+
+  public getFrequencyDataByPitch(
+    buffer?: Map<Pitch, Float32Array>,
+  ): Map<Pitch, Float32Array> {
+    return this.getAnalyserDataByPitch(
+      "getFloatFrequencyData",
+      buffer ?? new Map<Pitch, Float32Array>(),
+    );
   }
 
   private destroy() {
@@ -244,7 +289,11 @@ export class Synth implements ISynth {
     );
   }
 
-  buildNode(context: AudioContext, frequency?: number): SynthNodes {
+  buildNode(
+    context: AudioContext,
+    pitch: Pitch,
+    frequency?: number,
+  ): SynthNodes {
     if (frequency) {
       this.oscillators.forEach((osc) => {
         osc.setProperty("frequency", frequency);
@@ -267,6 +316,7 @@ export class Synth implements ISynth {
       analysers: buildContext.analyserNodes(),
       gains: buildContext.gainNodes(),
       oscillators: buildContext.oscillatorNodes(),
+      pitch,
     };
   }
 
@@ -284,9 +334,10 @@ export class Synth implements ISynth {
     if (!this.pitches.has(pitch)) {
       const { oscillators, gains, analysers } = this.buildNode(
         this.context,
+        pitch,
         PitchInformation[pitch].hertz,
       );
-      this.pitches.set(pitch, { oscillators, gains, analysers });
+      this.pitches.set(pitch, { oscillators, gains, analysers, pitch });
     }
     if (this.playing.has(pitch)) {
       return;

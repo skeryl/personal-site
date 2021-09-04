@@ -35,15 +35,15 @@ export class ContentDatabase {
 
   public listSummaries = async (): Promise<PostSummary[]> => {
     const postSummaries = await this.postSummaries;
-    return Array.from<PostSummary>(postSummaries.values()).sort(
-      sortByTimeCreated,
-    );
+    return Array.from<PostSummary>(postSummaries.values())
+      .filter((post) => !post.isHidden)
+      .sort(sortByTimeCreated);
   };
 
   public latest = async (): Promise<PostSummary> => {
     const postSummaries = await this.postSummaries;
-    return Array.from<PostSummary>(postSummaries.values()).sort(
-      sortByTimeCreated,
-    )[0];
+    return Array.from<PostSummary>(postSummaries.values())
+      .filter((post) => !post.isHidden)
+      .sort(sortByTimeCreated)[0];
   };
 }
