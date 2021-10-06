@@ -1,6 +1,6 @@
 import { Stage } from "grraf";
 import { ReactElement } from "react";
-import { Camera, Scene, WebGLRenderer } from "three";
+import { PerspectiveCamera, Scene, WebGLRenderer } from "three";
 
 export interface Unique {
   id: string;
@@ -48,8 +48,14 @@ export interface StageContent {
   stop(): void;
 }
 
+export interface RendererParams {
+  scene: Scene;
+  camera: PerspectiveCamera;
+  renderer: WebGLRenderer;
+}
+
 export interface ExperimentContent3D {
-  start(scene: Scene, camera: Camera, renderer: WebGLRenderer): void;
+  start(params: RendererParams): void;
   stop(): void;
   onRender?: () => void;
   onFullScreenChange?: (isFullScreen: boolean) => void;

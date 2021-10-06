@@ -27,7 +27,11 @@ export default function PostList() {
         <div className="post-summary-container">
           {posts &&
             posts.map((post) => (
-              <Link href={`/art/${post.id}`} className="post-list-item">
+              <Link
+                href={`/art/${post.id}`}
+                className="post-list-item"
+                key={post.id}
+              >
                 <PostSummaryComponent key={post.id} post={post} />
               </Link>
             ))}

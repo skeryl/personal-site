@@ -1,4 +1,9 @@
-import { ExperimentContent3D, Post, PostType } from "personal-site-model";
+import {
+  ExperimentContent3D,
+  Post,
+  PostType,
+  RendererParams,
+} from "personal-site-model";
 import {
   AmbientLight,
   BufferAttribute,
@@ -52,7 +57,7 @@ class MathJourneyContent implements ExperimentContent3D {
   private scene: Scene | undefined;
   private geometry: BufferGeometry | undefined;
 
-  start = (scene: Scene, camera: Camera) => {
+  start = ({ scene, camera }: RendererParams) => {
     scene.background = new Color(0xf4dbce);
     this.scene = scene;
     const material = new ShaderMaterial({

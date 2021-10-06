@@ -1,144 +1,132 @@
-import * as React from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { PostProps } from "./Post";
-import { PostType } from "personal-site-model";
+import { PostType, RendererParams } from "personal-site-model";
 import { PerspectiveCamera, Scene, Vector2, WebGLRenderer } from "three";
 import { FullScreenButton } from "../FullScreenButton";
 import { MouseActiveTracker } from "../../utils/MouseActiveTracker";
 import { ActionsTray } from "../ActionsTray";
 
-interface State {
-  isMouseActive: boolean;
-}
-
 function isFullscreen(): boolean {
   return Boolean(document.fullscreenElement);
 }
 
-export class ExperimentComponent3D extends React.Component<
-  PostProps<PostType.experiment3d>,
-  State
-> {
-  state = {
-    isMouseActive: false,
-    isFullScreen: false,
-  };
+export function ExperimentComponent3D(props: PostProps<PostType.experiment3d>) {
+  const [isMouseActive, setIsMouseActive] = useState(false);
 
-  private isRunning = false;
+  const isRunning = useRef<boolean>(false);
 
-  private scene: Scene | undefined;
-  private camera: PerspectiveCamera | undefined;
-  private renderer: WebGLRenderer | undefined;
-  private mouseActiveTracker: MouseActiveTracker | undefined;
+  const res = useRef<Vector2>(new Vector2());
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  private readonly res: Vector2 = new Vector2();
+  const renderParams = useRef<RendererParams>();
 
-  private readonly canvasRef = React.createRef<HTMLCanvasElement>();
+  const mouseActiveTracker = useRef<MouseActiveTracker>();
 
-  componentDidMount(): void {
-    const canvas = this.canvasRef.current as HTMLCanvasElement;
-
-    this.renderer = new WebGLRenderer({
+  useEffect(() => {
+    const canvas = canvasRef.current!;
+    const renderer = new WebGLRenderer({
       canvas: canvas,
       alpha: true,
       antialias: true,
     });
-    this.renderer.shadowMap.enabled = true;
-    this.scene = new Scene();
-    this.camera = new PerspectiveCamera(
+    renderer.shadowMap.enabled = true;
+
+    const scene = new Scene();
+    const camera = new PerspectiveCamera(
       75,
       window.innerWidth / window.innerHeight,
       0.1,
       1000,
     );
 
-    window.addEventListener("resize", this.handleResize);
-    this.mouseActiveTracker = new MouseActiveTracker(
+    renderParams.current = {
+      scene,
+      camera,
+      renderer,
+    };
+
+    mouseActiveTracker.current = new MouseActiveTracker(
       canvas,
-      this.onMouseActiveChange,
+      setIsMouseActive,
       3000,
     );
-    this.handleResize();
-    this.props.content.start(this.scene, this.camera, this.renderer);
-    this.isRunning = true;
-    this.animate();
-    window.setTimeout(() => this.handleResize(), 100);
+
+    window.addEventListener("resize", handleResize);
+    handleResize();
+    props.content.start(renderParams.current);
+    isRunning.current = true;
+    animate();
+    setTimeout(() => handleResize(), 10);
+
+    return () => {
+      isRunning.current = false;
+      props.content.stop();
+      mouseActiveTracker.current?.destroy();
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    handleResize();
+  }, [canvasRef.current]);
+
+  function handleResize() {
+    const canvas = canvasRef.current;
+    if (!renderParams.current || !canvas) {
+      return;
+    }
+    const { camera, renderer } = renderParams.current;
+    if (renderer && canvas && canvas.parentElement && camera) {
+      const width = (canvas.parentElement || canvas).clientWidth;
+      const height = (canvas.parentElement || canvas).clientHeight;
+      res.current.x = width;
+      res.current.y = height;
+      canvas.width = width;
+      canvas.height = height;
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height, true);
+    }
   }
 
-  componentWillUnmount(): void {
-    this.isRunning = false;
-    this.props.content.stop();
-    window.removeEventListener("resize", this.handleResize);
-  }
-
-  render() {
-    return (
-      <div
-        id="experiment-canvas-3d"
-        className={`mouse-tracker mouse-${
-          this.state.isMouseActive ? "active" : "inactive"
-        }`}
-      >
-        <canvas ref={this.canvasRef}>
-          hey, your browser must support the "canvas" component for this to work
-        </canvas>
-        <ActionsTray show={this.state.isMouseActive}>
-          <FullScreenButton onClick={this.onFullScreenClicked} />
-        </ActionsTray>
-      </div>
-    );
-  }
-
-  onMouseActiveChange = (status: boolean) => {
-    this.setState({ isMouseActive: status });
-  };
-
-  onFullScreenClicked = () => {
+  function onFullScreenClicked() {
     if (isFullscreen()) {
       document.exitFullscreen().then(() => {
-        if (this.props.content.onFullScreenChange) {
-          this.props.content.onFullScreenChange(false);
+        if (props.content.onFullScreenChange) {
+          props.content.onFullScreenChange(false);
         }
       });
     } else {
-      const elem =
-        this.canvasRef.current && this.canvasRef.current.parentElement;
-      if (elem) {
-        elem.requestFullscreen().then(() => {
-          if (this.props.content.onFullScreenChange) {
-            this.props.content.onFullScreenChange(true);
-          }
-        });
+      canvasRef.current?.parentElement?.requestFullscreen().then(() => {
+        if (props.content.onFullScreenChange) {
+          props.content.onFullScreenChange(true);
+        }
+      });
+    }
+  }
+
+  function animate() {
+    const params = renderParams.current;
+    if (isRunning.current && params) {
+      params.renderer.render(params.scene, params.camera);
+      if (props.content.onRender) {
+        props.content.onRender();
       }
+      window.requestAnimationFrame(animate);
     }
-  };
+  }
 
-  private animate = () => {
-    if (this.isRunning && this.renderer && this.scene && this.camera) {
-      this.renderer.render(this.scene, this.camera);
-      if (this.props.content.onRender) {
-        this.props.content.onRender();
-      }
-      requestAnimationFrame(this.animate);
-    }
-  };
-
-  public handleResize = () => {
-    const canvas = this.canvasRef.current;
-    const camera = this.camera;
-    if (this.renderer && canvas && canvas.parentElement && camera) {
-      const width = canvas.parentElement.clientWidth;
-      const height = canvas.parentElement.clientHeight;
-      this.res.x = width;
-      this.res.y = height;
-      canvas.width = width;
-      canvas.height = height;
-
-      console.log("res: ", this.res);
-
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
-
-      this.renderer.setSize(width, height, true);
-    }
-  };
+  return (
+    <div
+      id="experiment-canvas-3d"
+      className={`mouse-tracker mouse-${isMouseActive ? "active" : "inactive"}`}
+    >
+      <canvas ref={canvasRef}>
+        hey, your browser must support the "canvas" component for this to work
+      </canvas>
+      <ActionsTray show={isMouseActive}>
+        <FullScreenButton onClick={onFullScreenClicked} />
+      </ActionsTray>
+    </div>
+  );
 }

@@ -3,11 +3,15 @@ export class MouseActiveTracker {
   private inactiveTimeout: number | undefined;
 
   constructor(
-    domElement: HTMLElement,
+    private domElement: HTMLElement,
     private onStatusChange: (isActive: boolean) => void,
     private timeoutLengthMS: number = 500,
   ) {
     domElement.addEventListener("mousemove", this.onMouseMove);
+  }
+
+  destroy() {
+    this.domElement.removeEventListener("mousemove", this.onMouseMove);
   }
 
   onMouseMove = () => {

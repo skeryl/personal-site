@@ -1,8 +1,6 @@
-import { ExperimentContent3D } from "personal-site-model";
+import { ExperimentContent3D, RendererParams } from "personal-site-model";
 import {
-  BufferAttribute,
   BufferGeometry,
-  Camera,
   Clock,
   Mesh,
   PlaneBufferGeometry,
@@ -68,7 +66,7 @@ export abstract class BookOfShadersContent implements ExperimentContent3D {
 
   abstract getFragmentShader: () => string;
 
-  public start(scene: Scene, camera: Camera, renderer: WebGLRenderer) {
+  public start({ scene, camera, renderer }: RendererParams) {
     this.renderer = renderer;
 
     const vertexShader = this.getVertexShader();

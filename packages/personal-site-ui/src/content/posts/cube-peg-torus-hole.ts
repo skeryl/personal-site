@@ -1,4 +1,9 @@
-import { ExperimentContent3D, Post, PostType } from "personal-site-model";
+import {
+  ExperimentContent3D,
+  Post,
+  PostType,
+  RendererParams,
+} from "personal-site-model";
 import {
   BoxGeometry,
   Camera,
@@ -18,7 +23,7 @@ class CubePegTorusHoleContent implements ExperimentContent3D {
 
   private scene: Scene | undefined;
 
-  start = (scene: Scene, camera: Camera) => {
+  start = ({ scene, camera }: RendererParams) => {
     scene.background = new Color(0xf4dbce);
     this.scene = scene;
     const material = new MeshPhongMaterial({

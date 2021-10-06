@@ -1,4 +1,4 @@
-import { Post, PostType } from "personal-site-model";
+import { Post, PostType, RendererParams } from "personal-site-model";
 import { BookOfShadersContent } from "../book-of-shaders";
 import {
   Camera,
@@ -70,8 +70,8 @@ class NoteShaderContent extends BookOfShadersContent {
     } as IUniform<Vector2>;
   }
 
-  start = (scene: Scene, camera: Camera, renderer: WebGLRenderer) => {
-    super.start(scene, camera, renderer);
+  start = (params: RendererParams) => {
+    super.start(params);
   };
 
   onRender = () => {
@@ -139,6 +139,7 @@ const post: Post = {
     title: "Down South",
     timestamp: new Date(2021, 7, 5),
     tags: ["webgl", "art", "eva", "collaboration"],
+    isHidden: true,
   },
   content: () => new NoteShaderContent(),
 };

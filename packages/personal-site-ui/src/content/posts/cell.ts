@@ -1,4 +1,9 @@
-import { ExperimentContent3D, Post, PostType } from "personal-site-model";
+import {
+  ExperimentContent3D,
+  Post,
+  PostType,
+  RendererParams,
+} from "personal-site-model";
 import {
   AmbientLight,
   BoxGeometry,
@@ -151,7 +156,7 @@ class Cell implements ExperimentContent3D {
   private renderer: WebGLRenderer | undefined;
   private walker: Walker | undefined;
 
-  start = (scene: Scene, camera: Camera, renderer: WebGLRenderer) => {
+  start = ({ scene, camera, renderer }: RendererParams) => {
     this.renderer = renderer;
     scene.background = new Color(0x000000);
     this.scene = scene;

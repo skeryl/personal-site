@@ -1,4 +1,4 @@
-import { Post, PostType } from "personal-site-model";
+import { Post, PostType, RendererParams } from "personal-site-model";
 import { BookOfShadersContent } from "../book-of-shaders";
 import {
   DefaultKeyMapping,
@@ -107,8 +107,8 @@ class NoteShaderContent extends BookOfShadersContent {
     } as IUniform;
   }
 
-  start = (scene: Scene, camera: Camera, renderer: WebGLRenderer) => {
-    super.start(scene, camera, renderer);
+  start = (params: RendererParams) => {
+    super.start(params);
   };
 
   onRender = () => {

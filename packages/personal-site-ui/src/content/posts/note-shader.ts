@@ -1,9 +1,8 @@
-import { Post, PostType } from "personal-site-model";
+import { Post, PostType, RendererParams } from "personal-site-model";
 import { BookOfShadersContent } from "../book-of-shaders";
 import { LocalSynthService } from "project-synth-builder/src/services/synths";
 import { DefaultKeyMapping } from "project-synth-builder/src/model/notes";
 import { SynthController } from "project-synth-builder/src/core/SynthController";
-import { Camera, Scene, WebGLRenderer } from "three";
 import { IUniform } from "three/src/renderers/shaders/UniformsLib";
 import { MutableAudioNode as AudioGraphNode } from "project-synth-builder/src/core/nodes/MutableAudioNode";
 import { MutableAudioGraph } from "project-synth-builder/src/core/nodes/MutableAudioGraph";
@@ -57,8 +56,8 @@ class NoteShaderContent extends BookOfShadersContent {
     } as IUniform;
   }
 
-  start = (scene: Scene, camera: Camera, renderer: WebGLRenderer) => {
-    super.start(scene, camera, renderer);
+  start = (params: RendererParams) => {
+    super.start(params);
   };
 
   onRender = () => {
