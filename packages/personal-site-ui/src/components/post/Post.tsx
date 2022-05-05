@@ -1,7 +1,6 @@
 import * as React from "react";
 import { PostSummary, PostType, PostTypes } from "personal-site-model";
 import { Renderers, RenderThing } from "../../content";
-import moment from "moment";
 import { Tags } from "../Tags";
 
 export interface PostProps<T extends PostType> {
@@ -22,9 +21,9 @@ export function PostComponent<T extends PostType>(props: PostProps<T>) {
             <h1>{props.summary.title}</h1>
           </div>
           <div>
-            <span className="timestamp">{`${moment(
-              props.summary.timestamp,
-            ).format("LL")}`}</span>
+            <span className="timestamp">
+              {new Date(props.summary.timestamp).toLocaleDateString()}
+            </span>
           </div>
           <div>
             <Tags tags={props.summary.tags} />

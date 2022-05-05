@@ -1,5 +1,4 @@
 import * as React from "react";
-import moment from "moment";
 import { PostSummary } from "personal-site-model";
 import { Tags } from "../Tags";
 
@@ -15,9 +14,9 @@ export function PostSummaryComponent(props: PostSummaryProps) {
           <div>
             <h1>{props.post.title}</h1>
             <span>published</span>
-            <span className="timestamp">{`${moment(props.post.timestamp).format(
-              "LL",
-            )}`}</span>
+            <span className="timestamp">
+              {new Date(props.post.timestamp).toLocaleDateString()}
+            </span>
           </div>
           <div>
             <Tags tags={props.post.tags} />
