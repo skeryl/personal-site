@@ -1,25 +1,21 @@
-import { PostSummary } from "personal-site-model";
-import { PostSummaryComponent } from "../components/post/PostSummary";
 import * as React from "react";
-import { useContext, useEffect, useState } from "react";
-import { ContentContext } from "../content/ContentContext";
 import styled from "styled-components";
-import { SubHeader } from "personal-site-common";
-import { ProjectContent } from "personal-site-common";
+import { PostType, PostTypes } from "personal-site-model";
+import { PostSummaryComponent } from "./PostSummary";
+import { ProjectContent, SubHeader } from "personal-site-common";
+import { useListPosts } from "../../hooks/content";
 
 const Link = styled("a")`
   color: rgb(85, 73, 0);
 `;
 
-export default function PostList() {
-  const [posts, setPosts] = useState<PostSummary[] | null>(null);
-  const contentService = useContext(ContentContext);
+export interface PostListProps {
+  type: PostType;
+}
 
-  useEffect(() => {
-    contentService.listPosts().then((posts) => {
-      setPosts(posts);
-    });
-  }, []);
+export function PostList({ type }: PostListProps) {
+  const { result: posts } = useListPosts(type);
+
   return (
     <>
       <SubHeader text={"art"} />

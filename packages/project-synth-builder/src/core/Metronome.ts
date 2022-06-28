@@ -26,7 +26,7 @@ export class Metronome {
     if (this.isPlaying) {
       const { node, outputs } = this.node.build(this.context);
 
-      const gainNode = (outputs[0] as unknown) as GainNode;
+      const gainNode = outputs[0] as unknown as GainNode;
       gainNode.gainNode.gain.setValueAtTime(
         gainNode.gain.value,
         this.context.currentTime,

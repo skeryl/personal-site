@@ -25,7 +25,7 @@ const serviceActions: <Services extends Record<string, any>>(
       Service,
       Result,
       Payload,
-      A extends ServiceAction<Service, Payload, Result>
+      A extends ServiceAction<Service, Payload, Result>,
     >(action: A) {
       if (action.service) {
         const service = services[action.service];
@@ -34,7 +34,6 @@ const serviceActions: <Services extends Record<string, any>>(
             `Service "${action.service}" not registered with serviceActions middleware. Make sure you include the service in middleware initialization.`,
           );
         }
-        console.info("SERVICE! ", service);
         action
           .serviceFunction(service, action.payload)
           .then((result: Result) => {

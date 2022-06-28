@@ -26,7 +26,7 @@ export enum NoteType {
   tripletEighth = 1 / 8 / 3,
   tripletSixteenth = 1 / 16 / 3,
   tripletThirtysecond = 1 / 32 / 3,
-  tripletSixtyfourth = 1 / 32 / 3,
+  tripletSixtyfourth = 1 / 64 / 3,
 }
 
 export interface NoteStyle {
@@ -35,15 +35,21 @@ export interface NoteStyle {
   swing?: boolean;
 }
 
-export interface Note {
+export type Playable = Note | Rest;
+
+export interface Rest {
   noteType: NoteType;
-  pitch: Pitch;
-  style?: NoteStyle;
   offsetBeats?: number;
 }
 
+export interface Note {
+  noteType: NoteType;
+  offsetBeats?: number;
+  pitch: Pitch;
+}
+
 export interface Measure {
-  notes: Note[];
+  notes: Playable[];
 }
 
 export interface Sequence {
@@ -211,18 +217,39 @@ function getScalePitches(chord: Chord): Pitch[] {
 }
 
 function getNextNoteType(prevNoteType: NoteType | undefined): NoteType {
+  const randomNumber = Math.random();
   switch (prevNoteType) {
     case NoteType.whole:
     case NoteType.half:
-      return Math.random() < 0.5 ? NoteType.eighth : NoteType.quarter;
+      return randomNumber < 0.5 ? NoteType.eighth : NoteType.quarter;
+    case NoteType.eighth:
+      return randomNumber < 0.5
+        ? NoteType.eighth
+        : randomNumber < 0.75
+        ? NoteType.sixteenth
+        : NoteType.quarter;
+    case NoteType.sixteenth:
+      return randomNumber < 0.5
+        ? NoteType.sixteenth
+        : randomNumber < 0.75
+        ? NoteType.thirtysecond
+        : NoteType.eighth;
+    case NoteType.quarter:
+      return randomNumber < 0.3
+        ? NoteType.quarter
+        : randomNumber < 0.67
+        ? NoteType.eighth
+        : NoteType.half;
     default:
-      const exponent = Math.floor(Math.random() * 4) + 1;
+      const exponent = Math.floor(randomNumber * 4) + 1;
       return (1 / Math.pow(2, exponent)) as NoteType;
   }
 }
 
 function getRandom<T>(arr: Array<T>): T {
-  const index = Math.floor(Math.random() * arr.length);
+  const randomNumber = Math.random();
+
+  const index = Math.floor(randomNumber * arr.length);
   return arr[index];
 }
 
@@ -237,7 +264,7 @@ function getNextPitch(pitches: Pitch[], lastPitch: Pitch | undefined) {
 function getRandomNoteSequenceInScale(
   chord: Chord,
   metadata: CompositionMetadata,
-): Note[] {
+): Playable[] {
   const scalePitches = getScalePitches(chord);
   let totalToFill =
     metadata.timeSignature.beatsPerMeasure *
@@ -245,8 +272,14 @@ function getRandomNoteSequenceInScale(
   let filledSoFar = 0;
   let lastNoteType: NoteType | undefined;
   let lastPitch: Pitch | undefined;
-  const notes: Note[] = [];
-  while (totalToFill > 0) {
+  const notes: Playable[] = [];
+  while (totalToFill > 0 && totalToFill) {
+    if (totalToFill <= NoteType.eighth) {
+      notes.push({
+        noteType: totalToFill,
+        offsetBeats: filledSoFar,
+      });
+    }
     const potentialNoteType = getNextNoteType(lastNoteType);
     const noteType =
       potentialNoteType > totalToFill ? totalToFill : potentialNoteType;

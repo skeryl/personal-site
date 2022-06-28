@@ -1,12 +1,14 @@
 import { lazy } from "react";
 import { RouteProps } from "react-router-dom";
 
-const PostList = lazy(() => import("./containers/PostList"));
-const PostDetail = lazy(() => import("./containers/PostDetail"));
-const Home = lazy(() => import("./containers/Home"));
+const ArtList = lazy(() => import("./pages/art"));
+const ArtDetail = lazy(() => import("./pages/art/detail"));
+const Home = lazy(() => import("./pages/Home"));
+const Explorations = lazy(() => import("./pages/explorations"));
+const ExplorationDetail = lazy(() => import("./pages/explorations/detail"));
 
-const SoundBooth = lazy(() =>
-  import("project-synth-builder/src/components/SoundBoothWrapper"),
+const SoundBooth = lazy(
+  () => import("project-synth-builder/src/components/SoundBoothWrapper"),
 );
 
 export type NavRoute = RouteProps & {
@@ -22,17 +24,30 @@ const index: RouteProps = {
   component: Home,
 };
 
-const posts: NavRoute = {
+const artList: NavRoute = {
   name: "art",
   exact: true,
   path: "/art",
-  component: PostList,
+  component: ArtList,
   description: "snippets of saucy software",
 };
 
-const postDetail: RouteProps = {
+const artDetail: RouteProps = {
   path: "/art/:id",
-  component: PostDetail,
+  component: ArtDetail,
+};
+
+const explorations: NavRoute = {
+  name: "explorations",
+  exact: true,
+  path: "/explorations",
+  component: Explorations,
+  description: "deep dives into data",
+};
+
+const explorationDetail: RouteProps = {
+  path: "/exploration/:id",
+  component: ExplorationDetail,
 };
 
 const soundBooth: NavRoute = {
@@ -47,9 +62,11 @@ const soundBooth: NavRoute = {
 export const routes = [
   index,
   //about,
-  posts,
-  postDetail,
+  artList,
+  artDetail,
   soundBooth,
+  explorations,
+  explorationDetail,
 ];
 
-export const navRoutes: NavRoute[] = [posts, soundBooth];
+export const navRoutes: NavRoute[] = [artList, soundBooth, explorations];

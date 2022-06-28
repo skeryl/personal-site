@@ -1,7 +1,9 @@
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 
-const nodeModules = path.resolve(__dirname, "../../node_modules");
+const rootNodeModules = path.resolve(__dirname, "../../node_modules");
+const uiNodeModules = path.resolve(__dirname, "./node_modules");
+
 module.exports = {
   mode: "development",
   entry: "./src/index.tsx",
@@ -18,11 +20,11 @@ module.exports = {
   },
   devtool: "source-map",
   resolve: {
-    modules: [nodeModules],
+    modules: [rootNodeModules, uiNodeModules],
     extensions: [".ts", ".tsx", ".js", ".json"],
     alias: {
-      react: path.join(nodeModules, "./react"),
-      "react-dom": path.join(nodeModules, "./react-dom"),
+      react: path.join(rootNodeModules, "./react"),
+      "react-dom": path.join(rootNodeModules, "./react-dom"),
     },
   },
   module: {

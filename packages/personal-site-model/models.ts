@@ -1,5 +1,5 @@
 import { Stage } from "grraf";
-import { ReactElement } from "react";
+import { ReactNode } from "react";
 import { PerspectiveCamera, Scene, WebGLRenderer } from "three";
 
 export interface Unique {
@@ -7,17 +7,15 @@ export interface Unique {
 }
 
 export enum PostType {
-  writeUp = "writeUp",
-  experiment = "experiment",
-  experiment3d = "experiment3d",
-  project = "project",
+  exploration = "explorations",
+  experiment = "experiments",
+  experiment3d = "experiments-3d",
 }
 
 export type PostTypes = {
-  [PostType.writeUp]: WriteUp;
+  [PostType.exploration]: WriteUp;
   [PostType.experiment]: StageContent;
   [PostType.experiment3d]: ExperimentContent3D;
-  [PostType.project]: WriteUp;
 };
 
 export interface PostSummary extends Unique {
@@ -39,9 +37,7 @@ export interface Post {
   content: ContentGenerator;
 }
 
-export interface WriteUp {
-  render(): ReactElement<any> | null;
-}
+type WriteUp = ReactNode;
 
 export interface StageContent {
   start(stage: Stage): void;

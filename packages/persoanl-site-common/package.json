@@ -2,7 +2,7 @@
   "name": "personal-site-common",
   "version": "0.0.0",
   "dependencies": {
-    "react": "^17.0.2",
+    "react": "^18.2.0",
     "styled-components": "^5.1.1"
   }
 }

@@ -68,7 +68,7 @@ function setIfDefined<Target, Key extends keyof Target>(
 
 function setAudioParamIfDefined<
   Target extends Record<Key, AudioParam>,
-  Key extends keyof Target
+  Key extends keyof Target,
 >(key: Key, target: Target, source: any): void {
   const value = source[key];
   if (value !== undefined) {

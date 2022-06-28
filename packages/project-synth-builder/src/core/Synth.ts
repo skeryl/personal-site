@@ -382,9 +382,9 @@ export class Synth implements ISynth {
   }
 
   private transformGraph() {
-    const transformKeys = Object.keys(GraphTransformations) as Array<
-      TransformSettings
-    >;
+    const transformKeys = Object.keys(
+      GraphTransformations,
+    ) as Array<TransformSettings>;
     return transformKeys.reduce<IAudioGraph>(
       (result, transform: TransformSettings) => {
         return GraphTransformations[transform](this.settings, result);

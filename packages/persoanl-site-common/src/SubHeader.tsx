@@ -61,7 +61,7 @@ export function SubHeader(props: SubHeaderProps) {
 
   const scheduleCollapse = (delay: number = 1000) => {
     cancelScheduledCollapse();
-    collapseTimer.current = setTimeout(() => {
+    collapseTimer.current = window.setTimeout(() => {
       setExpanded(false);
     }, delay);
   };

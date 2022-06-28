@@ -30,7 +30,7 @@ export function ExperimentComponent(props: PostProps<PostType.experiment>){
             if(resizeTimeout){
                 clearTimeout(resizeTimeout);
             }
-            resizeTimeout = setTimeout(() => {
+            resizeTimeout = window.setTimeout(() => {
                 setup();
             }, resizeWaitPeriod);
         }

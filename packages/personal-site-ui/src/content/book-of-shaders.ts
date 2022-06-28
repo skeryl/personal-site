@@ -16,12 +16,12 @@ export abstract class BookOfShadersContent implements ExperimentContent3D {
   private scene: Scene | undefined;
   private geometry: BufferGeometry | undefined;
   protected uniforms: Record<string, IUniform> = {
-    u_time: ({ type: "f", value: 1.0 } as unknown) as IUniform,
-    u_resolution: ({
+    u_time: { type: "f", value: 1.0 } as unknown as IUniform,
+    u_resolution: {
       type: "v2",
       value: new Vector2(),
-    } as unknown) as IUniform,
-    u_mouse: ({ type: "v2", value: new Vector2() } as unknown) as IUniform,
+    } as unknown as IUniform,
+    u_mouse: { type: "v2", value: new Vector2() } as unknown as IUniform,
   };
 
   private readonly clock = new Clock(false);

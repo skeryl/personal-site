@@ -25,7 +25,7 @@ export class TimeSensitiveMap<K, V> implements Map<K, V> {
 
   set(key: K, value: V, timeToLive = 1000): this {
     this.delegate.set(key, value);
-    const deletion = setTimeout(() => {
+    const deletion = window.setTimeout(() => {
       this.delete(key);
     }, timeToLive);
     this.scheduledDeletions.set(key, deletion);

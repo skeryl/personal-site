@@ -5,6 +5,12 @@ import { ContentDatabase } from "./content/ContentDatabase";
 export const api: Application = express();
 
 const router = express.Router();
-const contentDatabase = new ContentDatabase();
 
-api.use("/posts", ...postRoutes(router, contentDatabase));
+//todo fix this
+
+api.use("/posts/art", ...postRoutes(router, new ContentDatabase("art")));
+
+api.use(
+  "/posts/explorations",
+  ...postRoutes(router, new ContentDatabase("explorations")),
+);

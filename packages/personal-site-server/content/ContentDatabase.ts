@@ -1,5 +1,5 @@
 import fs, { PathLike } from "fs";
-import { Post, PostSummary } from "personal-site-model";
+import { PostSummary, PostType } from "personal-site-model";
 import path from "path";
 
 const sortByTimeCreated = (a: PostSummary, b: PostSummary) =>
@@ -9,12 +9,14 @@ export class ContentDatabase {
   private readonly postSummaries: Promise<Map<string, PostSummary>>;
 
   constructor(
+    directory: string,
     private readonly rootPath: PathLike = path.resolve(
       __dirname,
-      "../../personal-site-ui/src/content/posts",
+      `../../personal-site-ui/src/content/${directory}`,
     ),
   ) {
     const postFiles = fs.readdirSync(this.rootPath);
+    console.log("Directory: ", directory, "; files: ", postFiles);
     this.postSummaries = Promise.all(
       postFiles.map(async (postFile) => {
         const importedPost = await import(`${this.rootPath}/${postFile}`);

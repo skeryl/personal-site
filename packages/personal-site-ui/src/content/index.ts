@@ -1,10 +1,9 @@
-import { PostType, PostTypes } from "personal-site-model";
 import { ComponentClass, ReactElement } from "react";
-import { ProjectComponent } from "../components/post/Project";
+import { PostType, PostTypes } from "personal-site-model";
 import { ExperimentComponent } from "../components/post/Experiment";
 import { ExperimentSummary } from "../components/post/ExperimentSummary";
 import { ExperimentComponent3D } from "../components/post/Experiment3d";
-import { WriteUpComponent } from "../components/post/WriteUp";
+import { ExplorationComponent } from "../components/post/Exploration";
 import { PostProps } from "../components/post/Post";
 import { PostSummaryProps } from "../components/post/PostSummary";
 
@@ -26,9 +25,6 @@ export type Renderer<T extends PostType> = {
 };
 
 export const Renderers: ContentRenderers = {
-  [PostType.project]: {
-    main: ProjectComponent,
-  },
   [PostType.experiment]: {
     main: ExperimentComponent,
     summary: ExperimentSummary,
@@ -36,8 +32,8 @@ export const Renderers: ContentRenderers = {
   [PostType.experiment3d]: {
     main: ExperimentComponent3D,
   },
-  [PostType.writeUp]: {
-    main: WriteUpComponent,
+  [PostType.exploration]: {
+    main: ExplorationComponent,
   },
 };
 

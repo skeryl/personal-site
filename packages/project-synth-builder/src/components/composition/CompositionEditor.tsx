@@ -42,8 +42,8 @@ export function CompositionEditor({ synths }: CompositionEditorProps) {
       console.log(synths);
       setSynth(synths[0]);
       setSynth2(synths[1]);
-      synths[0].setGain(0.1);
-      synths[1].setGain(0.035);
+      synths[0].setGain(0.08);
+      synths[1].setGain(0.1);
     }
   }, [synths]);
 
@@ -63,40 +63,27 @@ export function CompositionEditor({ synths }: CompositionEditorProps) {
 
     const section = composition.startSection();
 
+    const chords = [
+      { note: Notes.C, type: ChordType.MAJOR, octave: 3 },
+      { note: Notes.G, type: ChordType.MAJOR, octave: 3 },
+      { note: Notes.A, type: ChordType.MINOR, octave: 3 },
+      { note: Notes.F, type: ChordType.MAJOR, octave: 3 },
+      { note: Notes.C, type: ChordType.MAJOR, octave: 3 },
+      { note: Notes.G, type: ChordType.MAJOR, octave: 3 },
+      { note: Notes.A, type: ChordType.MINOR, octave: 3 },
+      { note: Notes.F, type: ChordType.MAJOR, octave: 3 },
+    ];
     section.addChordProgression({
       instrument: synth,
-      chords: [
-        { note: Notes.F, type: ChordType.MAJOR, octave: 2 },
-        { note: Notes.G, type: ChordType.MAJOR, octave: 2 },
-        { note: Notes.A, type: ChordType.MAJOR, octave: 2 },
-        { note: Notes.F, type: ChordType.MAJOR, octave: 2 },
-        { note: Notes.F, type: ChordType.MAJOR, octave: 2 },
-        { note: Notes.G, type: ChordType.MAJOR, octave: 2 },
-        { note: Notes.A, type: ChordType.MAJOR, octave: 2 },
-        { note: Notes.F, type: ChordType.MAJOR, octave: 2 },
-        { note: Notes.F, type: ChordType.MAJOR, octave: 2 },
-        { note: Notes.G, type: ChordType.MAJOR, octave: 2 },
-        { note: Notes.A, type: ChordType.MAJOR, octave: 2 },
-        { note: Notes.F, type: ChordType.MAJOR, octave: 2 },
-      ],
+      chords,
     });
 
     section.addMelodicImprovisation({
       instrument: synth2,
-      chords: [
-        { note: Notes.C, type: ChordType.MAJOR, octave: 4 },
-        { note: Notes.C, type: ChordType.MAJOR, octave: 4 },
-        { note: Notes.C, type: ChordType.MAJOR, octave: 5 },
-        { note: Notes.C, type: ChordType.MAJOR, octave: 4 },
-        { note: Notes.C, type: ChordType.MAJOR, octave: 4 },
-        { note: Notes.C, type: ChordType.MAJOR, octave: 4 },
-        { note: Notes.C, type: ChordType.MAJOR, octave: 5 },
-        { note: Notes.C, type: ChordType.MAJOR, octave: 4 },
-        { note: Notes.C, type: ChordType.MAJOR, octave: 4 },
-        { note: Notes.C, type: ChordType.MAJOR, octave: 4 },
-        { note: Notes.C, type: ChordType.MAJOR, octave: 5 },
-        { note: Notes.C, type: ChordType.MAJOR, octave: 4 },
-      ],
+      chords: chords.map((c, ix) => ({
+        ...c,
+        octave: ix >= 4 && ix < 6 ? 5 : 4,
+      })),
     });
 
     return composition;

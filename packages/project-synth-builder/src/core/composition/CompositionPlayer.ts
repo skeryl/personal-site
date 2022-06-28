@@ -1,9 +1,15 @@
-import { AutomaticComposition, Note, NoteType, TimeSignature } from "./index";
+import {
+  AutomaticComposition,
+  Note,
+  NoteType,
+  Playable,
+  TimeSignature,
+} from "./index";
 import { Instrument } from "../Instrument";
 
 interface ScheduledNote {
   offsetMilliseconds: number;
-  note: Note;
+  note: Playable;
   instrument: Instrument;
   duration: number;
 }
@@ -13,9 +19,7 @@ function calculateDurationMilliseconds(
   millisecondsPerBeat: number,
   noteType: NoteType,
 ) {
-  const duration =
-    (noteType / timeSignature.quarterNotesBeat) * millisecondsPerBeat;
-  return duration;
+  return (noteType / timeSignature.quarterNotesBeat) * millisecondsPerBeat;
 }
 
 export class CompositionPlayer {
@@ -111,15 +115,18 @@ export class CompositionPlayer {
       const timeToPlay = this.startingTime + nextNote.offsetMilliseconds;
       const timeUntilPlay = timeToPlay - this.time;
       if (timeUntilPlay <= 1) {
-        nextNote.instrument.startPlaying(nextNote.note.pitch);
-        window.setTimeout(
-          () => nextNote.instrument.stopPlaying(nextNote.note.pitch),
-          nextNote.duration,
-        );
+        const pitch = (nextNote.note as Note).pitch;
+        if (pitch) {
+          nextNote.instrument.startPlaying(pitch);
+          window.setTimeout(
+            () => nextNote.instrument.stopPlaying(pitch),
+            nextNote.duration,
+          );
+        }
       } else {
         this.notesToPlayByTime.splice(0, 0, nextNote);
       }
-      this.timeouts.push(setTimeout(() => this.playNext(), 1));
+      this.timeouts.push(window.setTimeout(() => this.playNext(), 1));
     }
   }
 
