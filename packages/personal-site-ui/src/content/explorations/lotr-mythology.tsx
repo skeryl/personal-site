@@ -2,7 +2,11 @@ import React from "react";
 import { Post, PostType } from "personal-site-model";
 
 export function LotrMythology() {
-  return <div></div>;
+  return (
+    <div>
+      <h1>Testing</h1>
+    </div>
+  );
 }
 
 const post: Post = {

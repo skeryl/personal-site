@@ -15,11 +15,11 @@ export class PostClient {
   async getPost(id: string): Promise<Post | undefined> {
     try {
       const post = await import(
-        `./${postTypeToUrlPrefix(this.postType)}/${this.postType}/${id}`
+        `./${postTypeToUrlPrefix(this.postType)}/${id}`
       );
       return post.default as Post;
     } catch (e) {
-      console.error("failed to load post.");
+      console.error("failed to load post.", e);
       return undefined;
     }
   }

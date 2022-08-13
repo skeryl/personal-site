@@ -33,12 +33,6 @@ export const appGenerator: AppGenerator = (params) => {
 
   app.use("/api", api);
 
-  /*app.get("scripts/!*", (req, res) => {
-    const requestedScript = path.join(publicDir, `./${req.path}`);
-    console.log("SCRIPT: ", requestedScript);
-    res.sendFile(requestedScript);
-  });*/
-
   app.get("*", (req, res, next) => {
     res.sendFile(path.join(publicDir, "index.html"));
   });

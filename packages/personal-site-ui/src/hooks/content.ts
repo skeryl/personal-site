@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { Post, PostSummary, PostType } from "personal-site-model";
 import { ContentContext } from "../content/ContentContext";
-import { PostClient } from "../clients/post-client";
+import { PostClient } from "../content/post-client";
 
 export function usePostClient(type: PostType) {
   const contentClientGetter = useContext(ContentContext);
@@ -30,6 +30,7 @@ function usePostClientAction<T>(
   };
 
   useEffect(() => {
+    setIsLoading(true);
     fetcher(client)
       .then((res) => {
         if (!isCancelled.current) {

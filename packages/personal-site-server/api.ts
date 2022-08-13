@@ -6,11 +6,7 @@ export const api: Application = express();
 
 const router = express.Router();
 
-//todo fix this
-
-api.use("/posts/art", ...postRoutes(router, new ContentDatabase("art")));
-
-api.use(
-  "/posts/explorations",
-  ...postRoutes(router, new ContentDatabase("explorations")),
-);
+api.use("/posts", [
+  ...postRoutes("art", router, new ContentDatabase("art")),
+  ...postRoutes("explorations", router, new ContentDatabase("explorations")),
+]);

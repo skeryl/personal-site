@@ -13,7 +13,7 @@ export function PostComponent<T extends PostType>(props: PostProps<T>) {
   const Renderer = Renderers[props.summary.type].main as RenderThing<T>;
 
   return (
-    <div className="post-container">
+    <div className={`post-container ${props.summary.type}`}>
       <Renderer content={props.content} summary={props.summary} full={true} />
       <div className="post-header">
         <div className="post-title">

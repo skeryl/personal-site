@@ -1,6 +1,12 @@
 
+.post-container.explorations {
+    display: flex;
+    flex-direction: column-reverse;
+    margin: 1.75rem auto 0.5rem auto;
+    width: 75vw;
+}
 
-.post-container {
+.post-container.experiments, .post-container.experiments-3d {
     width: calc(100% - 2rem);
     display: flex;
     flex-direction: column;

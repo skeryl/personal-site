@@ -42,11 +42,12 @@ const explorations: NavRoute = {
   exact: true,
   path: "/explorations",
   component: Explorations,
+  hidden: true,
   description: "deep dives into data",
 };
 
 const explorationDetail: RouteProps = {
-  path: "/exploration/:id",
+  path: "/explorations/:id",
   component: ExplorationDetail,
 };
 
