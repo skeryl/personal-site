@@ -1,0 +1,10 @@
+{
+  "name": "@sc/synth-builder",
+  "version": "0.0.0",
+  "dependencies": {
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/uuid": "^9.0.8"
+  }
+}

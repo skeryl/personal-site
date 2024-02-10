@@ -1,0 +1,25 @@
+
+.loading-container {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    
+    width: 100vw;
+    height: 100vh;
+
+    display: flex;
+    align-content: center;
+    justify-content: center;
+
+    opacity: 0.15;
+    background-color: #fff5f5;
+}
+
+.loading-container > canvas {
+    display: flex;
+    flex-grow: 0;
+    flex-shrink: 0;
+    width: 100px;
+    height: 100px;
+    align-self: center;
+    margin-top: -10vh;
+}

@@ -1,0 +1,6 @@
+export enum ControlState {
+  EDITING = "EDITING",
+  RECORDING = "RECORDING",
+  RECORDING_PAUSED = "RECORDING_PAUSED",
+  PLAYING = "PLAYING",
+}

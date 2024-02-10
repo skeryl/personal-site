@@ -1,0 +1,10 @@
+
+.container {
+    width: inherit;
+    display: flex;
+    flex-basis: 100%;
+}
+
+.container section {
+
+}
