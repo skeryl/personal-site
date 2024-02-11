@@ -1,7 +1,6 @@
 name: Build on PR
 
 on:
-  push:
   pull_request:
 
 jobs:
