@@ -11,7 +11,7 @@ const config = {
 
 	kit: {
 		paths: {
-			base: process.argv.includes('dev') ? '' : '/personal-site'
+			base: process.argv.includes('dev') ? '' : process.env.BASE_PATH
 		},
 		adapter: adapter({
 			precompress: true,
