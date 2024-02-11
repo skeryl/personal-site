@@ -1,8 +1,8 @@
 name: Build on PR
 
 on:
+  push:
   pull_request:
-    types: [opened, reopened]
 
 jobs:
   build_site:
