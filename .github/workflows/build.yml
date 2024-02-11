@@ -1,8 +1,7 @@
-name: Deploy to GitHub Pages
+name: Build on PR
 
 on:
-  push:
-    branches: 'main'
+  pull_request:
 
 jobs:
   build_site:
@@ -31,20 +30,3 @@ jobs:
         with:
           # this should match the `pages` option in your adapter-static options
           path: 'packages/ui/build/'
-
-  deploy:
-    needs: build_site
-    runs-on: ubuntu-latest
-
-    permissions:
-      pages: write
-      id-token: write
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-      - name: Deploy
-        id: deployment
-        uses: actions/deploy-pages@v2
