@@ -2,6 +2,7 @@
 	import type { PostSummary } from '@sc/model';
 	import Tags from '$lib/components/Tags.svelte';
 	import allPosts from '$lib/entries';
+	import { base } from '$app/paths';
 
 	function sortPosts(a: PostSummary, b: PostSummary): number {
 		return -1 * Math.sign(a.timestamp.getTime() - b.timestamp.getTime());
@@ -23,7 +24,7 @@
 
 <div class="posts-container">
 	{#each posts as post}
-		<a href={`/journal/${post.id}`}>
+		<a href={`${base}/journal/${post.id}`}>
 			<div class="post-header">
 				<div class="post-title">
 					<div>
