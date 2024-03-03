@@ -45,4 +45,7 @@
         @apply hover:scale-110;
         @apply transition-transform;
     }
+    .text-success {
+        @apply text-emerald-600;
+    }
 }
