@@ -1,2 +1,5 @@
-<h1>shane's computer</h1>
-<p>welcome</p>
+<script>
+    import PostList from "$lib/components/PostList.svelte";
+</script>
+
+<PostList/>

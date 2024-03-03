@@ -181,13 +181,14 @@ class Cell implements ExperimentContent3D {
 		camera.position.y = 6;
 
 		this.camera = camera;
+		this.walker.setPointerLock(true);
 	};
 
-	onFullScreenChange = (fullScreen: boolean) => {
+	/*onFullScreenChange = (fullScreen: boolean) => {
 		if (this.walker) {
 			this.walker.setPointerLock(fullScreen);
 		}
-	};
+	};*/
 
 	private addOblisks(wallMaterial: Material, scene: Scene) {
 		const oblisk = new Mesh(new BoxGeometry(2, 10, 1), wallMaterial);
@@ -312,6 +313,7 @@ const post: Post = {
 		type: PostType.experiment3d,
 		id: 'cell',
 		title: 'Cell',
+		isHidden: true,
 		timestamp: new Date(2019, 7, 4),
 		tags: ['3d', 'lighting']
 	},

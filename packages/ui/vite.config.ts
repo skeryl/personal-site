@@ -4,7 +4,8 @@ import postSummarizerPlugin from './plugins/post-summarizer';
 
 const postSummarizer = await postSummarizerPlugin({
 	entriesDir: './src/lib/entries/',
-	pagesDir: './src/routes/journal/'
+	pagesDir: './src/routes/journal/',
+	videosDir: './src/lib/assets/videos/posts/'
 });
 
 export default defineConfig({

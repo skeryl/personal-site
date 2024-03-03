@@ -35,7 +35,6 @@ export abstract class BookOfShadersContent implements ExperimentContent3D {
       if (this.onResize) {
         this.onResize(this.uniforms.u_resolution.value);
       }
-      console.log("resolution: ", this.uniforms.u_resolution.value);
     }
   };
 
