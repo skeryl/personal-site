@@ -262,6 +262,11 @@ class AntFarmContent implements StageContent {
 		this.startDrawLoop();
 	};
 
+	unpause() {
+		this.isPlaying = true;
+		this.startDrawLoop();
+	}
+
 	startDrawLoop = () => {
 		if (this.isPlaying && this.stage) {
 			this.stage.draw();
@@ -325,10 +330,10 @@ class AntFarmContent implements StageContent {
 			animation.cancel();
 		});
 		this.ongoingAnimations.clear();
-		if (this.stage) {
+		/*if (this.stage) {
 			this.stage.clear();
 			this.stage = undefined;
-		}
+		}*/
 	};
 }
 

@@ -7,13 +7,17 @@
     "url": "https://github.com/skeryl"
   },
   "description": "This is my personal site, playground, experimentation zone, research center for artistic computer science. Please have a look around. Try not to steal ideas outright (that's just uncool). If you see something you like and want to expand on, please reach out. Odds are I'll be happy to work with you!",
-  "dependencies": {},
   "devDependencies": {
-    "prettier": "^3.2.4"
+    "autoprefixer": "^10.4.17",
+    "postcss": "^8.4.35",
+    "prettier": "^3.2.4",
+    "tailwindcss": "^3.4.1"
   },
   "scripts": {
     "format": "prettier --trailing-comma all --write \"./packages/**/*.ts\""
   },
   "private": true,
-  "workspaces": ["packages/*"]
+  "workspaces": [
+    "packages/*"
+  ]
 }

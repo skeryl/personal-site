@@ -2,26 +2,8 @@
 	export let tags: string[] = [];
 </script>
 
-<div class="tag-container">
+<div class="flex gap-1">
 	{#each tags as tag}
-		<span class="tag">{tag}</span>
+		<span class="rounded-full py-1 px-3 border-2 text-xs text-nowrap h-fit">{tag}</span>
 	{/each}
 </div>
-
-<style>
-    .tag-container {
-        display: flex;
-        flex-direction: row;
-        flex-basis: 100%;
-
-    }
-
-    .tag {
-        font-style: italic;
-        padding: 2px 5px;
-        margin: 2px;
-        border: solid thin saddlebrown;
-        border-radius: 22px;
-        font-size: 11px;
-    }
-</style>

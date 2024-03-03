@@ -2,6 +2,8 @@
 	import { type Post, type RendererParams, type ExperimentContent3D } from '@sc/model';
 	import { PerspectiveCamera, Scene, Vector2, WebGLRenderer } from 'three';
 	import { MouseActiveTracker } from '$lib/utils/MouseActiveTracker';
+    import {getContext} from "svelte";
+    import {PlayState, PlayStateChangedEvent, PostControlContext} from "$lib/state/post-control";
 
 	export let post: Post | undefined = undefined;
 	export let cnv: HTMLCanvasElement | undefined = undefined;
@@ -43,6 +45,23 @@
 			window.requestAnimationFrame(animate);
 		}
 	}
+
+    const ctx = getContext('post-control') as PostControlContext;
+
+    let playState = ctx.state.playState;
+
+    ctx.addEventListener('post-play-state-changed', (ev) => {
+        playState = (ev as PlayStateChangedEvent).currentPlayState;
+        if(playState === PlayState.paused) {
+            content?.stop();
+        }
+        if(playState === PlayState.recording) {
+            if(cnv) {
+                const stream = cnv.captureStream(24);
+                ctx.captureRecording(stream);
+            }
+        }
+    });
 
 	$: if (cnv) {
 		const canvas = cnv!;

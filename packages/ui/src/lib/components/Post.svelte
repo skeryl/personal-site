@@ -1,36 +1,63 @@
 <script lang="ts">
-    import {type Post, PostType} from "@sc/model";
-    import ContentRendererStage from "$lib/components/ContentRendererStage.svelte";
-    import ContentRendererThree from "$lib/components/ContentRendererThree.svelte";
+	import { setContext } from 'svelte';
+	import { type Post, PostType } from '@sc/model';
+	import ContentRendererStage from '$lib/components/ContentRendererStage.svelte';
+	import ContentRendererThree from '$lib/components/ContentRendererThree.svelte';
+	import PostControlBar from '$lib/components/PostControlBar.svelte';
+	import { PlayState, PostControlContext } from '$lib/state/post-control';
 
-    export let post: Post | undefined;
-    $: title = post?.summary?.title;
+    const postControlContext = new PostControlContext({ playState: PlayState.playing, isFullScreen: false });
 
-    let container: HTMLDivElement | undefined = undefined;
-    let cnv: HTMLCanvasElement | undefined = undefined;
+    setContext(
+		'post-control',
+		postControlContext
+	);
 
+	export let post: Post | undefined;
+	$: title = post?.summary?.title;
+	$: date = post?.summary.timestamp;
+
+	let container: HTMLDivElement | undefined = undefined;
+	let cnv: HTMLCanvasElement | undefined = undefined;
+
+	function isFullscreen(): boolean {
+		return Boolean(document.fullscreenElement);
+	}
+
+	function toggleFullScreen() {
+		if (isFullscreen()) {
+			document.exitFullscreen().then(() => {
+				console.log('full screen exited.');
+                postControlContext.setFullScreen(false);
+			});
+		} else {
+			cnv?.parentElement?.requestFullscreen().then(() => {
+				console.log('entered full screen');
+                postControlContext.setFullScreen(true);
+			});
+		}
+	}
 </script>
 
-<div>
-    <h1>{title}</h1>
+<div class="flex flex-1 flex-col h-full">
+	<div class="flex flex-row items-baseline">
+		<h1 class="flex-1">{title}</h1>
+		<div>
+			{date?.toLocaleDateString()}
+		</div>
+	</div>
 
-    <div bind:this={container} class="container">
-        <canvas bind:this={cnv}>your browser does not support HTML canvas :(</canvas>
-    </div>
+	<div bind:this={container} class="flex flex-1 relative min-h-[80vh]">
+		<canvas bind:this={cnv}>your browser does not support HTML canvas :(</canvas>
+	</div>
 
-    {#if post}
-        {#if post.summary.type === PostType.experiment}
-            <ContentRendererStage post={post} container={container} cnv={cnv}/>
-        {:else}
-            <ContentRendererThree post={post} cnv={cnv}/>
-        {/if}
-    {/if}
+	{#if post}
+		{#if post.summary.type === PostType.experiment}
+			<ContentRendererStage {post} {container} {cnv} />
+		{:else}
+			<ContentRendererThree {post} {cnv} />
+		{/if}
+	{/if}
 
+	<PostControlBar {toggleFullScreen} postId={post?.summary.id}/>
 </div>
-
-<style>
-    .container {
-        width: 100vw;
-        height: 100vh;
-    }
-</style>

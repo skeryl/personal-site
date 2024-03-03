@@ -253,6 +253,7 @@ class ChrysanthemumContent implements StageContent {
 const post: Post = {
 	summary: {
 		id: 'chrysanthemum',
+		isHidden: true,
 		tags: ['mothers-day', 'floral', 'time'],
 		title: 'Chrysanthemum',
 		timestamp: new Date(2019, 4, 5),

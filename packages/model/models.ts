@@ -34,6 +34,8 @@ export interface Post<TContent extends PostContent = PostContent> {
 export interface StageContent {
   start(stage: Stage): void;
 
+  unpause?: () => void;
+
   stop(): void;
 }
 

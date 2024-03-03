@@ -1,5 +1,4 @@
 import { type PluginOption } from 'vite';
-import { type WatchChangeHook } from 'rollup';
 import fs from 'fs/promises';
 import path from 'path';
 import {
@@ -13,6 +12,7 @@ import {
 export interface PostSummarizerOptions {
 	entriesDir: string;
 	pagesDir: string;
+	videosDir: string;
 }
 
 export function capitalize(part: string): string {
@@ -29,21 +29,15 @@ export function toCamelCase(fileName: string): string {
 		.join('');
 }
 
-/*async function readPostFromFile(dir: string, fileName: string): Promise<Post | undefined> {
-	const filePath = path.resolve(path.join(dir, fileName));
-	const fileContents = await fs.readFile(filePath, 'utf-8');
-	if (!fileContents) {
-		return undefined;
-	}
-
-	return (loadModule(filePath, fileContents) as { default: Post }).default;
-}*/
+function noExt(fileName: string): string {
+	return fileName.split('.')[0];
+}
 
 function filesCamelCaseMap(files: string[]) {
 	return files.reduce(
 		(res, file) => ({
 			...res,
-			[file]: toCamelCase(file.split('.')[0])
+			[file]: toCamelCase(noExt(file))
 		}),
 		{}
 	);
@@ -61,7 +55,7 @@ async function generateIndexImports(indexPath: string, files: string[]) {
 
 	const importDeclarations: OptionalKind<ImportDeclarationStructure>[] = files.map((file) => ({
 		defaultImport: fileCamelCase[file],
-		moduleSpecifier: `$lib/entries/${file.split('.')[0]}`
+		moduleSpecifier: `$lib/entries/${noExt(file)}`
 	}));
 
 	sourceFile.addImportDeclarations(importDeclarations);
@@ -109,27 +103,13 @@ async function doIfNotExists(file: string, sumpn: () => Promise<void>): Promise<
 	}
 }
 
-/*
-*     const noteShader = import("$lib/entries/note-shader");
-</script>
-
-{#await noteShader}
-    <p>post is loading</p>
-{:then noteShaderPost}
-    <Post post={noteShaderPost.default}/>
-{:catch error}
-    <p>Error! {error.message}</p>
-{/await}
-
-* */
-
 async function generatePostPage(
 	pagesDir: string,
 	file: string,
 	fileCamelCase: string
 ): Promise<void> {
 	const project = new Project();
-	const postId = file.split('.')[0];
+	const postId = noExt(file);
 
 	const pageFile = path.join(pagesDir, postId, '+page.svelte');
 	await doIfNotExists(pageFile, async () => {
@@ -161,9 +141,67 @@ async function generatePostPages(pagesDir: string, files: string[]) {
 	return Promise.all(files.map((p) => generatePostPage(pagesDir, p, fileCamelCase[p])));
 }
 
+async function generateVideoSummary(dir: string) {
+	const videosDir = path.resolve(dir);
+
+	const postVideoNames = (await fs.readdir(videosDir)).filter((f) => f !== 'index.ts');
+	// const postVideos = postVideoNames.map((v) => path.join(videosDir, v));
+
+	const proj = new Project();
+
+	const sourceFile = proj.createSourceFile(path.join(videosDir, 'index.ts'), undefined, {
+		overwrite: true
+	});
+
+	const fileCamelCase: Record<string, string> = filesCamelCaseMap(postVideoNames);
+
+	sourceFile.addImportDeclarations(
+		postVideoNames.map(
+			(v) =>
+				({
+					defaultImport: fileCamelCase[v],
+					moduleSpecifier: `$lib/assets/videos/posts/${v}`
+				}) as ImportDeclarationStructure
+		)
+	);
+
+	/*
+	*
+	*
+	export const videos = {
+		["ant-farm"]: antFarm,
+		...
+	};
+	*
+	* */
+	sourceFile.addVariableStatement({
+		kind: StructureKind.VariableStatement,
+		declarationKind: VariableDeclarationKind.Const,
+		declarations: [
+			{
+				name: 'videos',
+				initializer: `{
+					${postVideoNames.map((file) => `["${noExt(file)}"]: ${fileCamelCase[file]}`).join(',\n')}
+}`,
+				type: (writer) => writer.write('Record<string, string>')
+			}
+		]
+	});
+
+	sourceFile.addExportAssignment({
+		isExportEquals: false,
+		expression: 'videos'
+	});
+
+	sourceFile.formatText();
+
+	await sourceFile.save();
+}
+
 export default async function postSummarizer({
 	entriesDir,
-	pagesDir
+	pagesDir,
+	videosDir
 }: PostSummarizerOptions): Promise<PluginOption> {
 	const dir = path.resolve(entriesDir);
 	const pagesDirAbsolute = path.resolve(pagesDir);
@@ -171,13 +209,19 @@ export default async function postSummarizer({
 	const svelteKitPath = path.resolve(__dirname, '../.svelte-kit/');
 
 	const watchChange = async function (id?: string) {
-		if (id === indexPath || id?.startsWith(pagesDirAbsolute) || id?.startsWith(svelteKitPath)) {
+		if (
+			id === indexPath ||
+			id?.startsWith(pagesDirAbsolute) ||
+			id?.startsWith(svelteKitPath) ||
+			id?.endsWith('assets/videos/posts/index.ts')
+		) {
 			return;
 		}
 		const files = (await fs.readdir(dir)).filter((f) => f !== 'index.ts');
 
 		await generateIndexImports(indexPath, files);
 		await generatePostPages(pagesDirAbsolute, files);
+		await generateVideoSummary(videosDir);
 	};
 
 	await watchChange();

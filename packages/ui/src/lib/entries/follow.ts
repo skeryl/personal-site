@@ -121,8 +121,11 @@ class FollowContent implements StageContent {
 
 		let position = { x: halfWidth, y: size.height / 2 };
 
-		this.stage.onMouseClick(async (mouse) => {
-			position = mouse.position();
+		this.stage.canvas.addEventListener('click', async (e: MouseEvent) => {
+			position = {
+				x: e.x,
+				y: e.y
+			};
 			if (this.pens) {
 				await this.drawSpiral(position);
 
@@ -178,7 +181,7 @@ class FollowContent implements StageContent {
 const post: Post = {
 	summary: {
 		id: 'follow',
-		tags: ['fun', 'canvas', 'grraf', 'interactive'],
+		tags: ['fun', 'canvas'],
 		title: 'Follow',
 		timestamp: new Date(2019, 1, 16),
 		type: PostType.experiment

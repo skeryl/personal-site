@@ -1,7 +1,11 @@
-<nav>
-    <a href={`/`}>home</a>
-    <a href={`/journal`}>journal</a>
-    <a href={`/about`}>about</a>
-</nav>
+<script>
+    import "iconify-icon";
+    import "../app.css";
+    import Nav from "$lib/components/nav/Nav.svelte"
+</script>
 
-<slot/>
+<Nav/>
+
+<div class="py-1 px-6 max-sm:px-3">
+    <slot/>
+</div>
