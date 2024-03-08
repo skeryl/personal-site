@@ -15,7 +15,7 @@ import {
 	SpotLight,
 	TubeGeometry
 } from 'three';
-import { DragControls } from 'three/examples/jsm/controls/DragControls';
+import { DragControls } from 'three/examples/jsm/controls/DragControls.js';
 import { Walker } from '$lib/simulation/helpers/walker';
 import { Spring, SpringHelper } from '$lib/simulation/helpers/spring';
 import { MouseTracker } from '$lib/simulation/helpers/mouse-tracker';
