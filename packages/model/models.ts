@@ -43,6 +43,7 @@ export interface RendererParams {
   scene: Scene;
   camera: PerspectiveCamera;
   renderer: WebGLRenderer;
+  container: HTMLElement;
 }
 
 export interface ExperimentContent3D {

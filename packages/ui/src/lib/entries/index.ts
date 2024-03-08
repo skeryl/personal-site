@@ -11,6 +11,8 @@ import notePoints from "$lib/entries/note-points";
 import noteShader from "$lib/entries/note-shader";
 import orbit from "$lib/entries/orbit";
 import primeColoring from "$lib/entries/prime-coloring";
+import splineExperiment0 from "$lib/entries/spline-experiment-0";
+import spring from "$lib/entries/spring";
 import squiggles from "$lib/entries/squiggles";
 
 const posts = {
@@ -26,6 +28,8 @@ const posts = {
     [noteShader.summary.id]: noteShader,
     [orbit.summary.id]: orbit,
     [primeColoring.summary.id]: primeColoring,
+    [splineExperiment0.summary.id]: splineExperiment0,
+    [spring.summary.id]: spring,
     [squiggles.summary.id]: squiggles
 };
 

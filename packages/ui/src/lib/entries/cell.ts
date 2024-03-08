@@ -12,137 +12,13 @@ import {
 	MeshPhongMaterial,
 	MirroredRepeatWrapping,
 	PlaneGeometry,
-	Raycaster,
 	Scene,
 	SpotLight,
 	TextureLoader,
-	Vector2,
-	Vector3,
 	WebGLRenderer
 } from 'three';
-
-import { PointerLockControls } from '$lib/shapes';
 import cinderBlocks from '$lib/assets/images/cinder-blocks.jpg';
-
-class KeyPressHelper {
-	public onEvent: (() => void) | undefined;
-
-	private down: { [key: string]: boolean } = {
-		w: false,
-		a: false,
-		s: false,
-		d: false
-	};
-
-	constructor() {
-		window.addEventListener('keydown', this.onKeyDown);
-		window.addEventListener('keyup', this.onKeyUp);
-	}
-
-	private onKeyDown = (ev: KeyboardEvent) => {
-		this.down[ev.key.toLowerCase()] = true;
-		if (this.onEvent) {
-			this.onEvent();
-		}
-	};
-
-	private onKeyUp = (ev: KeyboardEvent) => {
-		this.down[ev.key.toLowerCase()] = false;
-		if (this.onEvent) {
-			this.onEvent();
-		}
-	};
-
-	public isDown(key: string) {
-		return Boolean(this.down[key.toLowerCase()]);
-	}
-}
-
-class Walker {
-	private readonly raycaster: Raycaster = new Raycaster(
-		new Vector3(),
-		new Vector3(0, -1, 0),
-		0,
-		10
-	);
-
-	public readonly mouse: Vector2 = new Vector2();
-	private readonly size = new Vector2();
-
-	private velocity = new Vector3();
-
-	private readonly controls: PointerLockControls;
-	private lastTime: number = 0;
-
-	constructor(
-		private readonly camera: Camera,
-		private readonly renderer: WebGLRenderer,
-		private readonly scene: Scene,
-		public readonly direction: Vector3 = new Vector3(),
-		private keyHelper: KeyPressHelper = new KeyPressHelper()
-	) {
-		this.controls = new PointerLockControls(this.camera);
-
-		this.scene.add(this.controls.getObject());
-		window.addEventListener('mousemove', this.onMouseMove);
-	}
-
-	public setPointerLock = (lock: boolean) => {
-		if (lock) {
-			this.controls.lock();
-		} else {
-			this.controls.unlock();
-		}
-	};
-
-	private onMouseMove = (ev: MouseEvent) => {
-		this.renderer.getSize(this.size);
-		this.mouse.x = (ev.clientX / this.size.x) * 2 - 1;
-		this.mouse.y = -(ev.clientY / this.size.y) * 2 + 1;
-	};
-
-	update = () => {
-		if (!this.lastTime) {
-			this.lastTime = performance.now();
-		}
-
-		this.raycaster.ray.origin.copy(this.controls.getObject().position);
-		this.raycaster.ray.origin.y -= 10;
-
-		const direction = this.raycaster.ray.direction;
-
-		const time = performance.now();
-		const delta = (time - this.lastTime) / 1000;
-
-		this.velocity.x -= this.velocity.x * 10.0 * delta;
-		this.velocity.z -= this.velocity.z * 10.0 * delta;
-
-		this.velocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass
-
-		const moveForward = this.keyHelper.isDown('w');
-		const moveBackward = this.keyHelper.isDown('s');
-		const moveRight = this.keyHelper.isDown('d');
-		const moveLeft = this.keyHelper.isDown('a');
-
-		direction.z = Number(moveForward) - Number(moveBackward);
-		direction.x = Number(moveLeft) - Number(moveRight);
-		direction.normalize(); // this ensures consistent movements in all directions
-
-		if (moveForward || moveBackward) this.velocity.z -= direction.z * 150.0 * delta;
-		if (moveLeft || moveRight) this.velocity.x -= direction.x * 150.0 * delta;
-
-		this.controls.getObject().translateX(this.velocity.x * delta);
-		this.controls.getObject().position.y += this.velocity.y * delta; // new behavior
-		this.controls.getObject().translateZ(this.velocity.z * delta);
-
-		if (this.controls.getObject().position.y < 10) {
-			this.velocity.y = 0;
-			this.controls.getObject().position.y = 10;
-		}
-
-		this.lastTime = window.performance.now();
-	};
-}
+import { Walker } from '$lib/simulation/helpers/walker';
 
 class Cell implements ExperimentContent3D {
 	private lights: Light[] = [];
@@ -181,14 +57,11 @@ class Cell implements ExperimentContent3D {
 		camera.position.y = 6;
 
 		this.camera = camera;
-		this.walker.setPointerLock(true);
 	};
 
-	/*onFullScreenChange = (fullScreen: boolean) => {
-		if (this.walker) {
-			this.walker.setPointerLock(fullScreen);
-		}
-	};*/
+	onFullScreenChange = (fullScreen: boolean) => {
+		this.walker?.setPointerLock(fullScreen);
+	};
 
 	private addOblisks(wallMaterial: Material, scene: Scene) {
 		const oblisk = new Mesh(new BoxGeometry(2, 10, 1), wallMaterial);
