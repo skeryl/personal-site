@@ -6,6 +6,7 @@ import mirrors from "$lib/assets/videos/posts/mirrors.webm";
 import noteShader from "$lib/assets/videos/posts/note-shader.webm";
 import orbit from "$lib/assets/videos/posts/orbit.webm";
 import primeColoring from "$lib/assets/videos/posts/prime-coloring.webm";
+import springHarp from "$lib/assets/videos/posts/spring-harp.webm";
 import squiggles from "$lib/assets/videos/posts/squiggles.webm";
 
 const videos: Record<string, string> = {
@@ -17,6 +18,7 @@ const videos: Record<string, string> = {
     ["note-shader"]: noteShader,
     ["orbit"]: orbit,
     ["prime-coloring"]: primeColoring,
+    ["spring-harp"]: springHarp,
     ["squiggles"]: squiggles
 };
 

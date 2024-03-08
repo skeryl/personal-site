@@ -7,11 +7,6 @@
     export let className: string = '';
 
     $: isActiveRoute = $page.url.pathname === href;
-
-    $: {
-        console.log("path: ", $page.url.pathname);
-    }
-
 </script>
 
 <a href={href} class={`${isActiveRoute ? 'underline underline-offset-4' : 'no-underline'} ${className}`}>{text}</a>
