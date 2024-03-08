@@ -1,8 +1,7 @@
 import { type ExperimentContent3D, type Post, PostType, type RendererParams } from '@sc/model';
 import {
-	AmbientLight,
 	Camera,
-	Clock,
+	CircleGeometry,
 	Color,
 	DoubleSide,
 	Light,
@@ -11,23 +10,19 @@ import {
 	MeshBasicMaterial,
 	MeshPhongMaterial,
 	MeshStandardMaterial,
-	PlaneGeometry,
 	Scene,
 	SphereGeometry,
 	SpotLight,
 	TubeGeometry
 } from 'three';
 import { DragControls } from 'three/examples/jsm/controls/DragControls';
-// import { ArcballControls } from 'three/examples/jsm/controls/ArcballControls.js';
 import { Walker } from '$lib/simulation/helpers/walker';
 import { Spring, SpringHelper } from '$lib/simulation/helpers/spring';
 import { MouseTracker } from '$lib/simulation/helpers/mouse-tracker';
 import { MutableAudioNode as AudioGraphNode } from '@sc/synth-builder/src/core/nodes/MutableAudioNode';
 import { MutableAudioGraph } from '@sc/synth-builder/src/core/nodes/MutableAudioGraph';
-import { NodeTypes } from '@sc/synth-builder/src/model/nodes';
 import { Synth } from '@sc/synth-builder/src/core/Synth';
 import { Notes, Pitch, PitchInformation } from '@sc/synth-builder/src/model/notes';
-import type { Note } from '@sc/synth-builder/src/core/composition';
 
 function createSphere(sphereMaterial: MeshStandardMaterial, x: number, y: number, z: number) {
 	const sphere = new SphereGeometry(1, 18, 24);
@@ -63,11 +58,8 @@ const pitchesByFrequency = Object.entries(PitchInformation)
 console.log(pitchesByFrequency.length);
 
 function getPitch(y: number): Pitch | undefined {
-	const upperBound = 24;
-	const yValue = Math.max(0, Math.min(upperBound, y));
-	const value = yValue / upperBound;
-	console.log('ys: ', yValue, value);
-
+	const upperBound = 8;
+	const value = Math.abs(y) / upperBound;
 	return pitchesByFrequency[Math.floor(pitchesByFrequency.length * value - 1)]?.[0] as Pitch;
 }
 
@@ -118,7 +110,7 @@ class SpringExp implements ExperimentContent3D {
 		});
 
 		const { sphereMesh: sphereMeshA } = createSphere(sphereMaterial, 0, 10, 0);
-		const { sphereMesh: sphereMeshB } = createSphere(sphereMaterial, 0, 3, 0);
+		const { sphereMesh: sphereMeshB } = createSphere(sphereMaterial, 0, 0, 0);
 
 		sphereMeshA.castShadow = true;
 		sphereMeshB.castShadow = true;
@@ -142,12 +134,12 @@ class SpringExp implements ExperimentContent3D {
 		const geometry = new TubeGeometry(this.lineCurve, 64, 0.05, 8);
 		this.line = new Mesh(geometry, this.lineMaterial);
 
-		const planeGeometry = new PlaneGeometry(100, 100);
+		const planeGeometry = new CircleGeometry(300, 64);
 		const planeMesh = new Mesh(
 			planeGeometry,
 			new MeshBasicMaterial({ color: 0x22c3d0, side: DoubleSide })
 		);
-		planeMesh.position.set(0, 0, 0);
+		planeMesh.position.set(0, -40, 0);
 		planeMesh.rotation.set(Math.PI / 2, 0, 0);
 		scene.add(planeMesh);
 
@@ -164,6 +156,8 @@ class SpringExp implements ExperimentContent3D {
 		camera.position.x = -10;
 		camera.position.y = 6;
 		camera.lookAt(0, 0, 0);
+
+		console.log(this.synth.oscillators);
 	};
 
 	onFullScreenChange = (isFull: boolean) => {
@@ -180,15 +174,29 @@ class SpringExp implements ExperimentContent3D {
 				this.lineCurve?.v1.copy(this.spring.pointA.mesh.position);
 				this.lineCurve?.v2.copy(this.spring.pointB.mesh.position);
 
-				const newNote = getPitch(
-					this.spring.pointB.mesh.position.distanceTo(this.spring.pointA.mesh.position)
-				);
+				const newNote = getPitch(this.spring.displacement);
 				if (newNote) {
 					if (this.lastNote && this.lastNote !== newNote) {
 						this.synth.stopPlaying(this.lastNote);
 					}
 					this.synth.startPlaying(newNote);
 					this.lastNote = newNote;
+
+					const { x, y, z } = this.spring.velocityB;
+
+					const velocityMagnitude = Math.pow(
+						Math.pow(x, 2) + Math.pow(y, 2) + Math.pow(z, 2),
+						1 / 3
+					);
+
+					if (velocityMagnitude < 0.0001) {
+						this.synth.fadeOutAll();
+						this.lastNote = undefined;
+					} else {
+						const velocityGain = Math.min(Math.log(velocityMagnitude + 1) / 40, 0.35);
+						console.log('velocityGain: ', velocityGain);
+						this.synth.setGain(velocityGain);
+					}
 				}
 
 				this.line.geometry = new TubeGeometry(this.lineCurve, 64, 0.05, 8);
@@ -217,6 +225,7 @@ class SpringExp implements ExperimentContent3D {
 			return;
 		}
 		this.lights.forEach((light) => scene.remove(light));
+		this.synth.destroy();
 	};
 
 	private setupLights(scene: Scene) {
@@ -235,8 +244,8 @@ class SpringExp implements ExperimentContent3D {
 const post: Post = {
 	summary: {
 		type: PostType.experiment3d,
-		id: 'spring',
-		title: 'Spring',
+		id: 'spring-harp',
+		title: 'Spring Harp',
 		timestamp: new Date(2024, 2, 3),
 		tags: ['3d', 'mathematics']
 	},

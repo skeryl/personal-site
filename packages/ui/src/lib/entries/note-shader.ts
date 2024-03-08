@@ -68,6 +68,7 @@ class NoteShaderContent extends BookOfShadersContent {
 		if (this.onUnmount) {
 			this.onUnmount();
 		}
+		this.synth.destroy();
 	};
 
 	getFragmentShader =

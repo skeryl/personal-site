@@ -2,7 +2,7 @@
 	import { type Post, type RendererParams, type ExperimentContent3D } from '@sc/model';
 	import { PerspectiveCamera, Scene, Vector2, WebGLRenderer } from 'three';
 	import { MouseActiveTracker } from '$lib/utils/MouseActiveTracker';
-	import { getContext } from 'svelte';
+    import {getContext, onMount} from 'svelte';
 	import {
 		FullScreenChangeEvent,
 		PlayState,
@@ -72,6 +72,12 @@
 		const { isFullScreen } = ev as FullScreenChangeEvent;
         content?.onFullScreenChange?.(isFullScreen);
 	});
+
+    onMount(() => {
+        return () => {
+            content?.stop();
+        };
+    });
 
 	$: if (cnv) {
 		const canvas = cnv!;

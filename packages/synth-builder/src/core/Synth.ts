@@ -199,7 +199,6 @@ export class Synth implements ISynth {
   public setGain(gain: number): void {
     const gainNode = this.audioGraph.findClosest(NodeTypes.Gain)!;
     gainNode.setProperty("maxGain", gain);
-    this.pitches.clear();
   }
 
   public get gainNodes(): IAudioNode[] {
@@ -280,7 +279,7 @@ export class Synth implements ISynth {
     );
   }
 
-  private destroy() {
+  public destroy() {
     // this.osc.destroy();
     if (this.node?.stop) {
       this.node.stop(0);
@@ -294,6 +293,7 @@ export class Synth implements ISynth {
       this.stopPlaying(playing),
     );
     this.releasing.clear();
+    this.context.close();
   }
 
   private getMaxGain(gainNode: IAudioNode): number {
@@ -373,7 +373,7 @@ export class Synth implements ISynth {
     this.playing.add(pitch);
   }
 
-  stopPlaying(pitch: Pitch) {
+  stopPlaying(pitch: Pitch, fadeOutTime = 0) {
     if (this.attacking.has(pitch)) {
       this.attacking.delete(pitch);
     }
@@ -388,12 +388,17 @@ export class Synth implements ISynth {
         );
         return gainNode.gain.exponentialRampToValueAtTime(
           MINIMUM_GAIN,
-          this.context.currentTime + releaseTime,
+          this.context.currentTime + releaseTime + fadeOutTime,
         );
       });
       this.releasing.set(pitch, rampDown, releaseTime * 1000);
       this.playing.delete(pitch);
     }
+  }
+
+  fadeOutAll(overTime = 1) {
+    console.log("Fading out all! ", Array.from(this.playing));
+    this.playing.forEach((note) => this.stopPlaying(note, overTime));
   }
 
   private transformGraph() {

@@ -37,6 +37,11 @@ export class Spring {
 		this.options = { ...DEFAULT_OPTIONS, ...options };
 	}
 
+	public get displacement(): number {
+		const distance = this.pointB.mesh.position.distanceTo(this.pointA.mesh.position);
+		return distance - this.options.length;
+	}
+
 	tick() {
 		const delta = this.clock.getDelta();
 
@@ -51,11 +56,7 @@ export class Spring {
 
 		const direction = this.pointB.mesh.position.clone().sub(this.pointA.mesh.position).normalize();
 
-		const distance = this.pointB.mesh.position.distanceTo(this.pointA.mesh.position);
-
-		const displacement = distance - this.options.length;
-
-		const kForce = direction.clone().multiplyScalar(displacement * k * -1);
+		const kForce = direction.clone().multiplyScalar(this.displacement * k * -1);
 		const netForces = kForce.clone().add(forceGravity);
 
 		// F = m * a <=> a = F / m
