@@ -1,7 +1,7 @@
 <script lang="ts">
     import {type Post, type PostContent, type StageContent} from "@sc/model";
     import {Stage} from "grraf";
-    import {getContext} from "svelte";
+    import {getContext, onMount} from "svelte";
     import {PlayState, PlayStateChangedEvent, PostControlContext} from "$lib/state/post-control";
 
     export let post: Post<PostContent> | undefined = undefined;
@@ -37,4 +37,10 @@
         stage.canvas.width = container!.clientWidth;
         content?.start(stage);
     }
+
+    onMount(() => {
+        return () => {
+            content?.stop();
+        };
+    });
 </script>

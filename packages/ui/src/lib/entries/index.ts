@@ -1,5 +1,6 @@
 /** This file was generated automatically by a script. Do not modify this file manually. */
 import antFarm from "$lib/entries/ant-farm";
+import bouncyCapsule from "$lib/entries/bouncy-capsule";
 import cell from "$lib/entries/cell";
 import chrysanthemum from "$lib/entries/chrysanthemum";
 import cubePegTorusHole from "$lib/entries/cube-peg-torus-hole";
@@ -17,6 +18,7 @@ import squiggles from "$lib/entries/squiggles";
 
 const posts = {
     [antFarm.summary.id]: antFarm,
+    [bouncyCapsule.summary.id]: bouncyCapsule,
     [cell.summary.id]: cell,
     [chrysanthemum.summary.id]: chrysanthemum,
     [cubePegTorusHole.summary.id]: cubePegTorusHole,

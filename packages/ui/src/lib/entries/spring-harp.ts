@@ -97,14 +97,9 @@ class SpringExp implements ExperimentContent3D {
 		this.scene = scene;
 
 		this.walker = new Walker(camera, renderer);
-		/*		this.mouseTracker = new MouseTracker(renderer);*/
-
-		// const controls = new ArcballControls(camera, container);
 
 		const sphereMaterial = new MeshStandardMaterial({
 			color: this.sphereColor,
-			/*transparent: true,
-			opacity: 0.75,*/
 			roughness: 0.7,
 			metalness: 0.5
 		});
@@ -116,6 +111,7 @@ class SpringExp implements ExperimentContent3D {
 		sphereMeshB.castShadow = true;
 
 		this.dragControls = new DragControls([sphereMeshA, sphereMeshB], camera, container);
+		this.dragControls.activate();
 
 		const springPointB = { mesh: sphereMeshB, mass: 20 };
 		const springPointA = { mesh: sphereMeshA, mass: 100, isFixed: true };
@@ -194,7 +190,6 @@ class SpringExp implements ExperimentContent3D {
 						this.lastNote = undefined;
 					} else {
 						const velocityGain = Math.min(Math.log(velocityMagnitude + 1) / 40, 0.35);
-						console.log('velocityGain: ', velocityGain);
 						this.synth.setGain(velocityGain);
 					}
 				}
@@ -226,6 +221,7 @@ class SpringExp implements ExperimentContent3D {
 		}
 		this.lights.forEach((light) => scene.remove(light));
 		this.synth.destroy();
+		this.dragControls?.dispose();
 	};
 
 	private setupLights(scene: Scene) {

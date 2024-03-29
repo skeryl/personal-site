@@ -14,6 +14,7 @@
 	export let cnv: HTMLCanvasElement | undefined = undefined;
 
 	let renderParams: RendererParams | undefined;
+    let frame: number | undefined;
 
 	$: content = post?.content() as ExperimentContent3D;
 
@@ -47,7 +48,7 @@
 			if (content.onRender) {
 				content.onRender();
 			}
-			window.requestAnimationFrame(animate);
+			frame = window.requestAnimationFrame(animate);
 		}
 	}
 
@@ -76,6 +77,9 @@
     onMount(() => {
         return () => {
             content?.stop();
+            if(frame) {
+                window.cancelAnimationFrame(frame)
+            }
         };
     });
 
@@ -97,14 +101,6 @@
 			renderer,
             container: cnv.parentElement as HTMLElement
 		};
-
-		const mouseActiveTracker = new MouseActiveTracker(
-			canvas,
-			() => {
-				isMouseActive = true;
-			},
-			3000
-		);
 
 		window.addEventListener('resize', handleResize);
 		handleResize();
