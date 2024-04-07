@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { type Post, type RendererParams, type ExperimentContent3D } from '@sc/model';
 	import { PerspectiveCamera, Scene, Vector2, WebGLRenderer } from 'three';
-	import { MouseActiveTracker } from '$lib/utils/MouseActiveTracker';
-    import {getContext, onMount} from 'svelte';
+	import { getContext, onMount } from 'svelte';
 	import {
 		FullScreenChangeEvent,
 		PlayState,
@@ -70,47 +69,46 @@
 
 	ctx.addEventListener('post-full-screen-changed', (ev) => {
 		const { isFullScreen } = ev as FullScreenChangeEvent;
-        content?.onFullScreenChange?.(isFullScreen);
+		content?.onFullScreenChange?.(isFullScreen);
 	});
 
-    onMount(() => {
-        return () => {
-            content?.stop();
-        };
-    });
+	ctx.onParamsChanged((p) => {
+		console.log('received params changed event: ', p);
+		content?.setParams?.(p);
+	});
+
+	onMount(() => {
+		return () => {
+			content?.stop();
+		};
+	});
 
 	$: if (cnv) {
-		const canvas = cnv!;
-		const renderer = new WebGLRenderer({
-			canvas: canvas,
-			alpha: true,
-			antialias: true
-		});
-		renderer.shadowMap.enabled = true;
+		if (!isRunning) {
+			const canvas = cnv!;
+			const renderer = new WebGLRenderer({
+				canvas: canvas,
+				alpha: true,
+				antialias: true
+			});
+			renderer.shadowMap.enabled = true;
 
-		const scene = new Scene();
-		const camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+			const scene = new Scene();
+			const camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-		renderParams = {
-			scene,
-			camera,
-			renderer,
-            container: cnv.parentElement as HTMLElement
-		};
+			renderParams = {
+				scene,
+				camera,
+				renderer,
+				container: cnv.parentElement as HTMLElement
+			};
 
-		const mouseActiveTracker = new MouseActiveTracker(
-			canvas,
-			() => {
-				isMouseActive = true;
-			},
-			3000
-		);
-
-		window.addEventListener('resize', handleResize);
-		handleResize();
-		content.start(renderParams);
-		isRunning = true;
-		animate();
-		setTimeout(() => handleResize(), 10);
+			window.addEventListener('resize', handleResize);
+			handleResize();
+			content.start(renderParams);
+			isRunning = true;
+			animate();
+			setTimeout(() => handleResize(), 10);
+		}
 	}
 </script>

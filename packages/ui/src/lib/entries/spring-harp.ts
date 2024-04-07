@@ -194,7 +194,6 @@ class SpringExp implements ExperimentContent3D {
 						this.lastNote = undefined;
 					} else {
 						const velocityGain = Math.min(Math.log(velocityMagnitude + 1) / 40, 0.35);
-						console.log('velocityGain: ', velocityGain);
 						this.synth.setGain(velocityGain);
 					}
 				}

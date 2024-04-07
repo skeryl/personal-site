@@ -1,5 +1,6 @@
 import { Stage } from "grraf";
 import { PerspectiveCamera, Scene, WebGLRenderer } from "three";
+import type { ContentParams } from "@sc/ui/src/lib/content-params";
 
 export interface Unique {
   id: string;
@@ -29,6 +30,7 @@ export type ContentGenerator<T extends PostContent> = () => T;
 export interface Post<TContent extends PostContent = PostContent> {
   summary: PostSummary;
   content: ContentGenerator<TContent>;
+  params?: ContentParams;
 }
 
 export interface StageContent {
@@ -53,4 +55,7 @@ export interface ExperimentContent3D {
 
   onRender?: () => void;
   onFullScreenChange?: (isFullScreen: boolean) => void;
+
+  getParams?: () => ContentParams;
+  setParams?: (values: ContentParams) => void;
 }

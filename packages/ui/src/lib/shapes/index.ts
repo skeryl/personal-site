@@ -1,2 +1,2 @@
-export * from "./WackySegment";
-export * from "./PointerLockControls";
+export * from './WackySegment';
+export * from './PointerLockControls';

@@ -8,9 +8,13 @@
 		PostControlContext,
 		RecordingCompleteEvent
 	} from '$lib/state/post-control';
+	import { type ContentParam, type ContentParams, ParamType } from '$lib/content-params';
+	import ParamInput from '$lib/components/content-params/ParamInput.svelte';
 
 	export let toggleFullScreen: MouseEventHandler<any>;
+	export let toggleParams: MouseEventHandler<any>;
 	export let postId: string = 'post';
+	export let hasParams: boolean | undefined;
 
 	const ctx = getContext('post-control') as PostControlContext;
 
@@ -51,7 +55,7 @@
 
 	function onRecordClicked(e: MouseEvent) {
 		e.stopPropagation();
-		if(activeCountdownTimeout) {
+		if (activeCountdownTimeout) {
 			window.clearTimeout(activeCountdownTimeout);
 			resetState();
 			return;
@@ -122,14 +126,24 @@
 						></Icon> download recording</span
 					>
 				</a>
-				<button class="flex self-center pl-1" aria-label="click to dismiss recording" on:click={dismissRecording}>
-					<Icon type="circle-x" className="hover:text-red-600" size="sm"/>
-				</button
+				<button
+					class="flex self-center pl-1"
+					aria-label="click to dismiss recording"
+					on:click={dismissRecording}
 				>
+					<Icon type="circle-x" className="hover:text-red-600" size="sm" />
+				</button>
 			</div>
 		{/if}
 	</div>
-	<div class="flex">
+	{#if hasParams}
+		<div class="flex mr-2">
+			<button on:click={toggleParams} class="flex">
+				<Icon type="settings" className="control-icon justify-center self-center items-center" />
+			</button>
+		</div>
+	{/if}
+	<div class="flex mr-2">
 		<button on:click={toggleFullScreen} class="flex h-full p-2">
 			<Icon type="maximize" className="control-icon justify-center self-center items-center" />
 		</button>
