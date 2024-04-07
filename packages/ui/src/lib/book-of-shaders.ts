@@ -14,7 +14,6 @@ import type { IUniform } from '$lib/three';
 export abstract class BookOfShadersContent implements ExperimentContent3D {
 	private renderer: WebGLRenderer | undefined;
 	private scene: Scene | undefined;
-	private geometry: BufferGeometry | undefined;
 	protected uniforms: Record<string, IUniform> = {
 		u_time: { type: 'f', value: 1.0 } as unknown as IUniform,
 		u_resolution: {
@@ -35,7 +34,6 @@ export abstract class BookOfShadersContent implements ExperimentContent3D {
 			if (this.onResize) {
 				this.onResize(this.uniforms.u_resolution.value);
 			}
-			console.log('resolution: ', this.uniforms.u_resolution.value);
 		}
 	};
 
@@ -65,6 +63,10 @@ export abstract class BookOfShadersContent implements ExperimentContent3D {
 
 	abstract getFragmentShader: () => string;
 
+	getGeometry: () => BufferGeometry = () => {
+		return new PlaneGeometry(2, 2);
+	};
+
 	public start({ scene, camera, renderer }: RendererParams) {
 		this.renderer = renderer;
 
@@ -72,8 +74,6 @@ export abstract class BookOfShadersContent implements ExperimentContent3D {
 		const fragmentShader = this.getFragmentShader();
 		camera.position.z = 1;
 		this.scene = scene;
-
-		this.geometry = new PlaneGeometry(2, 2);
 
 		const material = new ShaderMaterial({
 			depthTest: true,
@@ -83,7 +83,8 @@ export abstract class BookOfShadersContent implements ExperimentContent3D {
 			fragmentShader
 		});
 
-		scene.add(new Mesh(this.geometry, material));
+		const mesh = new Mesh(this.getGeometry(), material);
+		scene.add(mesh);
 
 		this.onWindowResize();
 		window.addEventListener('resize', this.onWindowResize.bind(this), false);

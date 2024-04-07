@@ -1,5 +1,5 @@
 <script>
-    import PostList from "$lib/components/PostList.svelte";
+	import PostList from '$lib/components/PostList.svelte';
 </script>
 
-<PostList/>
+<PostList />

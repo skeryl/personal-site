@@ -7,6 +7,7 @@
       <excludeFolder url="file://$MODULE_DIR$/tmp" />
       <excludeFolder url="file://$MODULE_DIR$/archive/packages/personal-site-ui/public/dist" />
       <excludeFolder url="file://$MODULE_DIR$/packages/ui/.svelte-kit" />
+      <excludeFolder url="file://$MODULE_DIR$/archive" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

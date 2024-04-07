@@ -5,6 +5,7 @@ import chrysanthemum from "$lib/entries/chrysanthemum";
 import cubePegTorusHole from "$lib/entries/cube-peg-torus-hole";
 import downSouth from "$lib/entries/down-south";
 import follow from "$lib/entries/follow";
+import gravitySwell from "$lib/entries/gravity-swell";
 import mathJourney from "$lib/entries/math-journey";
 import mirrors from "$lib/entries/mirrors";
 import notePoints from "$lib/entries/note-points";
@@ -22,6 +23,7 @@ const posts = {
     [cubePegTorusHole.summary.id]: cubePegTorusHole,
     [downSouth.summary.id]: downSouth,
     [follow.summary.id]: follow,
+    [gravitySwell.summary.id]: gravitySwell,
     [mathJourney.summary.id]: mathJourney,
     [mirrors.summary.id]: mirrors,
     [notePoints.summary.id]: notePoints,

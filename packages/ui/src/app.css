@@ -3,49 +3,53 @@
 @tailwind utilities;
 
 @layer base {
-    body {
-        @apply bg-neutral-50;
-        @apply text-neutral-700
-    }
-    h1 {
-        @apply text-2xl;
-        @apply mb-2;
-    }
-    h2 {
-        @apply text-xl;
-        @apply mb-2;
-    }
-    h3 {
-        @apply text-lg;
-    }
-    h4 {
-        @apply text-lg;
-    }
-    h5 {
-        @apply text-lg;
-    }
-    h1,h2,h3,h4,h5 {
-        @apply font-semibold;
-    }
-    p {
-        @apply py-2;
-        @apply px-0;
-    }
-    a {
-        @apply underline;
-        @apply underline-offset-2;
-    }
-    .bg-surface {
-        background-color: theme('colors.neutral.200')
-    }
-    .bg-surface-secondary {
-        background-color: theme('colors.white')
-    }
-    .control-icon {
-        @apply hover:scale-110;
-        @apply transition-transform;
-    }
-    .text-success {
-        @apply text-emerald-600;
-    }
+	body {
+		@apply bg-neutral-50;
+		@apply text-neutral-700;
+	}
+	h1 {
+		@apply text-2xl;
+		@apply mb-2;
+	}
+	h2 {
+		@apply text-xl;
+		@apply mb-2;
+	}
+	h3 {
+		@apply text-lg;
+	}
+	h4 {
+		@apply text-lg;
+	}
+	h5 {
+		@apply text-lg;
+	}
+	h1,
+	h2,
+	h3,
+	h4,
+	h5 {
+		@apply font-semibold;
+	}
+	p {
+		@apply py-2;
+		@apply px-0;
+	}
+	a {
+		@apply underline;
+		@apply underline-offset-2;
+	}
+	.bg-surface {
+		background-color: theme('colors.neutral.200');
+	}
+	.bg-surface-secondary {
+		background-color: theme('colors.white');
+	}
+	.control-icon {
+		@apply hover:scale-110;
+		@apply transition-transform;
+	}
+	.text-success {
+		@apply text-emerald-600;
+	}
 }

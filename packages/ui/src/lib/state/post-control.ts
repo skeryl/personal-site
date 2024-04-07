@@ -1,3 +1,5 @@
+import type { ContentParams } from '$lib/content-params';
+
 export enum PlayState {
 	playing = 'playing',
 	paused = 'paused',
@@ -42,6 +44,14 @@ export class PlayStateChangedEvent extends Event {
 export class RecordingCompleteEvent extends Event {
 	constructor(public readonly blobLink: string) {
 		super('post-recording-complete');
+	}
+}
+
+export class ParamsChangedEvent extends Event {
+	static EVENT_NAME = 'content-params-changed';
+
+	constructor(public readonly params: ContentParams) {
+		super(ParamsChangedEvent.EVENT_NAME);
 	}
 }
 
@@ -93,5 +103,15 @@ export class PostControlContext extends EventTarget {
 
 		recorder.start();
 		this.recorder = recorder;
+	}
+
+	public setParams(params: ContentParams) {
+		this.dispatchEvent(new ParamsChangedEvent(params));
+	}
+
+	public onParamsChanged(callback: (cp: ContentParams) => void) {
+		this.addEventListener(ParamsChangedEvent.EVENT_NAME, (ev) =>
+			callback((ev as ParamsChangedEvent).params)
+		);
 	}
 }
