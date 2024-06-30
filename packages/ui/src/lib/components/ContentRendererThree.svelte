@@ -73,7 +73,6 @@
 	});
 
 	ctx.onParamsChanged((p) => {
-		console.log('received params changed event: ', p);
 		content?.setParams?.(p);
 	});
 
