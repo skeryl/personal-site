@@ -46,8 +46,11 @@
 	}
 
 	function onParamsChange(params: ContentParams) {
-		console.log("params changed in post!");
 		postControlContext.setParams(params);
+	}
+
+	function onClickInPost() {
+		areParamsOpen = false;
 	}
 </script>
 
@@ -59,7 +62,7 @@
 		</div>
 	</div>
 
-	<div bind:this={container} class="flex flex-1 relative min-h-[80vh]">
+	<div bind:this={container} class="flex flex-1 relative min-h-[80vh]" on:click={onClickInPost}>
 		<canvas bind:this={cnv}>your browser does not support HTML canvas :(</canvas>
 	</div>
 
