@@ -3,6 +3,7 @@
 	import { type Post, PostType } from '@sc/model';
 	import ContentRendererStage from '$lib/components/ContentRendererStage.svelte';
 	import ContentRendererThree from '$lib/components/ContentRendererThree.svelte';
+	import ContentRendererExploration from "$lib/components/ContentRendererExploration.svelte";
 	import PostControlBar from '$lib/components/PostControlBar.svelte';
 	import { PlayState, PostControlContext } from '$lib/state/post-control';
 	import type { ContentParams } from '$lib/content-params';
@@ -46,11 +47,8 @@
 	}
 
 	function onParamsChange(params: ContentParams) {
+		console.log("params changed in post!");
 		postControlContext.setParams(params);
-	}
-
-	function onClickInPost() {
-		areParamsOpen = false;
 	}
 </script>
 
@@ -62,15 +60,17 @@
 		</div>
 	</div>
 
-	<div bind:this={container} class="flex flex-1 relative min-h-[80vh]" on:click={onClickInPost}>
+	<div bind:this={container} class="flex flex-1 relative min-h-[80vh]">
 		<canvas bind:this={cnv}>your browser does not support HTML canvas :(</canvas>
 	</div>
 
 	{#if post}
 		{#if post.summary.type === PostType.experiment}
 			<ContentRendererStage {post} {container} {cnv} />
-		{:else}
+		{:else if post.summary.type === PostType.experiment3d}
 			<ContentRendererThree {post} {cnv} />
+		{:else}
+			<ContentRendererExploration {post} />
 		{/if}
 	{/if}
 

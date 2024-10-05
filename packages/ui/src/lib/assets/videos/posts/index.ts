@@ -1,6 +1,7 @@
 import antFarm from "$lib/assets/videos/posts/ant-farm.webm";
 import cubePegTorusHole from "$lib/assets/videos/posts/cube-peg-torus-hole.webm";
 import follow from "$lib/assets/videos/posts/follow.webm";
+import gravitySwell from "$lib/assets/videos/posts/gravity-swell.webm";
 import mathJourney from "$lib/assets/videos/posts/math-journey.webm";
 import mirrors from "$lib/assets/videos/posts/mirrors.webm";
 import noteShader from "$lib/assets/videos/posts/note-shader.webm";
@@ -13,6 +14,7 @@ const videos: Record<string, string> = {
     ["ant-farm"]: antFarm,
     ["cube-peg-torus-hole"]: cubePegTorusHole,
     ["follow"]: follow,
+    ["gravity-swell"]: gravitySwell,
     ["math-journey"]: mathJourney,
     ["mirrors"]: mirrors,
     ["note-shader"]: noteShader,

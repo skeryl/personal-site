@@ -23,7 +23,10 @@ export interface PostSummary extends Unique {
   path?: string;
 }
 
-export type PostContent = StageContent | ExperimentContent3D;
+export type PostContent =
+  | StageContent
+  | ExperimentContent3D
+  | ExplorationContent;
 
 export type ContentGenerator<T extends PostContent> = () => T;
 
@@ -59,3 +62,5 @@ export interface ExperimentContent3D {
   getParams?: () => ContentParams;
   setParams?: (values: ContentParams) => void;
 }
+
+export type ExplorationContent = ConstructorOfATypedSvelteComponent;
