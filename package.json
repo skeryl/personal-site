@@ -8,6 +8,8 @@
   },
   "description": "This is my personal site, playground, experimentation zone, research center for artistic computer science. Please have a look around. Try not to steal ideas outright (that's just uncool). If you see something you like and want to expand on, please reach out. Odds are I'll be happy to work with you!",
   "devDependencies": {
+    "@skeletonlabs/skeleton": "^2.10.3",
+    "@skeletonlabs/tw-plugin": "^0.4.0",
     "autoprefixer": "^10.4.17",
     "postcss": "^8.4.35",
     "prettier": "^3.2.4",
@@ -19,5 +21,8 @@
   "private": true,
   "workspaces": [
     "packages/*"
-  ]
+  ],
+  "dependencies": {
+    "@floating-ui/dom": "^1.6.12"
+  }
 }

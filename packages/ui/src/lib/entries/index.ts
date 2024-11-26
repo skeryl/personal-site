@@ -11,6 +11,7 @@ import mirrors from "$lib/entries/mirrors";
 import notePoints from "$lib/entries/note-points";
 import noteShader from "$lib/entries/note-shader";
 import orbit from "$lib/entries/orbit";
+import playlistHelper from "$lib/entries/playlist-helper";
 import primeColoring from "$lib/entries/prime-coloring";
 import splineExperiment0 from "$lib/entries/spline-experiment-0";
 import springHarp from "$lib/entries/spring-harp";
@@ -29,6 +30,7 @@ const posts = {
     [notePoints.summary.id]: notePoints,
     [noteShader.summary.id]: noteShader,
     [orbit.summary.id]: orbit,
+    [playlistHelper.summary.id]: playlistHelper,
     [primeColoring.summary.id]: primeColoring,
     [splineExperiment0.summary.id]: splineExperiment0,
     [springHarp.summary.id]: springHarp,

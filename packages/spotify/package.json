@@ -1,0 +1,12 @@
+{
+  "name": "@sc/spotify",
+  "version": "0.0.0",
+  "scripts": {
+    "gen:types": "openapi-typescript https://developer.spotify.com/reference/web-api/open-api-schema.yaml -o ./src-gen/spotify-schema.d.ts"
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.4.1"
+  }
+}
