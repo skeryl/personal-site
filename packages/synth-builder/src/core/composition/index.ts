@@ -196,7 +196,7 @@ const pitchIndices: PitchToIndex = Object.values(pitchesByFrequency).reduce(
   {},
 );
 
-function addSemitones(startingPitch: Pitch, semitonesToAdd: number) {
+export function addSemitones(startingPitch: Pitch, semitonesToAdd: number) {
   const pitchIndex = pitchIndices[startingPitch];
   if (pitchIndex === undefined) {
     throw new Error(`Not sure what to do with ${startingPitch}.`);
@@ -208,7 +208,57 @@ function addSemitones(startingPitch: Pitch, semitonesToAdd: number) {
   return resultPitch;
 }
 
-function getScalePitches(chord: Chord): Pitch[] {
+export enum ScaleType {
+  Chromatic,
+  TwoSemitoneTritone,
+  Istrian,
+  SuperLocrian,
+  LocrianMode,
+  LocrianNaturalSixth,
+  PhrygianMode,
+  NeapolitanMinor,
+  Persian,
+  PhrygianDominant,
+  DoubleHarmonic,
+  FlamencoMode,
+  Tritone,
+  Enigmatic,
+  Iwato,
+  In,
+  Insen,
+  QuarterTone,
+  Octatonic,
+  HalfDiminished,
+  AeolianMode,
+  HarmonicMinor,
+  DorianMode,
+  MelodicMinor,
+  Romani,
+  RomaniMinor,
+  UkrainianDorian,
+  Algerian,
+  LydianDiminished,
+  MajorLocrian,
+  MajorBebop,
+  HarmonicMajor,
+  BebopDominant,
+  MixolydianMode,
+  Major,
+  LydianDominant,
+}
+
+/*export function generateScalePitches(
+  startingPitch: Pitch,
+  scaleType: ScaleType,
+): Pitch[] {
+  const startingNote = `${chord.note}${chord.octave}` as Pitch;
+  const pitches = getScaleSemitoneIntervals(chord.type).map((interval) =>
+    addSemitones(startingNote, interval),
+  );
+  return pitches;
+}*/
+
+export function getScalePitches(chord: Chord): Pitch[] {
   const startingNote = `${chord.note}${chord.octave}` as Pitch;
   const pitches = getScaleSemitoneIntervals(chord.type).map((interval) =>
     addSemitones(startingNote, interval),
@@ -226,20 +276,20 @@ function getNextNoteType(prevNoteType: NoteType | undefined): NoteType {
       return randomNumber < 0.5
         ? NoteType.eighth
         : randomNumber < 0.75
-        ? NoteType.sixteenth
-        : NoteType.quarter;
+          ? NoteType.sixteenth
+          : NoteType.quarter;
     case NoteType.sixteenth:
       return randomNumber < 0.5
         ? NoteType.sixteenth
         : randomNumber < 0.75
-        ? NoteType.thirtysecond
-        : NoteType.eighth;
+          ? NoteType.thirtysecond
+          : NoteType.eighth;
     case NoteType.quarter:
       return randomNumber < 0.3
         ? NoteType.quarter
         : randomNumber < 0.67
-        ? NoteType.eighth
-        : NoteType.half;
+          ? NoteType.eighth
+          : NoteType.half;
     default:
       const exponent = Math.floor(randomNumber * 4) + 1;
       return (1 / Math.pow(2, exponent)) as NoteType;

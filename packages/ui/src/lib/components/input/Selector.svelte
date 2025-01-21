@@ -1,4 +1,4 @@
-<script lang="ts">
+<script lang="ts" generics="T extends any, Meta extends any">
     import { popup } from '@skeletonlabs/skeleton';
 	import {
 		Autocomplete,

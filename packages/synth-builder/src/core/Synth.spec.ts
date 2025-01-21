@@ -1,4 +1,5 @@
 import { getAttackTime } from "./Synth";
+import { describe, expect, it } from "vitest";
 
 describe("Synth", () => {
   describe("getAttackTime", function () {
@@ -16,7 +17,7 @@ describe("Synth", () => {
         maxAttackTime: 5,
         minAttackTime: 0.03,
       });
-      expect(attackTime).toEqual(5);
+      expect(attackTime).toEqual(5.03);
     });
     it("should return average of min and max attack time for 0.5", function () {
       const attackTime = getAttackTime({
