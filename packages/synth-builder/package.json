@@ -5,6 +5,13 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "@types/uuid": "^9.0.8"
+    "@types/uuid": "^9.0.8",
+    "xsd2ts": "^0.9.17",
+    "ts-node": "^10.9.2",
+    "vitest": "^3.0.2"
+  },
+  "scripts": {
+    "generate-music-xml-types": "ts-node ./musicxml/generate-types.ts ./musicxml/schema/musicxml.xsd",
+    "fix-generated-types": "ts-node ./musicxml/fix-generated-types.ts ./src/generated/index.ts ./src/generated/index-fixed.ts"
   }
 }

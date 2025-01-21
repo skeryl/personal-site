@@ -22,7 +22,9 @@
 		"grraf": "^1.0.16",
 		"iconify-icon": "^2.0.0",
 		"three": "^0.161.0",
-		"svelte-dnd-action": "^0.9.51"
+		"svelte-dnd-action": "^0.9.51",
+		"musicxml-interfaces": "^0.0.21",
+		"opensheetmusicdisplay": "^1.8.9"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.28.1",
