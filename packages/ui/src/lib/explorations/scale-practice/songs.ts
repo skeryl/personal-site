@@ -1,6 +1,6 @@
 import { Chord, Key, type Song } from '@sc/synth-builder/musicxml';
 
-const cantalopueIsland: Song = {
+export const cantalopueIsland: Song = {
 	title: 'Cataloupe Island',
 	key: new Key(-1),
 	breakMeasures: 4,

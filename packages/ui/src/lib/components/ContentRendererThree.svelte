@@ -26,9 +26,15 @@
 			return;
 		}
 		const { camera, renderer } = renderParams;
-		if (renderer && canvas && canvas.parentElement && camera) {
-			const width = (canvas.parentElement || canvas).clientWidth;
-			const height = (canvas.parentElement || canvas).clientHeight;
+		const parent = canvas.parentElement;
+		if (renderer && canvas && parent && camera) {
+			/* Collapse canvas so it doesn't inflate the parent's measured size */
+			canvas.style.width = '0';
+			canvas.style.height = '0';
+			const width = parent.clientWidth;
+			const height = parent.clientHeight;
+			canvas.style.width = '';
+			canvas.style.height = '';
 			res.x = width;
 			res.y = height;
 			canvas.width = width;
@@ -70,14 +76,23 @@
 	ctx.addEventListener('post-full-screen-changed', (ev) => {
 		const { isFullScreen } = ev as FullScreenChangeEvent;
 		content?.onFullScreenChange?.(isFullScreen);
+		/* Delay resize to let the browser finish the fullscreen transition */
+		setTimeout(() => handleResize(), 100);
 	});
 
 	ctx.onParamsChanged((p) => {
 		content?.setParams?.(p);
 	});
 
+	function onFullscreenChange() {
+		/* Handles browser-native fullscreen exit (Escape key) which bypasses Post.svelte */
+		setTimeout(() => handleResize(), 100);
+	}
+
 	onMount(() => {
+		document.addEventListener('fullscreenchange', onFullscreenChange);
 		return () => {
+			document.removeEventListener('fullscreenchange', onFullscreenChange);
 			content?.stop();
 		};
 	});

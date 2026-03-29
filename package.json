@@ -24,5 +24,10 @@
   ],
   "dependencies": {
     "@floating-ui/dom": "^1.6.12"
+  },
+  "overrides": {
+    "cookie": "^0.7.0",
+    "picomatch": "^2.3.2",
+    "minimatch": "^9.0.7"
   }
 }

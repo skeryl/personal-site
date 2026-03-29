@@ -7,8 +7,12 @@
 	export let onChange: (p: ContentParam<ParamType>) => void;
 
 	function onNumberParamChanged(e: Event) {
-		console.log('number param changed');
 		const value = Number((e.target as HTMLInputElement).value);
+		onChange({ ...param, value });
+	}
+
+	function onStringSelectChanged(e: Event) {
+		const value = (e.target as HTMLSelectElement).value;
 		onChange({ ...param, value });
 	}
 
@@ -47,6 +51,15 @@
 	{:else if param.type === ParamType.vec2}
 		<div class="flex">
 			<Vec2Input label={param.name} value={param.value} onChange={onVec2ValueChanged} />
+		</div>
+	{:else if param.type === ParamType.string && param.options}
+		<div class="flex flex-col">
+			<label for={inputId} class="text-xs font-bold">{param.name}</label>
+			<select id={inputId} class="rounded text-md px-2 py-1" value={param.value} on:change={onStringSelectChanged}>
+				{#each param.options as option}
+					<option value={option}>{option}</option>
+				{/each}
+			</select>
 		</div>
 	{:else}
 		<input id={inputId} type="text" />

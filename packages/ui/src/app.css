@@ -52,4 +52,35 @@
 	.text-success {
 		@apply text-emerald-600;
 	}
+
+	input[type='range'] {
+		-webkit-appearance: none;
+		appearance: none;
+		height: 6px;
+		border-radius: 3px;
+		background: theme('colors.neutral.300');
+		outline: none;
+	}
+	input[type='range']::-webkit-slider-thumb {
+		-webkit-appearance: none;
+		appearance: none;
+		width: 18px;
+		height: 18px;
+		border-radius: 50%;
+		background: theme('colors.neutral.600');
+		cursor: pointer;
+	}
+	input[type='range']::-moz-range-thumb {
+		width: 18px;
+		height: 18px;
+		border-radius: 50%;
+		background: theme('colors.neutral.600');
+		cursor: pointer;
+		border: none;
+	}
+	input[type='range']::-moz-range-track {
+		height: 6px;
+		border-radius: 3px;
+		background: theme('colors.neutral.300');
+	}
 }

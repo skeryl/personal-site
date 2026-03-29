@@ -30,6 +30,7 @@ export interface ContentParam<T extends ParamType> {
 	defaultValue: ParamValue<T>;
 	value: ParamValue<T>;
 	range?: ParamRange<T>;
+	options?: T extends ParamType.string ? string[] : never;
 }
 
 export function numberParam(
@@ -62,6 +63,22 @@ export function createParam<T extends ParamType>(
 		name,
 		id,
 		range
+	};
+}
+
+export function selectParam(
+	name: string,
+	options: string[],
+	defaultValue: string = options[0],
+	id: string = name.replace(/\s/g, '-').toLowerCase()
+): ContentParam<ParamType.string> {
+	return {
+		value: defaultValue,
+		defaultValue,
+		type: ParamType.string,
+		name,
+		id,
+		options
 	};
 }
 
