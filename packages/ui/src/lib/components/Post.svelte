@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { setContext } from 'svelte';
+	import { onMount, setContext } from 'svelte';
 	import { type Post, PostType } from '@sc/model';
 	import ContentRendererStage from '$lib/components/ContentRendererStage.svelte';
 	import ContentRendererThree from '$lib/components/ContentRendererThree.svelte';
@@ -26,7 +26,19 @@
 
 	let container: HTMLDivElement | undefined = undefined;
 	let cnv: HTMLCanvasElement | undefined = undefined;
+	let controlArea: HTMLDivElement | undefined = undefined;
 	let areParamsOpen = false;
+
+	function onDocumentClick(e: MouseEvent) {
+		if (areParamsOpen && controlArea && !controlArea.contains(e.target as Node)) {
+			areParamsOpen = false;
+		}
+	}
+
+	onMount(() => {
+		document.addEventListener('click', onDocumentClick, true);
+		return () => document.removeEventListener('click', onDocumentClick, true);
+	});
 
 	function isFullscreen(): boolean {
 		return Boolean(document.fullscreenElement);
@@ -50,9 +62,41 @@
 		areParamsOpen = !areParamsOpen;
 	}
 
+	function getParamsStorageKey(): string | undefined {
+		return post?.summary?.id ? `post-params:${post.summary.id}` : undefined;
+	}
+
 	function onParamsChange(params: ContentParams) {
-		console.log('params changed in post!');
 		postControlContext.setParams(params);
+		const key = getParamsStorageKey();
+		if (key) {
+			try {
+				const data = params.map((p) => ({ id: p.id, value: p.value }));
+				localStorage.setItem(key, JSON.stringify(data));
+			} catch { /* storage full or unavailable */ }
+		}
+	}
+
+	function loadSavedParams(): ContentParams | undefined {
+		const key = getParamsStorageKey();
+		if (!key || !post?.params) return undefined;
+		try {
+			const raw = localStorage.getItem(key);
+			if (!raw) return undefined;
+			const saved: { id: string; value: unknown }[] = JSON.parse(raw);
+			const lookup = new Map(saved.map((s) => [s.id, s.value]));
+			return post.params.map((p) =>
+				lookup.has(p.id) ? { ...p, value: lookup.get(p.id) as typeof p.value } : p
+			);
+		} catch { return undefined; }
+	}
+
+	$: if (post?.params) {
+		const saved = loadSavedParams();
+		if (saved) {
+			post = { ...post, params: saved };
+			postControlContext.setParams(saved);
+		}
 	}
 </script>
 
@@ -82,16 +126,17 @@
 		{/if}
 	</div>
 
-	{#if areParamsOpen && post && post.params}
-		<PostParams params={post.params} {onParamsChange} />
-	{/if}
-
 	{#if requiresCanvas}
-		<PostControlBar
-			{toggleFullScreen}
-			postId={post?.summary.id}
-			hasParams={Boolean(post?.params)}
-			{toggleParams}
-		/>
+		<div class="relative" bind:this={controlArea}>
+			{#if areParamsOpen && post && post.params}
+				<PostParams params={post.params} {onParamsChange} />
+			{/if}
+			<PostControlBar
+				{toggleFullScreen}
+				postId={post?.summary.id}
+				hasParams={Boolean(post?.params)}
+				{toggleParams}
+			/>
+		</div>
 	{/if}
 </div>

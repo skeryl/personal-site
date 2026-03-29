@@ -4,14 +4,25 @@ import type { PlaylistMood } from '$lib/explorations/playlist-helper/stores';
 const moodLocalStorageKey = 'moods';
 
 function createMoodStore() {
-	const moods = writable<PlaylistMood[]>([
+	const moods = writable<PlaylistMood[]>(
+		[
+			{
+				sequence: 0,
+				color: 'burgundy',
+				playlist: {
+					id: '3KOiLaruNMuqs7ynLNoe1Q',
+					name: 'Saturday Night Fever Dream'
+				}
+			}
+		]
+		/*[
 		{
 			sequence: 0,
 			color: '#ffdeb4',
-			playlist: /*{
+			playlist: /!*{
 				id: '0PpbvPPMHBmAhmkfHPgNVF',
 				name: "NOT (HOS) 1 sunset at forest's edge"
-			} */ {
+			} *!/ {
 				id: '7m5uudQN9oQa5OmUnLGFG7',
 				name: "(HOS) 1 sunset at forest's edge"
 			}
@@ -64,7 +75,8 @@ function createMoodStore() {
 				name: '(HOS) 7 relinquishing demons'
 			}
 		}
-	]);
+	]*/
+	);
 
 	function createNewMood() {
 		console.log('new mood clicked');

@@ -15,7 +15,7 @@
 </script>
 
 <div
-	class="fixed right-12 max-sm:right-6 top-[20vh] min-h-[40vh] max-h-[75vh] w-[17vw] bg-surface rounded-md shadow-lg p-4 overflow-y-scroll"
+	class="absolute bottom-[calc(100%+0.5rem)] right-2 w-fit min-w-[200px] max-h-[60vh] bg-surface rounded-md shadow-lg p-4 overflow-y-auto z-10"
 >
 	{#each params as param}
 		<div class="flex my-2.5">
