@@ -37,6 +37,7 @@
 				label={param.name}
 				name={inputId}
 			/>
+			<span class="text-xs text-neutral-500">{param.value}</span>
 		{:else}
 			<Input
 				wrapperClass="w-full"

@@ -6,7 +6,7 @@ const post: Post = {
 		id: 'blob-grid',
 		tags: ['animation', 'canvas'],
 		title: 'Blob Grid',
-		timestamp: new Date(2024, 11, 4),
+		timestamp: new Date(2026, 3, 4),
 		type: PostType.exploration,
 		isHidden: false
 	},
