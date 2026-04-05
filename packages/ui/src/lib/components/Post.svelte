@@ -102,12 +102,27 @@
 
 <div class="flex flex-1 flex-col h-full">
 	{#if !hideHeader}
-		<div class="flex flex-row items-baseline">
+		<a href="/" class="text-sm text-neutral-400 hover:text-neutral-600 no-underline transition-colors">← journal</a>
+		<div class="flex flex-row items-baseline mt-2">
 			<h1 class="flex-1">{title}</h1>
 			<div>
 				{date?.toLocaleDateString()}
 			</div>
 		</div>
+		{#if post?.summary.collaborators?.length}
+			<div class="flex flex-wrap gap-x-4 gap-y-1 mb-3 -mt-1">
+				{#each post.summary.collaborators as collab}
+					<span class="text-sm text-neutral-500">
+						{collab.role}:
+						{#if collab.url}
+							<a href={collab.url} target="_blank" rel="noopener noreferrer" class="underline underline-offset-2 hover:text-neutral-800 transition-colors">{collab.name}</a>
+						{:else}
+							{collab.name}
+						{/if}
+					</span>
+				{/each}
+			</div>
+		{/if}
 	{/if}
 
 	<div bind:this={container} class="flex flex-1 relative min-h-[80vh]">

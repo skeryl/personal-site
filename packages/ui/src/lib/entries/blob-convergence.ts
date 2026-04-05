@@ -622,7 +622,8 @@ const post: Post = {
 		title: 'Blob Convergence',
 		timestamp: new Date(2026, 3, 5),
 		type: PostType.experiment3d,
-		isHidden: false
+		isHidden: false,
+		collaborators: [{ name: 'Eva Warren', role: 'Art Direction', url: 'https://evamarie.studio' }]
 	},
 	content: () => new BlobConvergenceContent(),
 	params: defaultParams
