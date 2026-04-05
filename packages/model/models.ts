@@ -12,6 +12,12 @@ export enum PostType {
   experiment3d = "experiments-3d",
 }
 
+export interface Collaborator {
+  name: string;
+  role: string;
+  url?: string;
+}
+
 export interface PostSummary extends Unique {
   type: PostType;
   title: string;
@@ -21,6 +27,7 @@ export interface PostSummary extends Unique {
   thumbnail?: string;
   isHidden?: boolean;
   path?: string;
+  collaborators?: Collaborator[];
 }
 
 export type PostContent =

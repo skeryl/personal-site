@@ -8,7 +8,8 @@ const post: Post = {
 		title: 'Blob Grid',
 		timestamp: new Date(2026, 3, 4),
 		type: PostType.exploration,
-		isHidden: false
+		isHidden: false,
+		collaborators: [{ name: 'Eva Warren', role: 'Art Direction', url: 'https://evamarie.studio' }]
 	},
 	content: () => BlobGrid
 };
