@@ -78,14 +78,18 @@
           The New York City subway is the largest rapid transit system in the Western Hemisphere,
           with <strong>{systemStats.totalStations} stations</strong> across
           <strong>{systemStats.totalRouteMiles} route miles</strong>. It carries
-          <strong>{formatNumber(systemStats.dailyRidership)}</strong> riders daily.
+          <strong>{formatNumber(systemStats.dailyRidership)}</strong> riders every weekday.
         </p>
         <p>
-          But it doesn't serve everyone equally. An estimated
-          <strong>{formatNumber(systemStats.populationBeyondHalfMile)} New Yorkers</strong>
-          &mdash; roughly <strong>{100 - systemStats.percentNYCWithAccess}%</strong> of the city
-          &mdash; live more than half a mile from a subway station. These residents face longer commutes,
-          fewer job opportunities, and reduced access to healthcare, education, and culture.
+          But it doesn't serve everyone equally. While {systemStats.percentNYCWithAccess}% of
+          New Yorkers live within a half mile of a station, an estimated
+          <strong>{formatNumber(systemStats.populationBeyondHalfMile)} residents</strong> do not &mdash;
+          and <strong>{systemStats.percentHouseholdsUnderserved}% of households</strong> are
+          considered underserved by transit when factoring in service frequency and reliability.
+          These residents face longer commutes, fewer job opportunities, and reduced access
+          to healthcare, education, and culture. The burden falls disproportionately on
+          low-income communities and communities of color: 44% of Black New Yorkers rely on
+          transit for work, yet many live in the neighborhoods with the worst access.
         </p>
       </div>
 
