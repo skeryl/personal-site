@@ -115,7 +115,7 @@
 			<div class="flex self-center h-full content-center">
 				<a
 					href={downloadLink}
-					download={`${postId}.webm`}
+					download={`${postId}.${typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('video/mp4') ? 'mp4' : 'webm'}`}
 					class="flex items-center text-neutral-600 text-sm"
 				>
 					<span class="flex items-center bg-emerald-50/40 px-4 py-1 rounded-full"
