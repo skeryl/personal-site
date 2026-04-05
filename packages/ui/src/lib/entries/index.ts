@@ -1,5 +1,6 @@
 /** This file was generated automatically by a script. Do not modify this file manually. */
 import antFarm from "$lib/entries/ant-farm";
+import blobConvergence from "$lib/entries/blob-convergence";
 import blobGrid from "$lib/entries/blob-grid";
 import cell from "$lib/entries/cell";
 import chrysanthemum from "$lib/entries/chrysanthemum";
@@ -24,6 +25,7 @@ import squiggles from "$lib/entries/squiggles";
 
 const posts = {
     [antFarm.summary.id]: antFarm,
+    [blobConvergence.summary.id]: blobConvergence,
     [blobGrid.summary.id]: blobGrid,
     [cell.summary.id]: cell,
     [chrysanthemum.summary.id]: chrysanthemum,

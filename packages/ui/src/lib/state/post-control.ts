@@ -88,7 +88,15 @@ export class PostControlContext extends EventTarget {
 	}
 
 	public captureRecording(stream: MediaStream) {
-		const recorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
+		// Prefer MP4 (Safari + recent Chrome), fall back to WebM
+		let mimeType = 'video/webm; codecs=vp9';
+		let blobType = 'video/webm';
+		if (MediaRecorder.isTypeSupported('video/mp4')) {
+			mimeType = 'video/mp4';
+			blobType = 'video/mp4';
+		}
+
+		const recorder = new MediaRecorder(stream, { mimeType });
 		const chunks = new Array<Blob>();
 
 		recorder.ondataavailable = ({ data }) => {
@@ -96,7 +104,7 @@ export class PostControlContext extends EventTarget {
 		};
 
 		recorder.onstop = () => {
-			const blob = new Blob(chunks, { type: 'video/webm' });
+			const blob = new Blob(chunks, { type: blobType });
 			const link = URL.createObjectURL(blob);
 			this.dispatchEvent(new RecordingCompleteEvent(link));
 		};
