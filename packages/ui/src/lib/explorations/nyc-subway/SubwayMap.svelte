@@ -1,15 +1,26 @@
 <script lang="ts">
+	import { run } from 'svelte/legacy';
+
 	import { onMount, onDestroy } from 'svelte';
 	import type { ProposedLine, UnderservedArea } from './data';
 
-	export let proposedLines: ProposedLine[] = [];
-	export let underservedAreas: UnderservedArea[] = [];
-	export let selectedLine: ProposedLine | null = null;
-	export let onSelectLine: (line: ProposedLine | null) => void = () => {};
+	interface Props {
+		proposedLines?: ProposedLine[];
+		underservedAreas?: UnderservedArea[];
+		selectedLine?: ProposedLine | null;
+		onSelectLine?: (line: ProposedLine | null) => void;
+	}
 
-	let mapContainer: HTMLDivElement;
-	let map: any;
-	let L: any;
+	let {
+		proposedLines = [],
+		underservedAreas = [],
+		selectedLine = null,
+		onSelectLine = () => {}
+	}: Props = $props();
+
+	let mapContainer: HTMLDivElement | undefined = $state();
+	let map: any = $state();
+	let L: any = $state();
 	let lineLayerGroup: any;
 	let markerLayerGroup: any;
 
@@ -109,14 +120,18 @@
 		}
 	}
 
-	$: if (map && L) {
-		drawLines();
-	}
+	run(() => {
+		if (map && L) {
+			drawLines();
+		}
+	});
 
-	$: if (selectedLine && map) {
-		const bounds = L.latLngBounds(selectedLine.route);
-		map.fitBounds(bounds, { padding: [50, 50] });
-	}
+	run(() => {
+		if (selectedLine && map) {
+			const bounds = L.latLngBounds(selectedLine.route);
+			map.fitBounds(bounds, { padding: [50, 50] });
+		}
+	});
 </script>
 
 <div class="map-wrapper">

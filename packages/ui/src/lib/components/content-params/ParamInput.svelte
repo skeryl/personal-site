@@ -3,8 +3,12 @@
 	import Input from '$lib/components/controls/Input.svelte';
 	import Vec2Input from '$lib/components/controls/Vec2Input.svelte';
 
-	export let param: ContentParam<ParamType>;
-	export let onChange: (p: ContentParam<ParamType>) => void;
+	interface Props {
+		param: ContentParam<ParamType>;
+		onChange: (p: ContentParam<ParamType>) => void;
+	}
+
+	let { param, onChange }: Props = $props();
 
 	function onNumberParamChanged(e: Event) {
 		const value = Number((e.target as HTMLInputElement).value);
@@ -20,9 +24,11 @@
 		onChange({ ...param, value: vec2 });
 	}
 
-	$: inputId = `param-${param.id}`;
-	$: numberRange = param.range as { min: number; max: number; step?: number | 'any' } | undefined;
-	$: vec2Value = param.value as unknown as Vec2;
+	let inputId = $derived(`param-${param.id}`);
+	let numberRange = $derived(
+		param.range as { min: number; max: number; step?: number | 'any' } | undefined
+	);
+	let vec2Value = $derived(param.value as unknown as Vec2);
 </script>
 
 <div class="flex-col px-2">
@@ -62,7 +68,7 @@
 				id={inputId}
 				class="rounded text-md px-2 py-1"
 				value={param.value}
-				on:change={onStringSelectChanged}
+				onchange={onStringSelectChanged}
 			>
 				{#each param.options as option}
 					<option value={option}>{option}</option>

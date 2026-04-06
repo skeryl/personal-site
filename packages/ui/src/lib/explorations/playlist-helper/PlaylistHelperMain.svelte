@@ -15,11 +15,11 @@
 
 	const PLAYLIST_IHCUS = '3fuOvHHAEkAf7wEpXCzdHq';
 
-	let totalRuntime = 0;
+	let totalRuntime = $state(0);
 
-	let missingTracks: PlaylistTrackObject[] = [];
-	let duplicateTracks: PlaylistTrackObject[] = [];
-	let devices: DeviceObject[] = [];
+	let missingTracks: PlaylistTrackObject[] = $state([]);
+	let duplicateTracks: PlaylistTrackObject[] = $state([]);
+	let devices: DeviceObject[] = $state([]);
 
 	function trackKey(track: PlaylistTrackObject): string {
 		return `${track?.track?.name}|${track.track?.album?.name}|${track.track?.artists?.[0]}`;
@@ -86,17 +86,19 @@
 		});
 	});
 
-	let deviceItems: AutocompleteOption<string>[];
+	let deviceItems: AutocompleteOption<string>[] = $derived(
+		devices?.map((dev) => ({
+			value: dev.id ?? '',
+			label: dev.name ?? ''
+		})) as AutocompleteOption<string>[]
+	);
 
-	$: deviceItems = devices?.map((dev) => ({
-		value: dev.id ?? '',
-		label: dev.name ?? ''
-	})) as AutocompleteOption<string>[];
-	$: activeDevice = devices.find((dev) => dev.is_active);
-	$: activeDeviceItem = deviceItems.find((item) => item.value === activeDevice?.id);
+	let activeDevice = $derived(devices.find((dev) => dev.is_active));
+	let activeDeviceItem = $derived(deviceItems.find((item) => item.value === activeDevice?.id));
 
-	let selectedDeviceItem: AutocompleteOption<string> | undefined =
-		activeDeviceItem ?? deviceItems?.[0];
+	let selectedDeviceItem: AutocompleteOption<string> | undefined = $state(
+		activeDeviceItem ?? deviceItems?.[0]
+	);
 
 	function onDeviceChange(item: AutocompleteOption<string> | undefined) {
 		selectedDeviceItem = item;
@@ -119,7 +121,7 @@
 		}
 	];
 
-	let selectedTabId: number = 0;
+	let selectedTabId: number = $state(0);
 
 	function selectTab(id: number) {
 		selectedTabId = id;
@@ -131,6 +133,7 @@
 	<TabGroup>
 		<Tab bind:group={selectedTabId} name="Playlist Manager" value={0}>Playlist Manager</Tab>
 		<Tab bind:group={selectedTabId} value={1} name="Track Visualizer">Track Visualizer</Tab>
+		<!-- svelte-ignore type_mismatch -->
 		<svelte:fragment slot="panel">
 			{#if selectedTabId === 0}
 				<div>
@@ -173,8 +176,8 @@
 							{/each}
 						</div>
 						<!--<div class="flex flex-col">
-                        <button on:click={onNewMood} class="rounded p-2 border-2 border-green-400 hover:bg-green-100">➕Add new mood</button>
-                    </div>-->
+	                        <button on:click={onNewMood} class="rounded p-2 border-2 border-green-400 hover:bg-green-100">➕Add new mood</button>
+	                    </div>-->
 					</div>
 				</div>
 			{:else if selectedTabId === 1}

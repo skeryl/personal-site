@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { subwayLineRoutes, stationCoords } from './subway-geodata';
 
-	let mapContainer: HTMLDivElement;
+	let mapContainer: HTMLDivElement | undefined = $state();
 	let map: any;
 	let L: any;
 	let canvasOverlay: any;

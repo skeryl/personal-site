@@ -20,7 +20,7 @@
 		<div>
 			<button
 				id="login-button"
-				on:click={loginWithSpotifyClick}
+				onclick={loginWithSpotifyClick}
 				class="rounded border-2 border-green-400 p-2 px-4 hover:bg-emerald-50"
 			>
 				<img

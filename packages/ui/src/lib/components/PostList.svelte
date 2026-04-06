@@ -1,10 +1,16 @@
 <script lang="ts">
+	import { preventDefault, stopPropagation } from 'svelte/legacy';
+
 	import { PostType, type PostSummary } from '@sc/model';
 	import Tags from '$lib/components/Tags.svelte';
 	import allPosts from '$lib/entries';
 	import PostVideoPreview from '$lib/components/PostVideoPreview.svelte';
 
-	export let limit: number | undefined = undefined;
+	interface Props {
+		limit?: number | undefined;
+	}
+
+	let { limit = undefined }: Props = $props();
 
 	function sortPosts(a: PostSummary, b: PostSummary): number {
 		return -1 * Math.sign(a.timestamp.getTime() - b.timestamp.getTime());
@@ -22,10 +28,10 @@
 		[PostType.experiment]: 'Experiments',
 		[PostType.experiment3d]: '3D Experiments'
 	};
-	let activeType: string | null = null;
+	let activeType: string | null = $state(null);
 
 	// Tag filter
-	let activeTags: Set<string> = new Set();
+	let activeTags: Set<string> = $state(new Set());
 
 	function toggleType(type: string) {
 		activeType = activeType === type ? null : type;
@@ -47,22 +53,24 @@
 	}
 
 	// Collect all unique tags
-	$: allTags = [...new Set(allPostSummaries.flatMap((p) => p.tags))].sort();
+	let allTags = $derived([...new Set(allPostSummaries.flatMap((p) => p.tags))].sort());
 
 	// Collect unique types
-	$: allTypes = [...new Set(allPostSummaries.map((p) => p.type))];
+	let allTypes = $derived([...new Set(allPostSummaries.map((p) => p.type))]);
 
 	// Filtered posts
-	$: filteredPosts = allPostSummaries.filter((post) => {
-		if (activeType && post.type !== activeType) return false;
-		if (activeTags.size > 0 && !post.tags.some((t) => activeTags.has(t))) return false;
-		return true;
-	});
+	let filteredPosts = $derived(
+		allPostSummaries.filter((post) => {
+			if (activeType && post.type !== activeType) return false;
+			if (activeTags.size > 0 && !post.tags.some((t) => activeTags.has(t))) return false;
+			return true;
+		})
+	);
 
-	$: hasFilters = activeType !== null || activeTags.size > 0;
+	let hasFilters = $derived(activeType !== null || activeTags.size > 0);
 
-	let hoveredPost: PostSummary | undefined;
-	$: isAnyHovered = hoveredPost !== undefined;
+	let hoveredPost: PostSummary | undefined = $state();
+	let isAnyHovered = $derived(hoveredPost !== undefined);
 </script>
 
 <PostVideoPreview selectedPost={hoveredPost} />
@@ -78,7 +86,7 @@
 				class:bg-neutral-100={activeType !== type}
 				class:text-neutral-600={activeType !== type}
 				class:hover:bg-neutral-200={activeType !== type}
-				on:click={() => toggleType(type)}
+				onclick={() => toggleType(type)}
 			>
 				{typeLabels[type] || type}
 			</button>
@@ -87,7 +95,7 @@
 		{#if hasFilters}
 			<button
 				class="px-3 py-1 text-sm text-neutral-400 hover:text-neutral-600 transition-colors no-underline"
-				on:click={clearFilters}
+				onclick={clearFilters}
 			>
 				Clear filters
 			</button>
@@ -99,7 +107,7 @@
 			{#each [...activeTags] as tag}
 				<button
 					class="rounded-full py-0.5 px-2.5 text-xs bg-neutral-700 text-white border border-neutral-700 transition-colors no-underline"
-					on:click={() => toggleTag(tag)}
+					onclick={() => toggleTag(tag)}
 				>
 					{tag} &times;
 				</button>
@@ -117,7 +125,7 @@
 <div
 	class="card-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
 	class:has-hover={isAnyHovered}
-	on:mouseleave={() => (hoveredPost = undefined)}
+	onmouseleave={() => (hoveredPost = undefined)}
 >
 	{#each filteredPosts as post}
 		<a
@@ -125,7 +133,7 @@
 			class="card group flex flex-col p-5 rounded-2xl no-underline transition-all duration-[600ms] ease-in-out"
 			class:is-active={hoveredPost === post}
 			class:is-dimmed={isAnyHovered && hoveredPost !== post}
-			on:mouseenter={() => (hoveredPost = post)}
+			onmouseenter={() => (hoveredPost = post)}
 		>
 			<div class="flex items-start justify-between gap-2 mb-3">
 				<h3
@@ -149,7 +157,7 @@
 							{#if collab.url}
 								<span
 									class="collab-link underline underline-offset-2"
-									on:click|preventDefault|stopPropagation={() => window.open(collab.url, '_blank')}
+									onclick={stopPropagation(preventDefault(() => window.open(collab.url, '_blank')))}
 									>{collab.name}</span
 								>
 							{:else}

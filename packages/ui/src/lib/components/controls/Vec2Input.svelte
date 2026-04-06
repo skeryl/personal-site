@@ -3,12 +3,16 @@
 	import Input from '$lib/components/controls/Input.svelte';
 	import type { ChangeEventHandler } from 'svelte/elements';
 
-	export let value: Vec2;
-	export let label: string;
-	export let onChange: (val: Vec2) => void;
+	interface Props {
+		value: Vec2;
+		label: string;
+		onChange: (val: Vec2) => void;
+	}
 
-	$: x = value[0];
-	$: y = value[1];
+	let { value, label, onChange }: Props = $props();
+
+	let x = $derived(value[0]);
+	let y = $derived(value[1]);
 
 	const triggerChangeX: ChangeEventHandler<HTMLInputElement> = (e) => {
 		const value = Number((e.target as HTMLInputElement).value);

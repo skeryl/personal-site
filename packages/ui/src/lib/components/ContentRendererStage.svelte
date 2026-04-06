@@ -1,14 +1,20 @@
 <script lang="ts">
+	import { run } from 'svelte/legacy';
+
 	import { type Post, type PostContent, type StageContent } from '@sc/model';
 	import { Stage } from 'grraf';
 	import { getContext } from 'svelte';
 	import { PlayState, PlayStateChangedEvent, PostControlContext } from '$lib/state/post-control';
 
-	export let post: Post<PostContent> | undefined = undefined;
-	export let container: HTMLDivElement | undefined = undefined;
-	export let cnv: HTMLCanvasElement | undefined = undefined;
+	interface Props {
+		post?: Post<PostContent> | undefined;
+		container?: HTMLDivElement | undefined;
+		cnv?: HTMLCanvasElement | undefined;
+	}
 
-	$: content = post?.content() as StageContent | undefined;
+	let { post = undefined, container = undefined, cnv = undefined }: Props = $props();
+
+	let content = $derived(post?.content() as StageContent | undefined);
 
 	const ctx = getContext('post-control') as PostControlContext;
 
@@ -30,11 +36,13 @@
 		}
 	});
 
-	$: if (cnv) {
-		const stage: Stage | undefined = new Stage(cnv!);
+	run(() => {
+		if (cnv) {
+			const stage: Stage | undefined = new Stage(cnv!);
 
-		stage.canvas.height = container!.clientHeight;
-		stage.canvas.width = container!.clientWidth;
-		content?.start(stage);
-	}
+			stage.canvas.height = container!.clientHeight;
+			stage.canvas.width = container!.clientWidth;
+			content?.start(stage);
+		}
+	});
 </script>

@@ -1,7 +1,13 @@
 <script lang="ts">
-	export let tags: string[] = [];
-	export let activeTags: Set<string> = new Set();
-	export let onTagClick: ((tag: string) => void) | undefined = undefined;
+	import { preventDefault, stopPropagation } from 'svelte/legacy';
+
+	interface Props {
+		tags?: string[];
+		activeTags?: Set<string>;
+		onTagClick?: ((tag: string) => void) | undefined;
+	}
+
+	let { tags = [], activeTags = new Set(), onTagClick = undefined }: Props = $props();
 </script>
 
 <div class="flex gap-1.5 flex-wrap">
@@ -17,7 +23,7 @@
 				class:border-neutral-200={!activeTags.has(tag)}
 				class:hover:border-neutral-400={!activeTags.has(tag)}
 				class:hover:text-neutral-700={!activeTags.has(tag)}
-				on:click|preventDefault|stopPropagation={() => onTagClick?.(tag)}
+				onclick={stopPropagation(preventDefault(() => onTagClick?.(tag)))}
 			>
 				{tag}
 			</button>

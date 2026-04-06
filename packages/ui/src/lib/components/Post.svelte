@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { run } from 'svelte/legacy';
+
 	import { onMount, setContext } from 'svelte';
 	import { type Post, PostType } from '@sc/model';
 	import ContentRendererStage from '$lib/components/ContentRendererStage.svelte';
@@ -16,18 +18,23 @@
 
 	setContext('post-control', postControlContext);
 
-	export let post: Post | undefined;
-	export let hideHeader: boolean = false;
+	interface Props {
+		post: Post | undefined;
+		hideHeader?: boolean;
+	}
 
-	$: title = post?.summary?.title;
-	$: date = post?.summary.timestamp;
-	$: requiresCanvas =
-		post?.summary?.type === PostType.experiment || post?.summary?.type === PostType.experiment3d;
+	let { post = $bindable(), hideHeader = false }: Props = $props();
 
-	let container: HTMLDivElement | undefined = undefined;
-	let cnv: HTMLCanvasElement | undefined = undefined;
-	let controlArea: HTMLDivElement | undefined = undefined;
-	let areParamsOpen = false;
+	let title = $derived(post?.summary?.title);
+	let date = $derived(post?.summary.timestamp);
+	let requiresCanvas = $derived(
+		post?.summary?.type === PostType.experiment || post?.summary?.type === PostType.experiment3d
+	);
+
+	let container: HTMLDivElement | undefined = $state(undefined);
+	let cnv: HTMLCanvasElement | undefined = $state(undefined);
+	let controlArea: HTMLDivElement | undefined = $state(undefined);
+	let areParamsOpen = $state(false);
 
 	function onDocumentClick(e: MouseEvent) {
 		if (areParamsOpen && controlArea && !controlArea.contains(e.target as Node)) {
@@ -95,13 +102,15 @@
 		}
 	}
 
-	$: if (post?.params) {
-		const saved = loadSavedParams();
-		if (saved) {
-			post = { ...post, params: saved };
-			postControlContext.setParams(saved);
+	run(() => {
+		if (post?.params) {
+			const saved = loadSavedParams();
+			if (saved) {
+				post = { ...post, params: saved };
+				postControlContext.setParams(saved);
+			}
 		}
-	}
+	});
 </script>
 
 <div class="flex flex-1 flex-col h-full">

@@ -5,7 +5,7 @@
 	import PlaylistHelperMain from '$lib/explorations/playlist-helper/PlaylistHelperMain.svelte';
 	import { playlistHelper } from '$lib/explorations/playlist-helper/stores';
 
-	let initializationState: ClientInitState | undefined;
+	let initializationState: ClientInitState | undefined = $state();
 
 	onMount(async () => {
 		await playlistHelper.init();

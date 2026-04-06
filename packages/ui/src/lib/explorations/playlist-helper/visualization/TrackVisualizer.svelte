@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { run } from 'svelte/legacy';
+
 	import { playlistHelper } from '$lib/explorations/playlist-helper/stores';
 	import type { AudioFeaturesObject, CurrentlyPlayingContextObject } from '@sc/spotify';
 	import PostComponent from '$lib/components/Post.svelte';
@@ -6,18 +8,18 @@
 	import { TrackVizContent } from '$lib/explorations/playlist-helper/visualization/TrackVizPost';
 	import { onMount } from 'svelte';
 
-	let context: CurrentlyPlayingContextObject | undefined;
+	let context: CurrentlyPlayingContextObject | undefined = $state();
 	let currentAnalysis: AudioFeaturesObject | undefined;
-	let audioAnalyses: Map<string, AudioFeaturesObject> = new Map();
+	let audioAnalyses: Map<string, AudioFeaturesObject> = $state(new Map());
 
 	const trackVizContent = new TrackVizContent();
 	let playbackListener: EventListener | undefined;
 
-	$: {
+	run(() => {
 		playlistHelper.subscribeToAudioAnalysis((analysis: Map<string, AudioFeaturesObject>) => {
 			audioAnalyses = analysis;
 		});
-	}
+	});
 
 	onMount(() => {
 		console.log('subscribed to playback context!');

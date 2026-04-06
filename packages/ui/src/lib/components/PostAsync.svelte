@@ -2,7 +2,11 @@
 	import { type Post } from '@sc/model';
 	import PostComponent from './Post.svelte';
 
-	export let post: Promise<{ default: Post }>;
+	interface Props {
+		post: Promise<{ default: Post }>;
+	}
+
+	let { post }: Props = $props();
 </script>
 
 {#await post}

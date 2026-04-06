@@ -3,10 +3,14 @@
 	import { onMount } from 'svelte';
 	import type { AudioFeaturesObject, PlaylistTrackObject } from '@sc/spotify';
 	import { playlistHelper } from '$lib/explorations/playlist-helper/stores';
-	export let track: PlaylistTrackObject | undefined;
-	export let playlistId: string | undefined;
+	interface Props {
+		track: PlaylistTrackObject | undefined;
+		playlistId: string | undefined;
+	}
 
-	let features: Map<string, AudioFeaturesObject>;
+	let { track, playlistId }: Props = $props();
+
+	let features: Map<string, AudioFeaturesObject> | undefined = $state();
 
 	onMount(() => {
 		playlistHelper.subscribeToAudioAnalysis((analysis) => {
@@ -14,7 +18,7 @@
 		});
 	});
 
-	$: feature = features && track?.track?.id ? features.get(track.track.id) : undefined;
+	let feature = $derived(features && track?.track?.id ? features.get(track.track.id) : undefined);
 
 	function onPlayOut(e: Event) {
 		e.stopPropagation();
@@ -23,7 +27,7 @@
 		}
 	}
 
-	let hoveredOnPlay = false;
+	let hoveredOnPlay = $state(false);
 
 	function onMouseOverPlayBtn() {
 		hoveredOnPlay = true;
@@ -39,8 +43,8 @@
 >
 	<div
 		class="flex basis-1/4 max-w-[25%]"
-		on:mouseenter={onMouseOverPlayBtn}
-		on:mouseleave={onMouseOutPlayBtn}
+		onmouseenter={onMouseOverPlayBtn}
+		onmouseleave={onMouseOutPlayBtn}
 	>
 		<div class="flex relative min-w-[40px]">
 			<img
@@ -49,8 +53,8 @@
 				width="40"
 			/>
 			<button
-				on:mouseenter={(e) => e.stopPropagation()}
-				on:click={onPlayOut}
+				onmouseenter={(e) => e.stopPropagation()}
+				onclick={onPlayOut}
 				class={`absolute left-0 w-full h-full bg-emerald-500 opacity-75 self-center place-items-center content-center opacity-100 overflow-hidden ${hoveredOnPlay ? 'max-w-full' : 'max-w-0'} cursor-pointer transition-all`}
 			>
 				▶️
