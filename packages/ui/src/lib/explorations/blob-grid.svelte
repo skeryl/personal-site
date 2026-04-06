@@ -528,7 +528,7 @@
 		height={HEIGHT}
 		class="max-h-[90vh] w-auto border border-neutral-300"
 		style="aspect-ratio: 9 / 16;"
-	/>
+	></canvas>
 
 	<div class="absolute top-2 right-2 z-10 flex gap-2 items-start">
 		<button

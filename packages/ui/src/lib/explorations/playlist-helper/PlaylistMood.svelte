@@ -145,9 +145,12 @@
 	};
 </script>
 
-<button
-	class={`flex flex-col my-4 border-2 border-gray-300 rounded p-1 w-full`}
+<div
+	class={`flex flex-col my-4 border-2 border-gray-300 rounded p-1 w-full cursor-pointer`}
+	role="button"
+	tabindex="0"
 	on:click={onToggleExpansion}
+	on:keydown={(e) => e.key === 'Enter' && onToggleExpansion()}
 >
 	<div
 		class={`flex flex-row w-full rounded p-1 sticky top-4 z-10 justify-between`}
@@ -190,4 +193,4 @@
 			</div>
 		{/each}
 	</div>
-</button>
+</div>
