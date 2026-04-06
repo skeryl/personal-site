@@ -131,8 +131,8 @@
 		<a
 			href={`/journal/${post.id}`}
 			class="card group flex flex-col p-5 rounded-2xl no-underline transition-all duration-[600ms] ease-in-out"
-			class:is-active={hoveredPost === post}
-			class:is-dimmed={isAnyHovered && hoveredPost !== post}
+			class:is-active={hoveredPost?.id === post.id}
+			class:is-dimmed={isAnyHovered && hoveredPost?.id !== post.id}
 			onmouseenter={() => (hoveredPost = post)}
 		>
 			<div class="flex items-start justify-between gap-2 mb-3">
@@ -212,6 +212,7 @@
 	}
 
 	.card.is-active {
+		opacity: 1;
 		background: rgba(255, 255, 255, 0.92);
 		border-color: rgba(0, 0, 0, 0.12);
 		box-shadow:
