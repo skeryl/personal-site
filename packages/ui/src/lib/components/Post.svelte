@@ -117,7 +117,7 @@
 	{#if !hideHeader}
 		<a
 			href="/"
-			class="text-sm text-neutral-400 hover:text-neutral-600 no-underline transition-colors"
+			class="text-sm text-theme-text-muted hover:text-theme-text-secondary no-underline transition-colors"
 			>← journal</a
 		>
 		<div class="flex flex-row items-baseline mt-2">
@@ -129,14 +129,14 @@
 		{#if post?.summary.collaborators?.length}
 			<div class="flex flex-wrap gap-x-4 gap-y-1 mb-3 -mt-1">
 				{#each post.summary.collaborators as collab}
-					<span class="text-sm text-neutral-500">
+					<span class="text-sm text-theme-text-secondary">
 						{collab.role}:
 						{#if collab.url}
 							<a
 								href={collab.url}
 								target="_blank"
 								rel="noopener noreferrer"
-								class="underline underline-offset-2 hover:text-neutral-800 transition-colors"
+								class="underline underline-offset-2 hover:text-theme-text-heading transition-colors"
 								>{collab.name}</a
 							>
 						{:else}

@@ -1,0 +1,83 @@
+/*
+ * Theme System
+ *
+ * All visual properties (colors, fonts, spacing) are defined as CSS custom
+ * properties so that each fork can maintain its own distinct visual aesthetic.
+ *
+ * To create a custom theme, copy this file and override the variables below.
+ * Components reference these variables rather than hardcoded values, so
+ * pull requests containing new entries focus solely on logic and content.
+ *
+ * Usage: set `data-theme="<name>"` on <body> to activate a theme.
+ */
+
+:root,
+[data-theme='vintage'] {
+	/* ── Base palette ─────────────────────────────────────────────── */
+	--color-bg: theme('colors.neutral.50');
+	--color-text: theme('colors.neutral.700');
+	--color-text-heading: theme('colors.neutral.800');
+	--color-text-muted: theme('colors.neutral.400');
+	--color-text-secondary: theme('colors.neutral.500');
+	--color-text-strong: theme('colors.neutral.950');
+
+	/* ── Surfaces ─────────────────────────────────────────────────── */
+	--color-surface: theme('colors.neutral.200');
+	--color-surface-secondary: theme('colors.white');
+	--color-surface-active: theme('colors.neutral.100');
+	--color-surface-active-strong: theme('colors.neutral.800');
+
+	/* ── Borders ──────────────────────────────────────────────────── */
+	--color-border: theme('colors.neutral.200');
+	--color-border-strong: theme('colors.neutral.400');
+	--color-border-subtle: rgba(0, 0, 0, 0.06);
+
+	/* ── Accent / semantic ────────────────────────────────────────── */
+	--color-accent-success: theme('colors.emerald.600');
+	--color-accent-success-bg: theme('colors.emerald.50');
+	--color-accent-danger: theme('colors.red.600');
+
+	/* ── Tags ─────────────────────────────────────────────────────── */
+	--color-tag-bg: theme('colors.neutral.100');
+	--color-tag-text: theme('colors.neutral.500');
+	--color-tag-border: theme('colors.neutral.200');
+	--color-tag-hover-border: theme('colors.neutral.400');
+	--color-tag-hover-text: theme('colors.neutral.700');
+	--color-tag-active-bg: theme('colors.neutral.700');
+	--color-tag-active-text: theme('colors.white');
+	--color-tag-active-border: theme('colors.neutral.700');
+
+	/* ── Filter buttons ───────────────────────────────────────────── */
+	--color-filter-bg: theme('colors.neutral.100');
+	--color-filter-text: theme('colors.neutral.600');
+	--color-filter-hover-bg: theme('colors.neutral.200');
+	--color-filter-active-bg: theme('colors.neutral.800');
+	--color-filter-active-text: theme('colors.white');
+
+	/* ── Cards ─────────────────────────────────────────────────────── */
+	--card-bg: rgba(255, 255, 255, 0.7);
+	--card-bg-hover: rgba(255, 255, 255, 0.9);
+	--card-bg-active: rgba(255, 255, 255, 0.92);
+	--card-border: rgba(0, 0, 0, 0.06);
+	--card-border-hover: rgba(0, 0, 0, 0.1);
+	--card-border-active: rgba(0, 0, 0, 0.12);
+	--card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+	--card-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
+	--card-shadow-active: 0 8px 24px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.06);
+
+	/* ── Navigation ────────────────────────────────────────────────── */
+	--nav-bg: rgba(250, 250, 249, 0.6);
+	--nav-border: rgba(0, 0, 0, 0.06);
+	--nav-blur: 16px;
+
+	/* ── Collab link ───────────────────────────────────────────────── */
+	--collab-link-hover: rgb(23, 23, 23);
+
+	/* ── Range input ───────────────────────────────────────────────── */
+	--range-track: theme('colors.neutral.300');
+	--range-thumb: theme('colors.neutral.600');
+
+	/* ── Typography ────────────────────────────────────────────────── */
+	--font-body: 'Literata', Georgia, serif;
+	--font-heading: 'Sora', sans-serif;
+}
