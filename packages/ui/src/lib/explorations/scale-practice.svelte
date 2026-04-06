@@ -1,14 +1,16 @@
 <script lang="ts">
-	import {OpenSheetMusicDisplay} from 'opensheetmusicdisplay';
-	import {onMount} from 'svelte';
-	import {generateMeasures, type Song} from '@sc/synth-builder/musicxml';
-	import {allSongs} from "$lib/explorations/scale-practice/songs";
+	import { run } from 'svelte/legacy';
 
-	let container: HTMLDivElement;
+	import { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
+	import { onMount } from 'svelte';
+	import { generateMeasures, type Song } from '@sc/synth-builder/musicxml';
+	import { allSongs } from '$lib/explorations/scale-practice/songs';
 
-	let selectedSong: Song = allSongs[0];
-	let musicXML: string = '';
-	let osmd: OpenSheetMusicDisplay;
+	let container: HTMLDivElement | undefined = $state();
+
+	let selectedSong: Song = $state(allSongs[0]);
+	let musicXML: string = $state('');
+	let osmd: OpenSheetMusicDisplay | undefined = $state();
 
 	onMount(async () => {
 		if (!container) {
@@ -24,7 +26,7 @@
 		});
 	});
 
-	$: {
+	run(() => {
 		if (osmd && selectedSong) {
 			const chordMeasures = generateMeasures(selectedSong);
 
@@ -48,10 +50,10 @@
         `;
 
 			osmd.load(musicXML).then(() => {
-				osmd.render();
+				osmd!.render();
 			});
 		}
-	}
+	});
 </script>
 
 <div class="flex w-full flex-col">
@@ -62,7 +64,7 @@
 			{/each}
 		</select>
 		<a
-				class="justify-self-end"
+			class="justify-self-end"
 			href={`data:text/plain;charset=utf-8,${window.encodeURIComponent(musicXML)}`}
 			download={`${selectedSong.title}.xml`}>⬇ Download MusicXML</a
 		>

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { run } from 'svelte/legacy';
+
 	import { onMount, setContext } from 'svelte';
 	import { type Post, PostType } from '@sc/model';
 	import ContentRendererStage from '$lib/components/ContentRendererStage.svelte';
@@ -16,18 +18,23 @@
 
 	setContext('post-control', postControlContext);
 
-	export let post: Post | undefined;
-	export let hideHeader: boolean = false;
+	interface Props {
+		post: Post | undefined;
+		hideHeader?: boolean;
+	}
 
-	$: title = post?.summary?.title;
-	$: date = post?.summary.timestamp;
-	$: requiresCanvas =
-		post?.summary?.type === PostType.experiment || post?.summary?.type === PostType.experiment3d;
+	let { post = $bindable(), hideHeader = false }: Props = $props();
 
-	let container: HTMLDivElement | undefined = undefined;
-	let cnv: HTMLCanvasElement | undefined = undefined;
-	let controlArea: HTMLDivElement | undefined = undefined;
-	let areParamsOpen = false;
+	let title = $derived(post?.summary?.title);
+	let date = $derived(post?.summary.timestamp);
+	let requiresCanvas = $derived(
+		post?.summary?.type === PostType.experiment || post?.summary?.type === PostType.experiment3d
+	);
+
+	let container: HTMLDivElement | undefined = $state(undefined);
+	let cnv: HTMLCanvasElement | undefined = $state(undefined);
+	let controlArea: HTMLDivElement | undefined = $state(undefined);
+	let areParamsOpen = $state(false);
 
 	function onDocumentClick(e: MouseEvent) {
 		if (areParamsOpen && controlArea && !controlArea.contains(e.target as Node)) {
@@ -73,7 +80,9 @@
 			try {
 				const data = params.map((p) => ({ id: p.id, value: p.value }));
 				localStorage.setItem(key, JSON.stringify(data));
-			} catch { /* storage full or unavailable */ }
+			} catch {
+				/* storage full or unavailable */
+			}
 		}
 	}
 
@@ -88,26 +97,55 @@
 			return post.params.map((p) =>
 				lookup.has(p.id) ? { ...p, value: lookup.get(p.id) as typeof p.value } : p
 			);
-		} catch { return undefined; }
-	}
-
-	$: if (post?.params) {
-		const saved = loadSavedParams();
-		if (saved) {
-			post = { ...post, params: saved };
-			postControlContext.setParams(saved);
+		} catch {
+			return undefined;
 		}
 	}
+
+	run(() => {
+		if (post?.params) {
+			const saved = loadSavedParams();
+			if (saved) {
+				post = { ...post, params: saved };
+				postControlContext.setParams(saved);
+			}
+		}
+	});
 </script>
 
 <div class="flex flex-1 flex-col h-full">
 	{#if !hideHeader}
-		<div class="flex flex-row items-baseline">
+		<a
+			href="/"
+			class="text-sm text-neutral-400 hover:text-neutral-600 no-underline transition-colors"
+			>← journal</a
+		>
+		<div class="flex flex-row items-baseline mt-2">
 			<h1 class="flex-1">{title}</h1>
 			<div>
 				{date?.toLocaleDateString()}
 			</div>
 		</div>
+		{#if post?.summary.collaborators?.length}
+			<div class="flex flex-wrap gap-x-4 gap-y-1 mb-3 -mt-1">
+				{#each post.summary.collaborators as collab}
+					<span class="text-sm text-neutral-500">
+						{collab.role}:
+						{#if collab.url}
+							<a
+								href={collab.url}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="underline underline-offset-2 hover:text-neutral-800 transition-colors"
+								>{collab.name}</a
+							>
+						{:else}
+							{collab.name}
+						{/if}
+					</span>
+				{/each}
+			</div>
+		{/if}
 	{/if}
 
 	<div bind:this={container} class="flex flex-1 relative min-h-[80vh]">

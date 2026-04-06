@@ -1,4 +1,4 @@
-import { components, operations } from "../src-gen/spotify-schema";
+import type { components, operations } from "../src-gen/spotify-schema";
 
 export * from "../src-gen/spotify-schema.d";
 export { ClientInitState, loginWithSpotifyClick } from "./auth";

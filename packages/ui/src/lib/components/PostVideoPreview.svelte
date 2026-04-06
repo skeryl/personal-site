@@ -1,32 +1,45 @@
 <script lang="ts">
+	import { run } from 'svelte/legacy';
+
 	import videos from '$lib/assets/videos/posts/index.js';
 	import { onMount } from 'svelte';
 	import type { PostSummary } from '@sc/model';
 
 	const videoSources = Object.entries(videos);
-	export let selectedPost: PostSummary | undefined;
+	interface Props {
+		selectedPost: PostSummary | undefined;
+	}
+
+	let { selectedPost }: Props = $props();
 	let currentPost: string | undefined;
 
-	let vid: HTMLVideoElement;
+	let vid: HTMLVideoElement | undefined = $state();
 
-	$: {
-		if (selectedPost && currentPost !== selectedPost.id) {
+	run(() => {
+		if (selectedPost && currentPost !== selectedPost.id && vid) {
 			console.log('changing video source...');
 			const sources = Array.from(vid.querySelectorAll('source'));
 			sources.forEach((src) => src.remove());
 			vid.load();
 
 			const source = document.createElement('source');
-			source.setAttribute('src', `${videos[selectedPost.id]}#t=[3]`);
-			source.setAttribute('type', 'video/webm');
+			const src = videos[selectedPost.id];
+			source.setAttribute('src', `${src}#t=[3]`);
+			const ext = src.split('.').pop()?.split('?')[0] ?? '';
+			const mimeTypes: Record<string, string> = {
+				mp4: 'video/mp4',
+				webm: 'video/webm',
+				mov: 'video/quicktime'
+			};
+			source.setAttribute('type', mimeTypes[ext] || 'video/mp4');
 			vid.appendChild(source);
 			vid.load();
 			vid.play();
 		}
-	}
+	});
 
 	onMount(() => {
-		vid.load();
+		vid?.load();
 	});
 </script>
 
@@ -36,7 +49,8 @@
 	loop
 	muted
 	id="post-preview-video"
-	class="absolute top-0 bottom-0 left-0 right-0 -z-50 opacity-45 block object-cover max-h-[80vw] h-full w-full"
+	class="fixed inset-0 -z-50 opacity-45 block object-cover"
+	style="width: 100%; height: 100%;"
 >
 	<!--{#each videoSources as [postId, videoSrc]}
         <source src={videoSrc} id={`post-video-src:${postId}`} type="video/webm">

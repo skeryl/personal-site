@@ -1,19 +1,21 @@
-<script lang="ts" generics="T extends any, Meta extends any">
-    import { popup } from '@skeletonlabs/skeleton';
+<!-- @migration-task Error while migrating Svelte code: Cannot read properties of undefined (reading 'name') -->
+<script lang="ts">
+	import { popup } from '@skeletonlabs/skeleton';
 	import {
 		Autocomplete,
 		type AutocompleteOption,
 		type PopupSettings
 	} from '@skeletonlabs/skeleton';
 
-	interface $$Props<T = any, Meta = unknown> {
-		items: AutocompleteOption<T, Meta>;
-		searchValue: string | undefined;
-		popupSettings: PopupSettings | undefined;
+	interface $$Props {
+		items: AutocompleteOption<any, any>[];
+		searchValue?: string | undefined;
+		popupSettings?: PopupSettings | undefined;
+		[key: string]: any;
 	}
 
-	export let items: AutocompleteOption<T, Meta>[];
-	export let searchValue: string | undefined;
+	export let items: AutocompleteOption<any, any>[];
+	export let searchValue: string | undefined = undefined;
 	export let popupSettings: PopupSettings = {
 		event: 'focus-click',
 		target: 'popupAutocomplete',
@@ -24,7 +26,7 @@
 		console.log(e);
 	}
 
-/*	$: filtered = searchValue
+	/*	$: filtered = searchValue
 		? items?.filter((item) =>
 				item.label
 					.toLowerCase()

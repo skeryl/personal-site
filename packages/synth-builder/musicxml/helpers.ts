@@ -1,5 +1,9 @@
-import {
+import type {
   AccidentalValue,
+  Song,
+  Step,
+} from "./types-generated/musicxml-types";
+import {
   Attributes,
   Beam,
   Clef,
@@ -15,8 +19,6 @@ import {
   Pitch,
   Print,
   Root,
-  Song,
-  Step,
   Tied,
   TimeSignature,
 } from "./types-generated/musicxml-types";

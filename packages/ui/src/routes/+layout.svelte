@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import 'iconify-icon';
 	import '../app.css';
 	import Nav from '$lib/components/nav/Nav.svelte';
@@ -10,6 +10,6 @@
 
 <Nav />
 
-<div class="py-1 px-6 max-sm:px-3">
+<div class="pt-3 pb-8 px-6 max-sm:px-3">
 	<slot />
 </div>

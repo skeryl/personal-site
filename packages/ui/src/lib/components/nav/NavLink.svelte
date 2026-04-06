@@ -1,12 +1,15 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 
-	export let href: string;
-	export let text: string;
+	interface Props {
+		href: string;
+		text: string;
+		className?: string;
+	}
 
-	export let className: string = '';
+	let { href, text, className = '' }: Props = $props();
 
-	$: isActiveRoute = $page.url.pathname === href;
+	let isActiveRoute = $derived($page.url.pathname === href);
 </script>
 
 <a {href} class={`${isActiveRoute ? 'underline underline-offset-4' : 'no-underline'} ${className}`}

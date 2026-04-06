@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { stopPropagation } from 'svelte/legacy';
+
 	import Icon from '$lib/components/icons/Icon.svelte';
 	import type { MouseEventHandler } from 'svelte/elements';
 	import { getContext } from 'svelte';
@@ -11,15 +13,19 @@
 	import { type ContentParam, type ContentParams, ParamType } from '$lib/content-params';
 	import ParamInput from '$lib/components/content-params/ParamInput.svelte';
 
-	export let toggleFullScreen: MouseEventHandler<any>;
-	export let toggleParams: MouseEventHandler<any>;
-	export let postId: string = 'post';
-	export let hasParams: boolean | undefined;
+	interface Props {
+		toggleFullScreen: MouseEventHandler<any>;
+		toggleParams: MouseEventHandler<any>;
+		postId?: string;
+		hasParams: boolean | undefined;
+	}
+
+	let { toggleFullScreen, toggleParams, postId = 'post', hasParams }: Props = $props();
 
 	const ctx = getContext('post-control') as PostControlContext;
 
-	let playState = ctx.state.playState;
-	let downloadLink: string | undefined = undefined;
+	let playState = $state(ctx.state.playState);
+	let downloadLink: string | undefined = $state(undefined);
 
 	ctx.addEventListener('post-play-state-changed', (ev) => {
 		playState = (ev as PlayStateChangedEvent).currentPlayState;
@@ -29,12 +35,12 @@
 		downloadLink = (ev as RecordingCompleteEvent).blobLink;
 	});
 
-	$: isRecording = playState === PlayState.recording;
-	$: isPaused = playState === PlayState.paused;
+	let isRecording = $derived(playState === PlayState.recording);
+	let isPaused = $derived(playState === PlayState.paused);
 
 	let activeCountdownTimeout: number | undefined;
-	let activeCountdownStart: Date | undefined;
-	let countdownSecondsLeft: string | undefined;
+	let activeCountdownStart: Date | undefined = $state();
+	let countdownSecondsLeft: string | undefined = $state();
 	let recalcInterval: number | undefined;
 
 	function recalcCountdownSecondsLeft() {
@@ -53,7 +59,7 @@
 		recalcInterval = undefined;
 	}
 
-	function onRecordClicked(e: MouseEvent) {
+	function onRecordClicked(e: Event) {
 		e.stopPropagation();
 		if (activeCountdownTimeout) {
 			window.clearTimeout(activeCountdownTimeout);
@@ -96,7 +102,7 @@
 					className={`control-icon ${isRecording ? 'text-red-600' : ''}`}
 			></Icon>
 		</button>-->
-		<button class="p-2 flex self-center" on:click|stopPropagation={onRecordClicked}>
+		<button class="p-2 flex self-center" onclick={stopPropagation(onRecordClicked)}>
 			<Icon
 				type={activeCountdownStart
 					? 'player-stop'
@@ -129,7 +135,7 @@
 				<button
 					class="flex self-center pl-1"
 					aria-label="click to dismiss recording"
-					on:click={dismissRecording}
+					onclick={dismissRecording}
 				>
 					<Icon type="circle-x" className="hover:text-red-600" size="sm" />
 				</button>
@@ -138,13 +144,13 @@
 	</div>
 	{#if hasParams}
 		<div class="flex mr-2">
-			<button on:click={toggleParams} class="flex">
+			<button onclick={toggleParams} class="flex">
 				<Icon type="settings" className="control-icon justify-center self-center items-center" />
 			</button>
 		</div>
 	{/if}
 	<div class="flex mr-2">
-		<button on:click={toggleFullScreen} class="flex h-full p-2">
+		<button onclick={toggleFullScreen} class="flex h-full p-2">
 			<Icon type="maximize" className="control-icon justify-center self-center items-center" />
 		</button>
 	</div>

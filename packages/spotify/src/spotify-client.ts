@@ -1,5 +1,5 @@
 import { init, refreshToken } from "./auth";
-import {
+import type {
   ApiErrorResponse,
   AudioAnalysisObject,
   CurrentlyPlayingContextObject,

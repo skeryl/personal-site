@@ -67,8 +67,8 @@ export class TimeSensitiveMap<K, V> implements Map<K, V> {
     return this.delegate.has(value);
   }
 
-  keys(): IterableIterator<K> {
-    return this.delegate.keys();
+  keys() {
+    return this.delegate.keys() as any;
   }
 
   values() {

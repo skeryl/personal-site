@@ -1,5 +1,11 @@
+import type { KeyNoteMapping } from "../model/notes";
 import { Pitch } from "../model/notes";
-import { KeyControllerProps } from "../hooks/keyboard";
+
+export interface KeyControllerProps {
+  keyMap: KeyNoteMapping;
+  startPlaying: (pitch: Pitch) => void;
+  stopPlaying: (pitch: Pitch) => void;
+}
 
 export type OnUnmount = () => void;
 

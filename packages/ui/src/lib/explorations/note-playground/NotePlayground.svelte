@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { stopPropagation } from 'svelte/legacy';
+
 	import { onMount, onDestroy } from 'svelte';
 	import { DefaultKeyMapping, Pitch, PitchInformation } from '@sc/synth-builder/src/model/notes';
 	import { MutableAudioNode as AudioGraphNode } from '@sc/synth-builder/src/core/nodes/MutableAudioNode';
@@ -61,7 +63,8 @@
 	/* ── distance → pitch ───────────────────────────────────── */
 
 	function distanceToPitch(nx: number, ny: number): { pitch: Pitch; pitchNorm: number } {
-		const dx = nx - 0.5, dy = ny - 0.5;
+		const dx = nx - 0.5,
+			dy = ny - 0.5;
 		const dist = Math.sqrt(dx * dx + dy * dy);
 		const norm = Math.max(0, Math.min(1, dist / 0.5));
 		const idx = Math.round(norm * PLAYABLE_RANGE + MIN_PLAYABLE_IDX);
@@ -74,7 +77,8 @@
 
 	interface NoteOrb {
 		id: string;
-		x: number; y: number; /* normalized 0-1 */
+		x: number;
+		y: number; /* normalized 0-1 */
 		pitch: Pitch;
 		pitchNorm: number;
 		hue: number;
@@ -86,8 +90,10 @@
 	/* ── particle ───────────────────────────────────────────── */
 
 	interface Particle {
-		x: number; y: number;
-		vx: number; vy: number;
+		x: number;
+		y: number;
+		vx: number;
+		vy: number;
 		life: number;
 		hue: number;
 		orbId: string;
@@ -95,15 +101,22 @@
 
 	/* ── state ──────────────────────────────────────────────── */
 
-	let canvas: HTMLCanvasElement;
+	let canvas: HTMLCanvasElement | undefined = $state();
 	let ctx: CanvasRenderingContext2D | null;
-	let w = 0, h = 0;
+	let w = 0,
+		h = 0;
 	let animId = 0;
 	let audioUnlocked = false;
 
-	const orbs: NoteOrb[] = [];
+	const orbs: NoteOrb[] = $state([]);
 	const particles: Particle[] = Array.from({ length: MAX_PARTICLES }, () => ({
-		x: 0, y: 0, vx: 0, vy: 0, life: 0, hue: 0, orbId: ''
+		x: 0,
+		y: 0,
+		vx: 0,
+		vy: 0,
+		life: 0,
+		hue: 0,
+		orbId: ''
 	}));
 
 	let synth: Synth;
@@ -122,14 +135,35 @@
 			unison: 2,
 			unisonDetune: 0.12
 		});
-		const releasing = (s as unknown as { releasing: { onDelete: (pitch: Pitch, params: AudioParam[]) => void } }).releasing;
+		const releasing = (
+			s as unknown as { releasing: { onDelete: (pitch: Pitch, params: AudioParam[]) => void } }
+		).releasing;
 		releasing.onDelete = (pitch: Pitch) => {
 			const pitches = getSynthPitches(s);
 			const nodes = pitches.get(pitch);
 			if (nodes) {
-				nodes.oscillators.forEach((o) => { try { o.node.stop(); o.node.disconnect(); } catch { /* */ } });
-				nodes.gains.forEach((g) => { try { g.node.disconnect(); } catch { /* */ } });
-				nodes.analysers.forEach((a) => { try { a.node.disconnect(); } catch { /* */ } });
+				nodes.oscillators.forEach((o) => {
+					try {
+						o.node.stop();
+						o.node.disconnect();
+					} catch {
+						/* */
+					}
+				});
+				nodes.gains.forEach((g) => {
+					try {
+						g.node.disconnect();
+					} catch {
+						/* */
+					}
+				});
+				nodes.analysers.forEach((a) => {
+					try {
+						a.node.disconnect();
+					} catch {
+						/* */
+					}
+				});
 				pitches.delete(pitch);
 			}
 		};
@@ -174,8 +208,10 @@
 		}
 		const orb: NoteOrb = {
 			id: `orb-${orbIdCounter++}`,
-			x: nx, y: ny,
-			pitch: p, pitchNorm: pn,
+			x: nx,
+			y: ny,
+			pitch: p,
+			pitchNorm: pn,
 			hue: pitchToHue(pn),
 			dragging: false,
 			birthTime: performance.now(),
@@ -222,7 +258,8 @@
 		const orbR = ORB_RADIUS / Math.max(w, 1);
 		for (let i = orbs.length - 1; i >= 0; i--) {
 			const o = orbs[i];
-			const dx = o.x - nx, dy = o.y - ny;
+			const dx = o.x - nx,
+				dy = o.y - ny;
 			if (Math.sqrt(dx * dx + dy * dy) < orbR) return o;
 		}
 		return undefined;
@@ -237,7 +274,7 @@
 	const DOUBLE_TAP_MS = 400;
 
 	function norm(e: PointerEvent): { nx: number; ny: number } {
-		const rect = canvas.getBoundingClientRect();
+		const rect = canvas!.getBoundingClientRect();
 		return { nx: (e.clientX - rect.left) / rect.width, ny: (e.clientY - rect.top) / rect.height };
 	}
 
@@ -251,7 +288,7 @@
 		} else {
 			addOrb(nx, ny);
 		}
-		canvas.setPointerCapture(e.pointerId);
+		canvas!.setPointerCapture(e.pointerId);
 	}
 
 	function onPointerMove(e: PointerEvent) {
@@ -265,7 +302,8 @@
 	function onPointerUp(e: PointerEvent) {
 		if (activeOrb) {
 			const { nx, ny } = norm(e);
-			const dx = nx - pointerDownPos.x, dy = ny - pointerDownPos.y;
+			const dx = nx - pointerDownPos.x,
+				dy = ny - pointerDownPos.y;
 			const wasTap = Math.sqrt(dx * dx + dy * dy) < 0.02;
 			if (wasTap) {
 				const now = performance.now();
@@ -322,14 +360,20 @@
 		const ratio = hzA > hzB ? hzA / hzB : hzB / hzA;
 		const simple = [1, 2, 1.5, 4 / 3, 5 / 4, 5 / 3, 6 / 5];
 		let best = 1;
-		for (const r of simple) { const d = Math.abs(ratio - r); if (d < best) best = d; }
+		for (const r of simple) {
+			const d = Math.abs(ratio - r);
+			if (d < best) best = d;
+		}
 		return 1.0 - Math.min(best * 4, 1.0);
 	}
 
 	/* ── render loop ────────────────────────────────────────── */
 
 	function tick(timestamp: number) {
-		if (!ctx) { animId = requestAnimationFrame(tick); return; }
+		if (!ctx) {
+			animId = requestAnimationFrame(tick);
+			return;
+		}
 
 		const delta = Math.min((timestamp - lastTime) / 1000, 0.05);
 		lastTime = timestamp;
@@ -344,7 +388,8 @@
 		}
 
 		/* compute discordance */
-		let disc = 0, pairs = 0;
+		let disc = 0,
+			pairs = 0;
 		for (let a = 0; a < orbs.length; a++) {
 			for (let b = a + 1; b < orbs.length; b++) {
 				disc += 1 - consonance(orbs[a].pitchNorm, orbs[b].pitchNorm);
@@ -386,7 +431,8 @@
 
 			/* gravity toward ALL orbs — stronger pull from others, gentle orbit around own */
 			for (const orb of orbs) {
-				const dx = orb.x - pt.x, dy = orb.y - pt.y;
+				const dx = orb.x - pt.x,
+					dy = orb.y - pt.y;
 				const dist2 = dx * dx + dy * dy + 0.0001;
 				const isOwn = orb.id === pt.orbId;
 				const force = (isOwn ? 0.000003 : 0.000008) / dist2;
@@ -396,8 +442,8 @@
 				if (!isOwn) {
 					const dist = Math.sqrt(dist2);
 					if (dist < 0.15) {
-						pt.vx += -dy * 0.00002 / dist;
-						pt.vy += dx * 0.00002 / dist;
+						pt.vx += (-dy * 0.00002) / dist;
+						pt.vy += (dx * 0.00002) / dist;
 					}
 				}
 			}
@@ -411,7 +457,8 @@
 
 		/* background */
 		if (orbs.length > 0) {
-			let sinSum = 0, cosSum = 0;
+			let sinSum = 0,
+				cosSum = 0;
 			for (const o of orbs) {
 				sinSum += Math.sin(o.hue * Math.PI * 2);
 				cosSum += Math.cos(o.hue * Math.PI * 2);
@@ -432,7 +479,8 @@
 		for (let p = 0; p < MAX_PARTICLES; p++) {
 			const pt = particles[p];
 			if (pt.life <= 0) continue;
-			const px = pt.x * w, py = pt.y * h;
+			const px = pt.x * w,
+				py = pt.y * h;
 			const r = particleSize * (1 + pt.life) * 1.5;
 			const alpha = pt.life * 0.6;
 			const grad = ctx.createRadialGradient(px, py, 0, px, py, r);
@@ -445,7 +493,8 @@
 
 		/* draw orbs */
 		for (const orb of orbs) {
-			const ox = orb.x * w, oy = orb.y * h;
+			const ox = orb.x * w,
+				oy = orb.y * h;
 			const r = ORB_RADIUS;
 			const grad = ctx.createRadialGradient(ox, oy, 0, ox, oy, r);
 			grad.addColorStop(0, hslToCSS(orb.hue, 0.9, 0.7, 0.9));
@@ -491,7 +540,7 @@
 
 	onMount(() => {
 		synth = initSynth();
-		ctx = canvas.getContext('2d');
+		ctx = canvas!.getContext('2d');
 		resize();
 		window.addEventListener('resize', resize);
 		document.addEventListener('keydown', onKeyDown);
@@ -517,16 +566,16 @@
 	<canvas
 		bind:this={canvas}
 		class="absolute inset-0 w-full h-full cursor-crosshair"
-		on:pointerdown={onPointerDown}
-		on:pointermove={onPointerMove}
-		on:pointerup={onPointerUp}
-	/>
+		onpointerdown={onPointerDown}
+		onpointermove={onPointerMove}
+		onpointerup={onPointerUp}
+	></canvas>
 	{#if orbs.length > 0}
 		<button
 			class="absolute bottom-4 left-4 px-3 py-1.5 text-xs rounded-full
 				bg-neutral-800/60 text-neutral-300 hover:bg-neutral-700/80
 				hover:text-white transition-colors backdrop-blur-sm"
-			on:click|stopPropagation={removeAllOrbs}
+			onclick={stopPropagation(removeAllOrbs)}
 		>
 			Clear All
 		</button>

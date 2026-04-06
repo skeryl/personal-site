@@ -1,8 +1,9 @@
 import { NodeTypes } from "../../model/nodes";
 import { v4 as uuid } from "uuid";
-import { IAudioNode, MutableAudioNode } from "./MutableAudioNode";
+import type { IAudioNode } from "./MutableAudioNode";
+import { MutableAudioNode } from "./MutableAudioNode";
 import { BuildContext } from "./BuildContext";
-import { GraphBuild, IAudioGraph } from "./index";
+import type { GraphBuild, IAudioGraph } from "./index";
 
 export class MutableAudioGraph implements IAudioGraph {
   constructor(public sources: IAudioNode[], public id: string = uuid()) {

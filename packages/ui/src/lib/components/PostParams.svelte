@@ -2,8 +2,12 @@
 	import { type ContentParam, type ContentParams, ParamType } from '$lib/content-params/index.js';
 	import ParamInput from '$lib/components/content-params/ParamInput.svelte';
 
-	export let params: ContentParams;
-	export let onParamsChange: (p: ContentParams) => void;
+	interface Props {
+		params: ContentParams;
+		onParamsChange: (p: ContentParams) => void;
+	}
+
+	let { params = $bindable(), onParamsChange }: Props = $props();
 
 	function onParamChange(changedParam: ContentParam<ParamType>) {
 		if (params && onParamsChange) {

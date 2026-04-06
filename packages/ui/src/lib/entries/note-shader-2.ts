@@ -7,7 +7,14 @@ import { MutableAudioGraph } from '@sc/synth-builder/src/core/nodes/MutableAudio
 import { NodeTypes } from '@sc/synth-builder/src/model/nodes';
 import { getReleaseTime, Synth } from '@sc/synth-builder/src/core/Synth';
 import { DataTexture, FloatType, LinearFilter, NearestFilter, RGBAFormat } from 'three';
-import { type ContentParams, type ContentParam, ParamType, numberParam, selectParam, paramsById } from '$lib/content-params';
+import {
+	type ContentParams,
+	type ContentParam,
+	ParamType,
+	numberParam,
+	selectParam,
+	paramsById
+} from '$lib/content-params';
 
 /* ── constants ─────────────────────────────────────────────── */
 
@@ -255,13 +262,25 @@ class KeyboardSynthController {
 /* ── content params ────────────────────────────────────────── */
 
 const MODE_NAMES = [
-	'Radial', 'Droste Spiral', 'Möbius Lens', 'Kaleidoscope', 'Ripple',
-	'Tunnel', 'Fractal Mirror', 'Diamond', 'Vortex', 'Fractal Mirror 2'
+	'Radial',
+	'Droste Spiral',
+	'Möbius Lens',
+	'Kaleidoscope',
+	'Ripple',
+	'Tunnel',
+	'Fractal Mirror',
+	'Diamond',
+	'Vortex',
+	'Fractal Mirror 2'
 ];
 
 const visualizationParams: ContentParams = [
 	selectParam('Mode', MODE_NAMES, 'Fractal Mirror 2'),
-	selectParam('Wave', WAVE_TYPES.map((w) => w.charAt(0).toUpperCase() + w.slice(1)), 'Sawtooth'),
+	selectParam(
+		'Wave',
+		WAVE_TYPES.map((w) => w.charAt(0).toUpperCase() + w.slice(1)),
+		'Sawtooth'
+	),
 	numberParam('Volume', 0.08, { min: 0.01, max: 0.25, step: 0.01 }),
 	numberParam('Attack', 0.95, { min: 0, max: 1, step: 0.05 }),
 	numberParam('Release', 0.7, { min: 0, max: 1, step: 0.05 }),
@@ -272,7 +291,12 @@ const visualizationParams: ContentParams = [
 /* ── main content class ────────────────────────────────────── */
 
 /** Access the Synth's private pitches map */
-type SynthPitchNodes = { oscillators: { node: OscillatorNode }[]; gains: { node: GainNode }[]; analysers: { node: AnalyserNode }[]; pitch: Pitch };
+type SynthPitchNodes = {
+	oscillators: { node: OscillatorNode }[];
+	gains: { node: GainNode }[];
+	analysers: { node: AnalyserNode }[];
+	pitch: Pitch;
+};
 function getSynthPitches(s: Synth): Map<Pitch, SynthPitchNodes> {
 	return (s as unknown as { pitches: Map<Pitch, SynthPitchNodes> }).pitches;
 }
@@ -291,16 +315,37 @@ class NoteShader2Content extends BookOfShadersContent {
 		   which can cancel the release ramp if the timer fires at the exact ramp end time,
 		   snapping the gain back to maxGain (the setValueAtTime anchor). Replace the
 		   captured callback on the TimeSensitiveMap to properly clean up instead. */
-		const releasing = (s as unknown as { releasing: { onDelete: (pitch: Pitch, params: AudioParam[]) => void } }).releasing;
+		const releasing = (
+			s as unknown as { releasing: { onDelete: (pitch: Pitch, params: AudioParam[]) => void } }
+		).releasing;
 		releasing.onDelete = (pitch: Pitch) => {
 			/* Don't cancelScheduledValues — let the ramp finish naturally.
 			   Just stop and disconnect the oscillators to free resources. */
 			const pitches = getSynthPitches(s);
 			const nodes = pitches.get(pitch);
 			if (nodes) {
-				nodes.oscillators.forEach((o) => { try { o.node.stop(); o.node.disconnect(); } catch { /* already stopped */ } });
-				nodes.gains.forEach((g) => { try { g.node.disconnect(); } catch { /* noop */ } });
-				nodes.analysers.forEach((a) => { try { a.node.disconnect(); } catch { /* noop */ } });
+				nodes.oscillators.forEach((o) => {
+					try {
+						o.node.stop();
+						o.node.disconnect();
+					} catch {
+						/* already stopped */
+					}
+				});
+				nodes.gains.forEach((g) => {
+					try {
+						g.node.disconnect();
+					} catch {
+						/* noop */
+					}
+				});
+				nodes.analysers.forEach((a) => {
+					try {
+						a.node.disconnect();
+					} catch {
+						/* noop */
+					}
+				});
 				pitches.delete(pitch);
 			}
 		};
@@ -370,7 +415,13 @@ class NoteShader2Content extends BookOfShadersContent {
 		}
 		/* update any currently-playing oscillators */
 		for (const [, nodes] of pitches) {
-			nodes.oscillators.forEach((o) => { try { o.node.type = waveType; } catch { /* */ } });
+			nodes.oscillators.forEach((o) => {
+				try {
+					o.node.type = waveType;
+				} catch {
+					/* */
+				}
+			});
 		}
 
 		/* volume — update template + live gain nodes */
@@ -424,7 +475,8 @@ class NoteShader2Content extends BookOfShadersContent {
 	private onPointer = (e: PointerEvent) => {
 		this.uniforms.u_mouse.value.x = e.pageX;
 		this.uniforms.u_mouse.value.y =
-			(this.container?.getBoundingClientRect().height ?? 0) - (e.pageY - (this.container?.getBoundingClientRect().top ?? 0));
+			(this.container?.getBoundingClientRect().height ?? 0) -
+			(e.pageY - (this.container?.getBoundingClientRect().top ?? 0));
 	};
 
 	/* ── render loop ───────────────────────────────────────── */
@@ -456,10 +508,31 @@ class NoteShader2Content extends BookOfShadersContent {
 			if (now - releasedAt > maxReleaseAge) {
 				const nodes = pitches.get(pitch);
 				if (nodes) {
-					console.log(`[AUDIT] killing zombie: ${pitch} age=${((now - releasedAt) / 1000).toFixed(1)}s gains=[${nodes.gains.map((g) => g.node.gain.value.toFixed(6)).join(',')}]`);
-				nodes.oscillators.forEach((o) => { try { o.node.stop(); o.node.disconnect(); } catch { /* */ } });
-					nodes.gains.forEach((g) => { try { g.node.disconnect(); } catch { /* */ } });
-					nodes.analysers.forEach((a) => { try { a.node.disconnect(); } catch { /* */ } });
+					console.log(
+						`[AUDIT] killing zombie: ${pitch} age=${((now - releasedAt) / 1000).toFixed(1)}s gains=[${nodes.gains.map((g) => g.node.gain.value.toFixed(6)).join(',')}]`
+					);
+					nodes.oscillators.forEach((o) => {
+						try {
+							o.node.stop();
+							o.node.disconnect();
+						} catch {
+							/* */
+						}
+					});
+					nodes.gains.forEach((g) => {
+						try {
+							g.node.disconnect();
+						} catch {
+							/* */
+						}
+					});
+					nodes.analysers.forEach((a) => {
+						try {
+							a.node.disconnect();
+						} catch {
+							/* */
+						}
+					});
 					pitches.delete(pitch);
 				}
 				this.releaseTimestamps.delete(pitch);
