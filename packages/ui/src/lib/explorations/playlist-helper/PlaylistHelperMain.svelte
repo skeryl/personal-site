@@ -88,7 +88,10 @@
 
 	let deviceItems: AutocompleteOption<string>[];
 
-	$: deviceItems = devices?.map((dev) => ({ value: dev.id ?? '', label: dev.name ?? '' }));
+	$: deviceItems = devices?.map((dev) => ({
+		value: dev.id ?? '',
+		label: dev.name ?? ''
+	})) as AutocompleteOption<string>[];
 	$: activeDevice = devices.find((dev) => dev.is_active);
 	$: activeDeviceItem = deviceItems.find((item) => item.value === activeDevice?.id);
 
@@ -137,7 +140,7 @@
 							<div>
 								<Selector
 									items={deviceItems}
-									value={selectedDeviceItem?.id}
+									value={selectedDeviceItem?.value}
 									onChange={onDeviceChange}
 								/>
 							</div>

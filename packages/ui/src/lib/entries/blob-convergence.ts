@@ -121,7 +121,13 @@ class BlobConvergenceContent extends BookOfShadersContent {
 		super();
 
 		this.blobData = new Float32Array(MAX_BLOBS * 2 * 4);
-		this.blobTexture = new DataTexture(this.blobData, MAX_BLOBS, 2, RGBAFormat, FloatType);
+		this.blobTexture = new DataTexture(
+			this.blobData as Float32Array<ArrayBuffer>,
+			MAX_BLOBS,
+			2,
+			RGBAFormat,
+			FloatType
+		);
 		this.blobTexture.minFilter = NearestFilter;
 		this.blobTexture.magFilter = NearestFilter;
 

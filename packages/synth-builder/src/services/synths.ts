@@ -1,10 +1,11 @@
-import { Synth, SynthesizerSettings } from "../core/Synth";
+import { Synth } from "../core/Synth";
+import type { SynthesizerSettings } from "../core/Synth";
 import { MutableAudioGraph } from "../core/nodes/MutableAudioGraph";
-import { IAudioGraph } from "../core/nodes";
+import type { IAudioGraph } from "../core/nodes";
 import { v4 as uuid } from "uuid";
 import { Pitch } from "../model/notes";
-import { IAudioNode } from "../core/nodes/MutableAudioNode";
-import { Instrument } from "../core/Instrument";
+import type { IAudioNode } from "../core/nodes/MutableAudioNode";
+import type { Instrument } from "../core/Instrument";
 
 export interface SynthMetadata {
   id: string;

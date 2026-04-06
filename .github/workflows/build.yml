@@ -5,10 +5,8 @@ on:
 
 jobs:
   check:
-    name: Type Check (informational)
+    name: Type Check
     runs-on: ubuntu-latest
-    # Non-blocking until synth-builder/spotify package types are cleaned up
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

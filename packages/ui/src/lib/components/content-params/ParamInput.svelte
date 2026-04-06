@@ -21,17 +21,19 @@
 	}
 
 	$: inputId = `param-${param.id}`;
+	$: numberRange = param.range as { min: number; max: number; step?: number | 'any' } | undefined;
+	$: vec2Value = param.value as unknown as Vec2;
 </script>
 
 <div class="flex-col px-2">
 	{#if param.type === ParamType.number}
-		{#if param.range}
+		{#if numberRange}
 			<Input
 				class="w-full"
 				type="range"
-				min={param.range.min}
-				max={param.range.max}
-				step={param.range.step ?? 'any'}
+				min={numberRange.min}
+				max={numberRange.max}
+				step={numberRange.step ?? 'any'}
 				onChange={onNumberParamChanged}
 				value={param.value}
 				label={param.name}
@@ -51,7 +53,7 @@
 		{/if}
 	{:else if param.type === ParamType.vec2}
 		<div class="flex">
-			<Vec2Input label={param.name} value={param.value} onChange={onVec2ValueChanged} />
+			<Vec2Input label={param.name} value={vec2Value} onChange={onVec2ValueChanged} />
 		</div>
 	{:else if param.type === ParamType.string && param.options}
 		<div class="flex flex-col">

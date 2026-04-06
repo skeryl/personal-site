@@ -6,8 +6,8 @@
  * For more information, read
  * https://developer.spotify.com/documentation/web-api/tutorials/code-pkce-flow
  */
-import { ApiErrorResponse, ErrorObject, PrivateUserObject } from "./index";
-import { SpotifyClient } from "./spotify-client";
+import type { ApiErrorResponse, ErrorObject, PrivateUserObject } from "./index";
+import type { SpotifyClient } from "./spotify-client";
 
 type AuthResponse = {
   access_token: string;

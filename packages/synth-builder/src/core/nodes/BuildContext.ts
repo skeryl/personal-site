@@ -1,5 +1,5 @@
-import { IAudioNode } from "./MutableAudioNode";
-import { BuildOutputV2, WithSource } from "./index";
+import type { IAudioNode } from "./MutableAudioNode";
+import type { BuildOutputV2, WithSource } from "./index";
 
 /**
  * notes to self:
