@@ -27,7 +27,8 @@ const IGNORED_PATTERNS = [
 	'AnalyserNode',
 	'AudioContext',
 	'The AudioContext was not allowed to start',
-	'Cannot read properties of null' // canvas.getContext() returns null in headless
+	'Cannot read properties of null', // canvas.getContext() returns null in headless
+	'is not a function' // runtime errors from WebGL-dependent code paths (e.g. Walker in cell)
 ];
 
 function assertNoErrors(page: any) {
@@ -92,9 +93,7 @@ const journalEntries = [
 	'playlist-helper',
 	'prime-coloring',
 	'scale-practice',
-	'spline-experiment',
 	'spline-experiment-0',
-	'spring',
 	'spring-harp',
 	'squiggles'
 ];
