@@ -20,7 +20,11 @@
 			const src = videos[selectedPost.id];
 			source.setAttribute('src', `${src}#t=[3]`);
 			const ext = src.split('.').pop()?.split('?')[0] ?? '';
-			const mimeTypes: Record<string, string> = { mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime' };
+			const mimeTypes: Record<string, string> = {
+				mp4: 'video/mp4',
+				webm: 'video/webm',
+				mov: 'video/quicktime'
+			};
 			source.setAttribute('type', mimeTypes[ext] || 'video/mp4');
 			vid.appendChild(source);
 			vid.load();

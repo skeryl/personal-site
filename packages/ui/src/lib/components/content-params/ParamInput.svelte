@@ -56,7 +56,12 @@
 	{:else if param.type === ParamType.string && param.options}
 		<div class="flex flex-col">
 			<label for={inputId} class="text-xs font-bold">{param.name}</label>
-			<select id={inputId} class="rounded text-md px-2 py-1" value={param.value} on:change={onStringSelectChanged}>
+			<select
+				id={inputId}
+				class="rounded text-md px-2 py-1"
+				value={param.value}
+				on:change={onStringSelectChanged}
+			>
 				{#each param.options as option}
 					<option value={option}>{option}</option>
 				{/each}

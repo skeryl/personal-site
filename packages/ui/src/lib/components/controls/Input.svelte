@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type {ChangeEventHandler, HTMLInputAttributes} from 'svelte/elements';
+	import type { ChangeEventHandler, HTMLInputAttributes } from 'svelte/elements';
 
 	export let label: string = '';
 	export let wrapperClass: string = '';
@@ -18,5 +18,9 @@
 			<span class="text-xs font-bold">{label}</span>
 		{/if}
 	</label>
-	<input {...$$restProps} class={`rounded !text-md px-2 py-1 ${$$restProps.class}`} on:change={onChange}/>
+	<input
+		{...$$restProps}
+		class={`rounded !text-md px-2 py-1 ${$$restProps.class}`}
+		on:change={onChange}
+	/>
 </div>

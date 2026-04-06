@@ -22,12 +22,13 @@
 				id="login-button"
 				on:click={loginWithSpotifyClick}
 				class="rounded border-2 border-green-400 p-2 px-4 hover:bg-emerald-50"
-				> <img
+			>
+				<img
 					class="inline pr-0.5"
 					width="20px"
 					src="https://storage.googleapis.com/pr-newsroom-wp/1/2023/05/Spotify_Primary_Logo_RGB_Green.png"
 					alt="spotify logo"
-			/>
+				/>
 				Log in with Spotify
 			</button>
 		</div>

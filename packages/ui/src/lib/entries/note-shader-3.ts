@@ -1,14 +1,32 @@
 import { type Post, PostType, type RendererParams, type ExperimentContent3D } from '@sc/model';
-import { DefaultKeyMapping, Pitch, PitchInformation, type KeyNoteMapping } from '@sc/synth-builder/src/model/notes';
+import {
+	DefaultKeyMapping,
+	Pitch,
+	PitchInformation,
+	type KeyNoteMapping
+} from '@sc/synth-builder/src/model/notes';
 import { MutableAudioNode as AudioGraphNode } from '@sc/synth-builder/src/core/nodes/MutableAudioNode';
 import { MutableAudioGraph } from '@sc/synth-builder/src/core/nodes/MutableAudioGraph';
 import { NodeTypes } from '@sc/synth-builder/src/model/nodes';
 import { getReleaseTime, Synth } from '@sc/synth-builder/src/core/Synth';
 import {
-	AdditiveBlending, BufferAttribute, BufferGeometry, Clock, Color,
-	Points, Scene, ShaderMaterial
+	AdditiveBlending,
+	BufferAttribute,
+	BufferGeometry,
+	Clock,
+	Color,
+	Points,
+	Scene,
+	ShaderMaterial
 } from 'three';
-import { type ContentParams, type ContentParam, ParamType, numberParam, selectParam, paramsById } from '$lib/content-params';
+import {
+	type ContentParams,
+	type ContentParam,
+	ParamType,
+	numberParam,
+	selectParam,
+	paramsById
+} from '$lib/content-params';
 
 /* ── constants ─────────────────────────────────────────────── */
 
@@ -81,12 +99,19 @@ class NoteSlotManager {
 		for (const pitch of notesPlaying) {
 			if (this.previouslyPlaying.has(pitch)) continue;
 			const existing = this.slots.find((s) => s.pitch === pitch);
-			if (existing) { existing.state = 'active'; existing.amplitude = 1.0; continue; }
+			if (existing) {
+				existing.state = 'active';
+				existing.amplitude = 1.0;
+				continue;
+			}
 			let target = this.slots.find((s) => s.state === 'silent');
 			if (!target) {
 				let minAmp = Infinity;
 				for (const s of this.slots) {
-					if (s.state === 'releasing' && s.amplitude < minAmp) { minAmp = s.amplitude; target = s; }
+					if (s.state === 'releasing' && s.amplitude < minAmp) {
+						minAmp = s.amplitude;
+						target = s;
+					}
 				}
 			}
 			if (!target) continue;
@@ -98,20 +123,30 @@ class NoteSlotManager {
 			target.releaseStart = 0;
 		}
 		for (const s of this.slots) {
-			if (s.state === 'active' && s.pitch !== null && !notesPlaying.has(s.pitch))
-				{ s.state = 'releasing'; s.releaseStart = now; }
+			if (s.state === 'active' && s.pitch !== null && !notesPlaying.has(s.pitch)) {
+				s.state = 'releasing';
+				s.releaseStart = now;
+			}
 		}
 		for (const s of this.slots) {
 			if (s.state === 'releasing') {
 				s.amplitude = Math.exp(-(now - s.releaseStart) / (this.releaseTimeMs * 0.4));
-				if (s.amplitude < 0.005) { s.state = 'silent'; s.pitch = null; s.amplitude = 0; }
+				if (s.amplitude < 0.005) {
+					s.state = 'silent';
+					s.pitch = null;
+					s.amplitude = 0;
+				}
 			}
 		}
 		this.previouslyPlaying = new Set(notesPlaying);
 	}
 
-	get activeCount(): number { return this.slots.filter((s) => s.state !== 'silent').length; }
-	get totalAmplitude(): number { return this.slots.reduce((sum, s) => sum + s.amplitude, 0); }
+	get activeCount(): number {
+		return this.slots.filter((s) => s.state !== 'silent').length;
+	}
+	get totalAmplitude(): number {
+		return this.slots.reduce((sum, s) => sum + s.amplitude, 0);
+	}
 }
 
 /* ── keyboard controller (from note-shader-2) ──────────────── */
@@ -120,9 +155,14 @@ class KeyboardSynthController {
 	private readonly heldKeys = new Map<string, Pitch>();
 	private audioUnlocked = false;
 
-	constructor(private readonly synth: Synth, private readonly keyMap: KeyNoteMapping) {}
+	constructor(
+		private readonly synth: Synth,
+		private readonly keyMap: KeyNoteMapping
+	) {}
 
-	getHeldPitches(): Pitch[] { return Array.from(this.heldKeys.values()); }
+	getHeldPitches(): Pitch[] {
+		return Array.from(this.heldKeys.values());
+	}
 
 	private onKeyDown = (e: KeyboardEvent) => {
 		if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -148,7 +188,9 @@ class KeyboardSynthController {
 	private onKeyUp = (e: KeyboardEvent) => {
 		const pitch = this.heldKeys.get(e.code);
 		if (pitch === undefined) return;
-		for (const [code, p] of this.heldKeys) { if (p === pitch) this.heldKeys.delete(code); }
+		for (const [code, p] of this.heldKeys) {
+			if (p === pitch) this.heldKeys.delete(code);
+		}
 		this.synth.stopPlaying(pitch);
 	};
 
@@ -173,7 +215,12 @@ class KeyboardSynthController {
 
 /* ── synth pitches helper ──────────────────────────────────── */
 
-type SynthPitchNodes = { oscillators: { node: OscillatorNode }[]; gains: { node: GainNode }[]; analysers: { node: AnalyserNode }[]; pitch: Pitch };
+type SynthPitchNodes = {
+	oscillators: { node: OscillatorNode }[];
+	gains: { node: GainNode }[];
+	analysers: { node: AnalyserNode }[];
+	pitch: Pitch;
+};
 function getSynthPitches(s: Synth): Map<Pitch, SynthPitchNodes> {
 	return (s as unknown as { pitches: Map<Pitch, SynthPitchNodes> }).pitches;
 }
@@ -187,7 +234,7 @@ function pitchToHSL(pitchNorm: number, time: number): [number, number, number] {
 	const pitchIndex = Math.round(pitchNorm * PLAYABLE_RANGE + MIN_PLAYABLE);
 	const semitone = ((pitchIndex % 12) + 12) % 12;
 	const fifthsPosition = (semitone * 7) % 12;
-	const hue = ((fifthsPosition / 12 + time * 0.01) % 1.0 + 1.0) % 1.0;
+	const hue = (((fifthsPosition / 12 + time * 0.01) % 1.0) + 1.0) % 1.0;
 	return [hue, 0.8, 0.6];
 }
 
@@ -195,22 +242,41 @@ function hslToRGB(h: number, s: number, l: number): [number, number, number] {
 	const c = (1 - Math.abs(2 * l - 1)) * s;
 	const x = c * (1 - Math.abs(((h * 6) % 2) - 1));
 	const m = l - c / 2;
-	let r = 0, g = 0, b = 0;
+	let r = 0,
+		g = 0,
+		b = 0;
 	const sector = Math.floor(h * 6);
-	if (sector === 0 || sector === 6) { r = c; g = x; }
-	else if (sector === 1) { r = x; g = c; }
-	else if (sector === 2) { g = c; b = x; }
-	else if (sector === 3) { g = x; b = c; }
-	else if (sector === 4) { r = x; b = c; }
-	else { r = c; b = x; }
+	if (sector === 0 || sector === 6) {
+		r = c;
+		g = x;
+	} else if (sector === 1) {
+		r = x;
+		g = c;
+	} else if (sector === 2) {
+		g = c;
+		b = x;
+	} else if (sector === 3) {
+		g = x;
+		b = c;
+	} else if (sector === 4) {
+		r = x;
+		b = c;
+	} else {
+		r = c;
+		b = x;
+	}
 	return [r + m, g + m, b + m];
 }
 
 /* ── particle system ───────────────────────────────────────── */
 
 interface Particle {
-	x: number; y: number; z: number;
-	vx: number; vy: number; vz: number;
+	x: number;
+	y: number;
+	z: number;
+	vx: number;
+	vy: number;
+	vz: number;
 	life: number;
 	slot: number; /* which note slot spawned this, -1 = free */
 	pitchNorm: number;
@@ -237,7 +303,11 @@ function consonance(pitchA: number, pitchB: number): number {
 
 const visualizationParams: ContentParams = [
 	selectParam('Style', STYLE_NAMES, 'Gravitational'),
-	selectParam('Wave', WAVE_TYPES.map((w) => w.charAt(0).toUpperCase() + w.slice(1)), 'Sawtooth'),
+	selectParam(
+		'Wave',
+		WAVE_TYPES.map((w) => w.charAt(0).toUpperCase() + w.slice(1)),
+		'Sawtooth'
+	),
 	numberParam('Volume', 0.08, { min: 0.01, max: 0.25, step: 0.01 }),
 	numberParam('Attack', 0.95, { min: 0, max: 1, step: 0.05 }),
 	numberParam('Release', 0.7, { min: 0, max: 1, step: 0.05 }),
@@ -291,14 +361,35 @@ class NoteShader3Content implements ExperimentContent3D {
 			unison: 3,
 			unisonDetune: 0.15
 		});
-		const releasing = (s as unknown as { releasing: { onDelete: (pitch: Pitch, params: AudioParam[]) => void } }).releasing;
+		const releasing = (
+			s as unknown as { releasing: { onDelete: (pitch: Pitch, params: AudioParam[]) => void } }
+		).releasing;
 		releasing.onDelete = (pitch: Pitch) => {
 			const pitches = getSynthPitches(s);
 			const nodes = pitches.get(pitch);
 			if (nodes) {
-				nodes.oscillators.forEach((o) => { try { o.node.stop(); o.node.disconnect(); } catch { /* */ } });
-				nodes.gains.forEach((g) => { try { g.node.disconnect(); } catch { /* */ } });
-				nodes.analysers.forEach((a) => { try { a.node.disconnect(); } catch { /* */ } });
+				nodes.oscillators.forEach((o) => {
+					try {
+						o.node.stop();
+						o.node.disconnect();
+					} catch {
+						/* */
+					}
+				});
+				nodes.gains.forEach((g) => {
+					try {
+						g.node.disconnect();
+					} catch {
+						/* */
+					}
+				});
+				nodes.analysers.forEach((a) => {
+					try {
+						a.node.disconnect();
+					} catch {
+						/* */
+					}
+				});
 				pitches.delete(pitch);
 			}
 		};
@@ -312,7 +403,15 @@ class NoteShader3Content implements ExperimentContent3D {
 
 	/* particle state (CPU) */
 	private readonly particles: Particle[] = Array.from({ length: MAX_PARTICLES }, () => ({
-		x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0, slot: -1, pitchNorm: 0
+		x: 0,
+		y: 0,
+		z: 0,
+		vx: 0,
+		vy: 0,
+		vz: 0,
+		life: 0,
+		slot: -1,
+		pitchNorm: 0
 	}));
 
 	/* background color (complementary to average particle hue) */
@@ -418,8 +517,16 @@ class NoteShader3Content implements ExperimentContent3D {
 
 		const waveType = (this.strVal(byId, 'wave').toLowerCase() as OscillatorType) ?? 'sawtooth';
 		this.synth.settings.waveType = waveType;
-		for (const osc of this.synth.audioGraph.find(NodeTypes.Oscillator)) osc.setProperty('type', waveType);
-		for (const [, nodes] of pitches) nodes.oscillators.forEach((o) => { try { o.node.type = waveType; } catch { /* */ } });
+		for (const osc of this.synth.audioGraph.find(NodeTypes.Oscillator))
+			osc.setProperty('type', waveType);
+		for (const [, nodes] of pitches)
+			nodes.oscillators.forEach((o) => {
+				try {
+					o.node.type = waveType;
+				} catch {
+					/* */
+				}
+			});
 
 		const volume = this.numVal(byId, 'volume');
 		this.synth.setGain(volume);
@@ -454,9 +561,28 @@ class NoteShader3Content implements ExperimentContent3D {
 			if (now - releasedAt > maxAge) {
 				const nodes = synthPitches.get(pitch);
 				if (nodes) {
-					nodes.oscillators.forEach((o) => { try { o.node.stop(); o.node.disconnect(); } catch { /* */ } });
-					nodes.gains.forEach((g) => { try { g.node.disconnect(); } catch { /* */ } });
-					nodes.analysers.forEach((a) => { try { a.node.disconnect(); } catch { /* */ } });
+					nodes.oscillators.forEach((o) => {
+						try {
+							o.node.stop();
+							o.node.disconnect();
+						} catch {
+							/* */
+						}
+					});
+					nodes.gains.forEach((g) => {
+						try {
+							g.node.disconnect();
+						} catch {
+							/* */
+						}
+					});
+					nodes.analysers.forEach((a) => {
+						try {
+							a.node.disconnect();
+						} catch {
+							/* */
+						}
+					});
 					synthPitches.delete(pitch);
 				}
 				this.releaseTimestamps.delete(pitch);
@@ -515,8 +641,12 @@ class NoteShader3Content implements ExperimentContent3D {
 				const vy = Math.sin(angle) * speed + tdVal * 0.002;
 
 				this.particles[p] = {
-					x: px, y: py, z: (Math.random() - 0.5) * 0.1,
-					vx, vy, vz: (Math.random() - 0.5) * 0.01,
+					x: px,
+					y: py,
+					z: (Math.random() - 0.5) * 0.1,
+					vx,
+					vy,
+					vz: (Math.random() - 0.5) * 0.01,
 					life: 0.8 + Math.random() * 0.4,
 					slot: idx,
 					pitchNorm: slot.pitchNormalized
@@ -533,7 +663,10 @@ class NoteShader3Content implements ExperimentContent3D {
 		let pairs = 0;
 		for (let a = 0; a < activeSlots.length; a++) {
 			for (let b = a + 1; b < activeSlots.length; b++) {
-				const cons = consonance(activeSlots[a].slot.pitchNormalized, activeSlots[b].slot.pitchNormalized);
+				const cons = consonance(
+					activeSlots[a].slot.pitchNormalized,
+					activeSlots[b].slot.pitchNormalized
+				);
 				discordance += (1 - cons) * activeSlots[a].slot.amplitude * activeSlots[b].slot.amplitude;
 				pairs++;
 			}
@@ -569,7 +702,7 @@ class NoteShader3Content implements ExperimentContent3D {
 					const dx = wx - pt.x;
 					const dy = wy - pt.y;
 					const dist2 = dx * dx + dy * dy + 0.001;
-					const force = slot.amplitude * 0.0003 / dist2;
+					const force = (slot.amplitude * 0.0003) / dist2;
 					pt.vx += dx * force;
 					pt.vy += dy * force;
 				}
@@ -586,7 +719,7 @@ class NoteShader3Content implements ExperimentContent3D {
 					const dy = oy - pt.y;
 					const dist = Math.sqrt(dx * dx + dy * dy) + 0.01;
 					/* consonant → attract (positive), dissonant → repel (negative) */
-					const strength = (cons - 0.4) * other.amplitude * 0.004 / dist;
+					const strength = ((cons - 0.4) * other.amplitude * 0.004) / dist;
 					pt.vx += dx * strength;
 					pt.vy += dy * strength;
 					/* dissonance adds angular scattering */
@@ -620,7 +753,9 @@ class NoteShader3Content implements ExperimentContent3D {
 		   Complementary (180° opposite) ensures high contrast with the particles.
 		   Very low lightness keeps it dark; saturation fades in gently with amplitude. */
 		if (activeSlots.length > 0) {
-			let sinSum = 0, cosSum = 0, ampSum = 0;
+			let sinSum = 0,
+				cosSum = 0,
+				ampSum = 0;
 			for (const { slot } of activeSlots) {
 				const [h] = pitchToHSL(slot.pitchNormalized, time);
 				const w = slot.amplitude;

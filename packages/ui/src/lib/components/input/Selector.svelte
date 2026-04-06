@@ -1,5 +1,5 @@
 <script lang="ts" generics="T extends any, Meta extends any">
-    import { popup } from '@skeletonlabs/skeleton';
+	import { popup } from '@skeletonlabs/skeleton';
 	import {
 		Autocomplete,
 		type AutocompleteOption,
@@ -24,7 +24,7 @@
 		console.log(e);
 	}
 
-/*	$: filtered = searchValue
+	/*	$: filtered = searchValue
 		? items?.filter((item) =>
 				item.label
 					.toLowerCase()
