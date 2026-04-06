@@ -15,6 +15,7 @@ import notePoints from "$lib/entries/note-points";
 import noteShader2 from "$lib/entries/note-shader-2";
 import noteShader3 from "$lib/entries/note-shader-3";
 import noteShader from "$lib/entries/note-shader";
+import nycSubway from "$lib/entries/nyc-subway";
 import orbit from "$lib/entries/orbit";
 import playlistHelper from "$lib/entries/playlist-helper";
 import primeColoring from "$lib/entries/prime-coloring";
@@ -40,6 +41,7 @@ const posts = {
     [noteShader2.summary.id]: noteShader2,
     [noteShader3.summary.id]: noteShader3,
     [noteShader.summary.id]: noteShader,
+    [nycSubway.summary.id]: nycSubway,
     [orbit.summary.id]: orbit,
     [playlistHelper.summary.id]: playlistHelper,
     [primeColoring.summary.id]: primeColoring,

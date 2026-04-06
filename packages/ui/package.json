@@ -16,15 +16,17 @@
 	},
 	"dependencies": {
 		"@sc/spotify": "^0.0.0",
-		"svelte-headlessui": "^0.0.42",
-		"svelte-transition": "^0.0.17",
+		"@types/leaflet": "^1.9.21",
 		"date-fns": "^3.3.1",
 		"grraf": "^1.0.16",
 		"iconify-icon": "^2.0.0",
-		"three": "^0.161.0",
-		"svelte-dnd-action": "^0.9.51",
+		"leaflet": "^1.9.4",
 		"musicxml-interfaces": "^0.0.21",
-		"opensheetmusicdisplay": "^1.8.9"
+		"opensheetmusicdisplay": "^1.8.9",
+		"svelte-dnd-action": "^0.9.51",
+		"svelte-headlessui": "^0.0.42",
+		"svelte-transition": "^0.0.17",
+		"three": "^0.161.0"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.28.1",
