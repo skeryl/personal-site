@@ -50,77 +50,105 @@ export interface BoroughStats {
   color: string;
 }
 
-// Key system-wide statistics
+// Sources referenced throughout this file — rendered as footnotes in the exploration
+export interface Source {
+  id: string;
+  label: string;
+  url: string;
+}
+
+export const sources: Source[] = [
+  { id: 'mta-facts', label: 'MTA Subway Facts & Figures', url: 'https://www.nycsubway.org/wiki/Subway_FAQ:_Facts_and_Figures' },
+  { id: 'mta-ridership-2025', label: 'Governor Hochul, MTA Record Ridership 2025', url: 'https://www.governor.ny.gov/news/governor-hochul-highlights-record-breaking-year-performance-and-ridership-mta-2025' },
+  { id: 'census-2020', label: 'NYC Planning, 2020 Census Briefing', url: 'https://www.nyc.gov/assets/planning/download/pdf/planning-level/nyc-population/census2020/dcp_2020-census-briefing-booklet-1.pdf' },
+  { id: 'mta-cbtc', label: 'MTA CBTC Signal Upgrades', url: 'https://www.mta.info/project/cbtc-signal-upgrades' },
+  { id: 'sas-phase2', label: 'Governor Hochul, SAS Phase 2 Tunneling Contract', url: 'https://www.governor.ny.gov/news/governor-hochul-announces-second-avenue-subway-phase-2-moving-forward-award-tunneling-contract' },
+  { id: 'ibx', label: 'MTA Interborough Express', url: 'https://www.mta.info/project/interborough-express' },
+  { id: 'sas-phase1', label: 'MTA, Second Avenue Subway Phase 1', url: 'https://www.mta.info/project/second-avenue-subway-phase-1' },
+  { id: 'esa', label: 'MTA, East Side Access', url: 'https://www.mta.info/project/east-side-access' },
+  { id: '7ext', label: 'MTA, 7 Line Extension to Hudson Yards', url: 'https://www.mta.info/project/flushing-line' },
+  { id: 'crossrail', label: 'UK National Audit Office, Crossrail Progress Update', url: 'https://www.nao.org.uk/reports/crossrail-progress-update/' },
+  { id: 'gpe', label: 'Société du Grand Paris (official project site)', url: 'https://www.societedugrandparis.fr/investors' },
+  { id: 'cph-metro', label: 'Metroselskabet, Cityringen', url: 'https://m.dk/en/routes-and-timetables/cityring/' },
+  { id: 'paris14', label: 'RATP, Extension of Métro Line 14', url: 'https://www.ratp.fr/en/extension-metro-line-14' },
+  { id: 'madrid-wip', label: 'Works in Progress: How Madrid Built Its Metro', url: 'https://worksinprogress.co/issue/how-madrid-built-its-metro-cheaply/' },
+  { id: 'transit-costs', label: 'NYU Transit Costs Project', url: 'https://transitcosts.com/' },
+  { id: 'eno-korea', label: 'Eno Center for Transportation, South Korea Case Study', url: 'https://projectdelivery.enotrans.org/case-studies/south-korea/' },
+  { id: 'acs-2023', label: 'U.S. Census Bureau, American Community Survey 2023', url: 'https://data.census.gov/' },
+];
+
+// Key system-wide statistics [mta-facts] [mta-ridership-2025] [census-2020]
 export const systemStats = {
   totalStations: 472,
   totalRouteMiles: 248,
   totalTrackMiles: 665,
-  dailyRidership: 4_000_000,
-  annualRidership: 2_310_000_000,
+  dailyRidership: 3_600_000,       // 2024 avg weekday ~3.4M, 2025 peaked at 4M; using ~3.6M as representative
+  annualRidership: 1_300_000_000,  // ~1.3B linked trips (2025). Prior figure of 2.31B was unlinked/non-unique.
   percentNYCWithAccess: 81,
-  populationWithinHalfMile: 6_900_000,
-  populationBeyondHalfMile: 1_600_000,
-  totalPopulation: 8_300_000,
+  populationWithinHalfMile: 7_100_000,
+  populationBeyondHalfMile: 1_700_000,
+  totalPopulation: 8_800_000,      // 2020 Census: 8,804,190
   percentHouseholdsUnderserved: 29,
   openingYear: 1904,
 };
 
-// Borough-level access statistics
+// Borough-level access statistics [census-2020]
 export const boroughStats: BoroughStats[] = [
   {
     borough: 'Manhattan',
-    population: 1_630_000,
+    population: 1_694_000,     // 2020 Census: 1,694,251
     stations: 151,
     percentWithAccess: 99,
     percentWithoutAccess: 1,
-    populationWithoutAccess: 16_300,
+    populationWithoutAccess: 17_000,
     color: '#e74c3c',
   },
   {
     borough: 'Brooklyn',
-    population: 2_590_000,
+    population: 2_736_000,     // 2020 Census: 2,736,074
     stations: 170,
     percentWithAccess: 90,
     percentWithoutAccess: 10,
-    populationWithoutAccess: 259_000,
+    populationWithoutAccess: 274_000,
     color: '#3498db',
   },
   {
     borough: 'Queens',
-    population: 2_270_000,
+    population: 2_405_000,     // 2020 Census: 2,405,464
     stations: 81,
     percentWithAccess: 61,
     percentWithoutAccess: 39,
-    populationWithoutAccess: 885_300,
+    populationWithoutAccess: 938_000,
     color: '#f39c12',
   },
   {
     borough: 'Bronx',
-    population: 1_470_000,
+    population: 1_473_000,     // 2020 Census: 1,472,654
     stations: 70,
     percentWithAccess: 89,
     percentWithoutAccess: 11,
-    populationWithoutAccess: 161_700,
+    populationWithoutAccess: 162_000,
     color: '#2ecc71',
   },
   {
     borough: 'Staten Island',
-    population: 475_000,
+    population: 496_000,       // 2020 Census: 495,747
     stations: 0,
     percentWithAccess: 52,
     percentWithoutAccess: 48,
-    populationWithoutAccess: 228_000,
+    populationWithoutAccess: 238_000,
     color: '#9b59b6',
   },
 ];
 
-// Most underserved neighborhoods
+// Most underserved neighborhoods [acs-2023] [census-2020]
+// Populations from 2020 Census, incomes from 2023 ACS estimates
 export const underservedAreas: UnderservedArea[] = [
   {
     name: 'Throggs Neck',
     borough: 'Bronx',
     population: 46_000,
-    medianIncome: 52_000,
+    medianIncome: 90_000,
     nearestStationMiles: 2.5,
     lat: 40.8195,
     lng: -73.8196,
@@ -130,8 +158,8 @@ export const underservedAreas: UnderservedArea[] = [
   {
     name: 'Co-op City',
     borough: 'Bronx',
-    population: 44_000,
-    medianIncome: 38_000,
+    population: 43_000,
+    medianIncome: 62_000,
     nearestStationMiles: 2.0,
     lat: 40.8743,
     lng: -73.8297,
@@ -142,7 +170,7 @@ export const underservedAreas: UnderservedArea[] = [
     name: 'Canarsie',
     borough: 'Brooklyn',
     population: 84_000,
-    medianIncome: 55_000,
+    medianIncome: 68_000,
     nearestStationMiles: 1.5,
     lat: 40.6389,
     lng: -73.9017,
@@ -153,7 +181,7 @@ export const underservedAreas: UnderservedArea[] = [
     name: 'Marine Park',
     borough: 'Brooklyn',
     population: 34_000,
-    medianIncome: 78_000,
+    medianIncome: 98_000,
     nearestStationMiles: 2.0,
     lat: 40.6078,
     lng: -73.9228,
@@ -164,7 +192,7 @@ export const underservedAreas: UnderservedArea[] = [
     name: 'Mill Basin',
     borough: 'Brooklyn',
     population: 25_000,
-    medianIncome: 82_000,
+    medianIncome: 95_000,
     nearestStationMiles: 2.3,
     lat: 40.6069,
     lng: -73.9103,
@@ -175,7 +203,7 @@ export const underservedAreas: UnderservedArea[] = [
     name: 'Bayside',
     borough: 'Queens',
     population: 80_000,
-    medianIncome: 72_000,
+    medianIncome: 88_000,
     nearestStationMiles: 2.0,
     lat: 40.7686,
     lng: -73.7694,
@@ -186,7 +214,7 @@ export const underservedAreas: UnderservedArea[] = [
     name: 'Fresh Meadows',
     borough: 'Queens',
     population: 67_000,
-    medianIncome: 60_000,
+    medianIncome: 78_000,
     nearestStationMiles: 1.8,
     lat: 40.7354,
     lng: -73.7801,
@@ -197,7 +225,7 @@ export const underservedAreas: UnderservedArea[] = [
     name: 'Douglaston',
     borough: 'Queens',
     population: 22_000,
-    medianIncome: 95_000,
+    medianIncome: 120_000,
     nearestStationMiles: 3.0,
     lat: 40.7638,
     lng: -73.7432,
@@ -208,7 +236,7 @@ export const underservedAreas: UnderservedArea[] = [
     name: 'Howard Beach',
     borough: 'Queens',
     population: 28_000,
-    medianIncome: 68_000,
+    medianIncome: 82_000,
     nearestStationMiles: 1.5,
     lat: 40.6572,
     lng: -73.8363,
@@ -218,19 +246,19 @@ export const underservedAreas: UnderservedArea[] = [
   {
     name: 'Southeast Queens (Laurelton/Rosedale)',
     borough: 'Queens',
-    population: 92_000,
-    medianIncome: 65_000,
+    population: 55_000,
+    medianIncome: 112_000,
     nearestStationMiles: 2.5,
     lat: 40.6677,
     lng: -73.7508,
     description:
-      'Predominantly Black neighborhoods in southeast Queens, among the most transit-starved in the city. Residents face 90+ minute commutes.',
+      'Predominantly Black neighborhoods in southeast Queens, among the most transit-starved in the city. Residents face 90+ minute commutes despite relatively high incomes.',
   },
   {
     name: 'Tottenville',
     borough: 'Staten Island',
-    population: 26_000,
-    medianIncome: 85_000,
+    population: 14_500,
+    medianIncome: 131_000,
     nearestStationMiles: 15.0,
     lat: 40.5083,
     lng: -74.2364,
@@ -240,8 +268,8 @@ export const underservedAreas: UnderservedArea[] = [
   {
     name: 'College Point',
     borough: 'Queens',
-    population: 38_000,
-    medianIncome: 58_000,
+    population: 34_000,
+    medianIncome: 84_000,
     nearestStationMiles: 2.2,
     lat: 40.7862,
     lng: -73.8461,
@@ -252,7 +280,7 @@ export const underservedAreas: UnderservedArea[] = [
     name: 'Flatlands',
     borough: 'Brooklyn',
     population: 75_000,
-    medianIncome: 52_000,
+    medianIncome: 66_000,
     nearestStationMiles: 1.5,
     lat: 40.6233,
     lng: -73.9314,
@@ -263,7 +291,7 @@ export const underservedAreas: UnderservedArea[] = [
     name: 'East Harlem (above 125th)',
     borough: 'Manhattan',
     population: 58_000,
-    medianIncome: 28_000,
+    medianIncome: 32_000,
     nearestStationMiles: 0.8,
     lat: 40.7992,
     lng: -73.9375,
@@ -272,7 +300,7 @@ export const underservedAreas: UnderservedArea[] = [
   },
 ];
 
-// Proposed subway expansion lines
+// Proposed subway expansion lines [sas-phase2] [ibx]
 export const proposedLines: ProposedLine[] = [
   {
     id: 'sas-phase2',
@@ -484,7 +512,7 @@ export const proposedLines: ProposedLine[] = [
   },
 ];
 
-// Historical and international cost comparisons
+// Historical and international cost comparisons [sas-phase1] [esa] [7ext] [crossrail] [gpe] [cph-metro] [paris14] [madrid-wip] [eno-korea] [transit-costs]
 export const costComparisons: CostComparison[] = [
   {
     project: 'Second Ave Subway Phase 1',
@@ -496,60 +524,215 @@ export const costComparisons: CostComparison[] = [
   {
     project: 'East Side Access (LIRR to Grand Central)',
     city: 'New York',
-    costPerMile: 3.5,
+    costPerMile: 3.2,          // $11.1B / 3.5mi of tunnel
     year: 2023,
-    notes: '$11.1B for 3.5 miles of tunnel. Decades of delays and cost overruns.',
+    notes: '$11.1B for 3.5 miles of new tunnel. Decades of delays and cost overruns.',
   },
   {
     project: '7 Train Extension to Hudson Yards',
     city: 'New York',
-    costPerMile: 2.4,
+    costPerMile: 1.6,          // $2.42B / 1.5mi (was incorrectly listed as ~1mi)
     year: 2015,
-    notes: '$2.42B for ~1 mile and 1 station. One of the most expensive single stations ever.',
+    notes: '$2.42B for 1.5 miles and 1 station. One of the most expensive single stations ever.',
   },
   {
     project: 'Crossrail (Elizabeth Line)',
     city: 'London',
-    costPerMile: 1.1,
+    costPerMile: 1.8,          // £18.9B (~$23B) for 13mi (21km) of new twin-bore tunnel route
     year: 2022,
-    notes: '$23B for 21 miles. Major cross-city rail link, but far cheaper per mile than NYC projects.',
+    notes: '~£18.9B (~$23B) for 13 miles of new tunnel (73 miles total line). Major cross-city rail link.',
   },
   {
-    project: 'Grand Paris Express Line 15',
+    project: 'Grand Paris Express (all lines)',
     city: 'Paris',
-    costPerMile: 0.7,
-    year: 2025,
-    notes: 'Automated metro ring. ~$25B for 36 miles. Fraction of NYC costs.',
+    costPerMile: 0.37,         // ~€42B (~$46B) for 124mi total
+    year: 2030,
+    notes: '~€42B for 124 miles of automated metro across 4 new lines. Largest transit project in Europe.',
   },
   {
-    project: 'Metro Line 3',
+    project: 'Metro Line 3 (Cityringen)',
     city: 'Copenhagen',
-    costPerMile: 0.45,
+    costPerMile: 0.4,          // ~25.3B DKK (~$3.8B) / 9.6mi (15.5km)
     year: 2019,
-    notes: '$3.3B for 7.3 miles. Fully automated, modern system.',
+    notes: '~25B DKK (~$3.8B) for 9.6 miles. Fully automated, driverless system.',
   },
   {
-    project: 'Subway Line 14 Extension',
+    project: 'Métro Line 14 Extension',
     city: 'Paris',
-    costPerMile: 0.6,
+    costPerMile: 0.35,         // ~€3B (~$3.3B) / 8.6mi (13.9km of extensions)
     year: 2024,
-    notes: 'Automated metro extension for Olympics. Efficient, on-budget delivery.',
+    notes: '~€3B for 8.6 miles of extensions. Automated metro extended for the Olympics.',
   },
   {
     project: 'Metro Line 5',
     city: 'Seoul',
     costPerMile: 0.25,
     year: 1996,
-    notes: '32 miles of heavy rail. Built rapidly and affordably.',
+    notes: '32.5 miles of heavy rail. Built rapidly and affordably in the 1990s.',
   },
   {
-    project: 'Metro (various lines)',
+    project: 'Metro (2003–2007 expansion)',
     city: 'Madrid',
-    costPerMile: 0.3,
+    costPerMile: 0.11,         // €4.4B (~$6B) / 56mi (was incorrectly $0.3B/mi)
     year: 2007,
-    notes: 'Spain built 40+ miles of metro in under a decade for a fraction of NYC\'s costs.',
+    notes: '56 miles of new metro in under 4 years for ~€4.4B. A fraction of NYC costs.',
   },
 ];
+
+// Existing line report cards [mta-cbtc] [mta-ridership-2025]
+export interface LineReportCard {
+  name: string;
+  routes: string;
+  color: string;
+  dailyRidership: number;
+  lengthMiles: number;
+  stations: number;
+  peakHeadwayMin: number;
+  hasCBTC: boolean;
+  onTimePercent: number;
+  sharesTrack: boolean;
+  note: string;
+}
+
+export const lineReportCards: LineReportCard[] = [
+  {
+    name: 'Lexington Ave',
+    routes: '4/5/6',
+    color: '#00933C',
+    dailyRidership: 1_300_000,
+    lengthMiles: 26,
+    stations: 38,
+    peakHeadwayMin: 3,
+    hasCBTC: false,
+    onTimePercent: 72,
+    sharesTrack: true,
+    note: 'The workhorse. Carries more riders than most entire subway systems but runs on 1930s signal technology. Chronically overcrowded — SAS exists to relieve it.',
+  },
+  {
+    name: 'Broadway–7th Ave',
+    routes: '1/2/3',
+    color: '#EE352E',
+    dailyRidership: 900_000,
+    lengthMiles: 34,
+    stations: 62,
+    peakHeadwayMin: 3,
+    hasCBTC: false,
+    onTimePercent: 74,
+    sharesTrack: true,
+    note: 'The West Side backbone. The 1 is local, the 2/3 are express. Long but reliable by NYC standards.',
+  },
+  {
+    name: '8th Ave / Fulton',
+    routes: 'A/C/E',
+    color: '#2850AD',
+    dailyRidership: 850_000,
+    lengthMiles: 50,
+    stations: 60,
+    peakHeadwayMin: 4,
+    hasCBTC: false,
+    onTimePercent: 68,
+    sharesTrack: true,
+    note: 'The A is the longest line in the system. Three services sharing track means one delay cascades across all of them.',
+  },
+  {
+    name: 'Broadway',
+    routes: 'N/Q/R/W',
+    color: '#FCCC0A',
+    dailyRidership: 750_000,
+    lengthMiles: 30,
+    stations: 49,
+    peakHeadwayMin: 4,
+    hasCBTC: false,
+    onTimePercent: 71,
+    sharesTrack: true,
+    note: 'Connects Astoria, Midtown, and deep Brooklyn. The Q got a boost from SAS Phase 1 opening.',
+  },
+  {
+    name: '6th Ave',
+    routes: 'B/D/F/M',
+    color: '#FF6319',
+    dailyRidership: 700_000,
+    lengthMiles: 36,
+    stations: 57,
+    peakHeadwayMin: 5,
+    hasCBTC: false,
+    onTimePercent: 65,
+    sharesTrack: true,
+    note: 'The worst performer. Four services on shared track with the oldest signals. A bottleneck at DeKalb Ave causes system-wide pain.',
+  },
+  {
+    name: 'Flushing',
+    routes: '7',
+    color: '#B933AD',
+    dailyRidership: 400_000,
+    lengthMiles: 10,
+    stations: 22,
+    peakHeadwayMin: 2.5,
+    hasCBTC: true,
+    onTimePercent: 91,          // Updated: MTA reports ~91% with CBTC (was 82%)
+    sharesTrack: false,
+    note: 'One of two lines with modern CBTC signaling. Self-contained, no shared track. The "International Express" — serves some of the most diverse neighborhoods on Earth.',
+  },
+  {
+    name: 'Canarsie',
+    routes: 'L',
+    color: '#A7A9AC',
+    dailyRidership: 350_000,
+    lengthMiles: 8,
+    stations: 24,
+    peakHeadwayMin: 2.5,
+    hasCBTC: true,
+    onTimePercent: 91,          // Updated: MTA reports >90% with CBTC (was 85%)
+    sharesTrack: false,
+    note: 'The gold standard. First line fully converted to CBTC. Runs every 2–3 minutes at peak, no shared track, highest on-time performance in the system. Proof that modernization works.',
+  },
+  {
+    name: 'Jamaica',
+    routes: 'J/Z',
+    color: '#996633',
+    dailyRidership: 250_000,
+    lengthMiles: 12,
+    stations: 30,
+    peakHeadwayMin: 5,
+    hasCBTC: false,
+    onTimePercent: 73,
+    sharesTrack: false,
+    note: 'Serves East New York, Bushwick, and the Williamsburg Bridge corridor. Lower ridership but vital for communities with few alternatives.',
+  },
+  {
+    name: 'Crosstown',
+    routes: 'G',
+    color: '#6CBE45',
+    dailyRidership: 130_000,
+    lengthMiles: 8,
+    stations: 19,
+    peakHeadwayMin: 6,
+    hasCBTC: false,
+    onTimePercent: 76,
+    sharesTrack: false,
+    note: 'The only line that never touches Manhattan. Connects Brooklyn and Queens along a unique crosstown path. Underinvested — only runs 4-car trains despite growing demand.',
+  },
+];
+
+export function getLineGrade(line: LineReportCard): string {
+  // Composite score: on-time performance + CBTC bonus + headway efficiency - track sharing penalty
+  let score = line.onTimePercent;
+  if (line.hasCBTC) score += 10;
+  if (!line.sharesTrack) score += 5;
+  if (line.peakHeadwayMin <= 3) score += 5;
+  if (line.peakHeadwayMin >= 6) score -= 3;
+  score += (line.dailyRidership / line.lengthMiles) / 10000; // ridership density bonus
+
+  if (score >= 95) return 'A+';
+  if (score >= 90) return 'A';
+  if (score >= 85) return 'A-';
+  if (score >= 80) return 'B+';
+  if (score >= 75) return 'B';
+  if (score >= 72) return 'B-';
+  if (score >= 68) return 'C+';
+  if (score >= 64) return 'C';
+  return 'C-';
+}
 
 // Summary of proposed lines ranked by benefit-to-cost ratio
 export function getLinesByBenefitScore(): ProposedLine[] {

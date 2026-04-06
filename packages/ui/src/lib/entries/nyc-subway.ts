@@ -9,7 +9,7 @@ const post: Post = {
 		subtitle: 'Who does the NYC subway leave behind?',
 		timestamp: new Date(2026, 3, 5),
 		type: PostType.exploration,
-		isHidden: false
+		isHidden: true
 	},
 	content: () => NycSubway
 };
