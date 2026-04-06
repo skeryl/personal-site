@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { stopPropagation } from 'svelte/legacy';
+
 	import { onMount, onDestroy } from 'svelte';
 	import { DefaultKeyMapping, Pitch, PitchInformation } from '@sc/synth-builder/src/model/notes';
 	import { MutableAudioNode as AudioGraphNode } from '@sc/synth-builder/src/core/nodes/MutableAudioNode';
@@ -99,14 +101,14 @@
 
 	/* ── state ──────────────────────────────────────────────── */
 
-	let canvas: HTMLCanvasElement;
+	let canvas: HTMLCanvasElement | undefined = $state();
 	let ctx: CanvasRenderingContext2D | null;
 	let w = 0,
 		h = 0;
 	let animId = 0;
 	let audioUnlocked = false;
 
-	const orbs: NoteOrb[] = [];
+	const orbs: NoteOrb[] = $state([]);
 	const particles: Particle[] = Array.from({ length: MAX_PARTICLES }, () => ({
 		x: 0,
 		y: 0,
@@ -272,7 +274,7 @@
 	const DOUBLE_TAP_MS = 400;
 
 	function norm(e: PointerEvent): { nx: number; ny: number } {
-		const rect = canvas.getBoundingClientRect();
+		const rect = canvas!.getBoundingClientRect();
 		return { nx: (e.clientX - rect.left) / rect.width, ny: (e.clientY - rect.top) / rect.height };
 	}
 
@@ -286,7 +288,7 @@
 		} else {
 			addOrb(nx, ny);
 		}
-		canvas.setPointerCapture(e.pointerId);
+		canvas!.setPointerCapture(e.pointerId);
 	}
 
 	function onPointerMove(e: PointerEvent) {
@@ -538,7 +540,7 @@
 
 	onMount(() => {
 		synth = initSynth();
-		ctx = canvas.getContext('2d');
+		ctx = canvas!.getContext('2d');
 		resize();
 		window.addEventListener('resize', resize);
 		document.addEventListener('keydown', onKeyDown);
@@ -564,16 +566,16 @@
 	<canvas
 		bind:this={canvas}
 		class="absolute inset-0 w-full h-full cursor-crosshair"
-		on:pointerdown={onPointerDown}
-		on:pointermove={onPointerMove}
-		on:pointerup={onPointerUp}
-	/>
+		onpointerdown={onPointerDown}
+		onpointermove={onPointerMove}
+		onpointerup={onPointerUp}
+	></canvas>
 	{#if orbs.length > 0}
 		<button
 			class="absolute bottom-4 left-4 px-3 py-1.5 text-xs rounded-full
 				bg-neutral-800/60 text-neutral-300 hover:bg-neutral-700/80
 				hover:text-white transition-colors backdrop-blur-sm"
-			on:click|stopPropagation={removeAllOrbs}
+			onclick={stopPropagation(removeAllOrbs)}
 		>
 			Clear All
 		</button>

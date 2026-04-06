@@ -1,16 +1,22 @@
 <script lang="ts">
+	import { run } from 'svelte/legacy';
+
 	import videos from '$lib/assets/videos/posts/index.js';
 	import { onMount } from 'svelte';
 	import type { PostSummary } from '@sc/model';
 
 	const videoSources = Object.entries(videos);
-	export let selectedPost: PostSummary | undefined;
+	interface Props {
+		selectedPost: PostSummary | undefined;
+	}
+
+	let { selectedPost }: Props = $props();
 	let currentPost: string | undefined;
 
-	let vid: HTMLVideoElement;
+	let vid: HTMLVideoElement | undefined = $state();
 
-	$: {
-		if (selectedPost && currentPost !== selectedPost.id) {
+	run(() => {
+		if (selectedPost && currentPost !== selectedPost.id && vid) {
 			console.log('changing video source...');
 			const sources = Array.from(vid.querySelectorAll('source'));
 			sources.forEach((src) => src.remove());
@@ -30,10 +36,10 @@
 			vid.load();
 			vid.play();
 		}
-	}
+	});
 
 	onMount(() => {
-		vid.load();
+		vid?.load();
 	});
 </script>
 

@@ -4966,11 +4966,15 @@
 </script>
 
 <script lang="ts">
-	export let size: Size = 'md';
-	export let type: Type;
-	export let className = '';
+	interface Props {
+		size?: Size;
+		type: Type;
+		className?: string;
+	}
 
-	$: iconSize =
+	let { size = 'md', type, className = '' }: Props = $props();
+
+	let iconSize = $derived(
 		size === 'xl'
 			? 'text-[40px]'
 			: size === 'lg'
@@ -4979,7 +4983,8 @@
 					? 'text-[18px]'
 					: size === 'xs'
 						? 'text-[12px]'
-						: 'text-[24px]'; // default (medium)
+						: 'text-[24px]'
+	); // default (medium)
 </script>
 
 <iconify-icon

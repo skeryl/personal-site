@@ -13,11 +13,11 @@
 		type JunctionDef
 	} from './signal-sim-data';
 
-	let canvas: HTMLCanvasElement;
+	let canvas: HTMLCanvasElement | undefined = $state();
 	let animFrame: number;
-	let trainCount = 10;
-	let speedMultiplier = 20;
-	let crossTraffic = true;
+	let trainCount = $state(10);
+	let speedMultiplier = $state(20);
+	let crossTraffic = $state(true);
 	let fixedTPH = 0;
 	let cbtcTPH = 0;
 
@@ -1005,9 +1005,11 @@
 
 	onMount(() => {
 		reset();
+		if (!canvas) return;
 		const ctx = canvas.getContext('2d')!;
 
 		function loop() {
+			if (!canvas) return;
 			const parent = canvas.parentElement;
 			if (!parent) return;
 			const rect = parent.getBoundingClientRect();
@@ -1086,39 +1088,39 @@
 			<button
 				class="speed-btn"
 				class:active={speedMultiplier === 1}
-				on:click={() => (speedMultiplier = 1)}>1x</button
+				onclick={() => (speedMultiplier = 1)}>1x</button
 			>
 			<button
 				class="speed-btn"
 				class:active={speedMultiplier === 2}
-				on:click={() => (speedMultiplier = 2)}>2x</button
+				onclick={() => (speedMultiplier = 2)}>2x</button
 			>
 			<button
 				class="speed-btn"
 				class:active={speedMultiplier === 4}
-				on:click={() => (speedMultiplier = 4)}>4x</button
+				onclick={() => (speedMultiplier = 4)}>4x</button
 			>
 			<button
 				class="speed-btn"
 				class:active={speedMultiplier === 10}
-				on:click={() => (speedMultiplier = 10)}>10x</button
+				onclick={() => (speedMultiplier = 10)}>10x</button
 			>
 			<button
 				class="speed-btn"
 				class:active={speedMultiplier === 20}
-				on:click={() => (speedMultiplier = 20)}>20x</button
+				onclick={() => (speedMultiplier = 20)}>20x</button
 			>
 		</div>
 		<label class="control-slider">
 			<span class="control-label">Trains</span>
-			<input type="range" min="5" max="20" value={trainCount} on:input={updateCount} />
+			<input type="range" min="5" max="20" value={trainCount} oninput={updateCount} />
 			<span class="control-value">{trainCount}</span>
 		</label>
 		<label class="toggle">
 			<input type="checkbox" bind:checked={crossTraffic} />
 			<span class="toggle-label">Cross Traffic</span>
 		</label>
-		<button class="delay-btn" on:click={triggerDelay}> Simulate Delay </button>
+		<button class="delay-btn" onclick={triggerDelay}> Simulate Delay </button>
 	</div>
 </div>
 

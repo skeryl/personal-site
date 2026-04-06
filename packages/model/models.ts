@@ -70,4 +70,5 @@ export interface ExperimentContent3D {
   setParams?: (values: ContentParams) => void;
 }
 
-export type ExplorationContent = ConstructorOfATypedSvelteComponent;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ExplorationContent = any;

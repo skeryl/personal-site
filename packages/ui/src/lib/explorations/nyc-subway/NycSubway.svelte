@@ -21,10 +21,10 @@
 		type ProposedLine
 	} from './data';
 
-	let selectedLine: ProposedLine | null = null;
-	let explorationEl: HTMLDivElement;
-	let trainEl: HTMLDivElement;
-	let trackEl: HTMLDivElement;
+	let selectedLine: ProposedLine | null = $state(null);
+	let explorationEl: HTMLDivElement | undefined = $state();
+	let trainEl: HTMLDivElement | undefined = $state();
+	let trackEl: HTMLDivElement | undefined = $state();
 
 	function handleSelectLine(line: ProposedLine | null) {
 		selectedLine = line;
@@ -446,7 +446,7 @@
 						<button
 							class="line-card"
 							class:selected={selectedLine?.id === line.id}
-							on:click={() => handleSelectLine(selectedLine?.id === line.id ? null : line)}
+							onclick={() => handleSelectLine(selectedLine?.id === line.id ? null : line)}
 						>
 							<div class="line-header">
 								<div class="line-color" style="background: {line.color}"></div>

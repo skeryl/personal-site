@@ -1,3 +1,4 @@
+<!-- @migration-task Error while migrating Svelte code: Cannot read properties of undefined (reading 'name') -->
 <script lang="ts">
 	import { popup } from '@skeletonlabs/skeleton';
 	import {

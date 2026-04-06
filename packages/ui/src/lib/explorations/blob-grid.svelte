@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { run } from 'svelte/legacy';
+
 	import { onMount } from 'svelte';
 
-	let canvas: HTMLCanvasElement;
+	let canvas: HTMLCanvasElement | undefined = $state();
 
 	const WIDTH = 1080;
 	const HEIGHT = 1920;
@@ -11,14 +13,14 @@
 	const SUBSTEPS = 6;
 	const MAX_DISPLACEMENT = 8;
 
-	let speed = 1.7;
-	let springK = 0.02;
-	let pressureK = 300;
-	let damping = 0.986;
-	let numRing = 28;
-	let numBlobs = 30;
-	let showMesh = false;
-	let panelOpen = false;
+	let speed = $state(1.7);
+	let springK = $state(0.02);
+	let pressureK = $state(300);
+	let damping = $state(0.986);
+	let numRing = $state(28);
+	let numBlobs = $state(30);
+	let showMesh = $state(false);
+	let panelOpen = $state(false);
 
 	// localStorage persistence
 	const STORAGE_KEY = 'blob-grid-params';
@@ -61,13 +63,23 @@
 		}
 	}
 
-	$: (speed, springK, pressureK, damping, numRing, numBlobs, showMesh, panelOpen, saveParams());
+	run(() => {
+		speed;
+		springK;
+		pressureK;
+		damping;
+		numRing;
+		numBlobs;
+		showMesh;
+		panelOpen;
+		saveParams();
+	});
 
 	// Recording
-	let isRecording = false;
+	let isRecording = $state(false);
 	let recorder: MediaRecorder | null = null;
-	let recordingUrl: string | null = null;
-	let recordingExt = 'webm';
+	let recordingUrl: string | null = $state(null);
+	let recordingExt = $state('webm');
 
 	function startRecording() {
 		if (!canvas) return;
@@ -485,6 +497,7 @@
 
 	onMount(() => {
 		loadParams();
+		if (!canvas) return;
 		const ctx = canvas.getContext('2d');
 		if (!ctx) return;
 
@@ -528,7 +541,7 @@
 		height={HEIGHT}
 		class="max-h-[90vh] w-auto border border-neutral-300"
 		style="aspect-ratio: 9 / 16;"
-	/>
+	></canvas>
 
 	<div class="absolute top-2 right-2 z-10 flex gap-2 items-start">
 		<button
@@ -536,13 +549,13 @@
 			class:bg-red-500={isRecording}
 			class:text-white={isRecording}
 			class:bg-surface={!isRecording}
-			on:click={() => (isRecording ? stopRecording() : startRecording())}
+			onclick={() => (isRecording ? stopRecording() : startRecording())}
 		>
 			{isRecording ? 'Stop' : 'Record'}
 		</button>
 		<button
 			class="bg-surface rounded-md shadow-lg px-3 py-1.5 text-sm font-bold"
-			on:click={() => (panelOpen = !panelOpen)}
+			onclick={() => (panelOpen = !panelOpen)}
 		>
 			{panelOpen ? 'Close' : 'Params'}
 		</button>
@@ -648,7 +661,7 @@
 			</a>
 			<button
 				class="text-xs text-neutral-500"
-				on:click={() => {
+				onclick={() => {
 					if (recordingUrl) URL.revokeObjectURL(recordingUrl);
 					recordingUrl = null;
 				}}

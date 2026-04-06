@@ -27,6 +27,9 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm install
+      - name: Format auto-generated files
+        working-directory: packages/ui
+        run: npx prettier --write src/lib/entries/index.ts src/lib/assets/videos/posts/index.ts
       - name: prettier
         working-directory: packages/ui
         run: npx prettier --check .
@@ -57,7 +60,7 @@ jobs:
       - run: npm install
       - name: build
         env:
-          BASE_PATH: '/${{ github.event.repository.name }}'
+          BASE_PATH: "/${{ github.event.repository.name }}"
         run: npm run build -w @sc/ui
 
   smoke:
