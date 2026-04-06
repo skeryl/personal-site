@@ -19,16 +19,12 @@ test.describe('card hover states', () => {
 		await expect(firstCard).toHaveClass(/is-active/);
 
 		// The hovered card should be fully opaque (opacity 1)
-		const activeOpacity = await firstCard.evaluate(
-			(el) => window.getComputedStyle(el).opacity
-		);
+		const activeOpacity = await firstCard.evaluate((el) => window.getComputedStyle(el).opacity);
 		expect(Number(activeOpacity)).toBe(1);
 
 		// Sibling cards should have the is-dimmed class and be semitransparent
 		await expect(secondCard).toHaveClass(/is-dimmed/);
-		const dimmedOpacity = await secondCard.evaluate(
-			(el) => window.getComputedStyle(el).opacity
-		);
+		const dimmedOpacity = await secondCard.evaluate((el) => window.getComputedStyle(el).opacity);
 		expect(Number(dimmedOpacity)).toBeLessThan(1);
 	});
 
