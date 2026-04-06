@@ -1,8 +1,8 @@
 <script lang="ts">
-	import {OpenSheetMusicDisplay} from 'opensheetmusicdisplay';
-	import {onMount} from 'svelte';
-	import {generateMeasures, type Song} from '@sc/synth-builder/musicxml';
-	import {allSongs} from "$lib/explorations/scale-practice/songs";
+	import { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
+	import { onMount } from 'svelte';
+	import { generateMeasures, type Song } from '@sc/synth-builder/musicxml';
+	import { allSongs } from '$lib/explorations/scale-practice/songs';
 
 	let container: HTMLDivElement;
 
@@ -62,7 +62,7 @@
 			{/each}
 		</select>
 		<a
-				class="justify-self-end"
+			class="justify-self-end"
 			href={`data:text/plain;charset=utf-8,${window.encodeURIComponent(musicXML)}`}
 			download={`${selectedSong.title}.xml`}>⬇ Download MusicXML</a
 		>

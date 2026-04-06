@@ -128,11 +128,16 @@
 			on:mouseenter={() => (hoveredPost = post)}
 		>
 			<div class="flex items-start justify-between gap-2 mb-3">
-				<h3 class="text-base font-semibold text-neutral-800 group-hover:text-neutral-950 no-underline">
+				<h3
+					class="text-base font-semibold text-neutral-800 group-hover:text-neutral-950 no-underline"
+				>
 					{post.title}
 				</h3>
 				<span class="text-xs text-neutral-400 whitespace-nowrap pt-0.5">
-					{new Date(post.timestamp).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+					{new Date(post.timestamp).toLocaleDateString('en-US', {
+						month: 'short',
+						year: 'numeric'
+					})}
 				</span>
 			</div>
 
@@ -145,7 +150,8 @@
 								<span
 									class="collab-link underline underline-offset-2"
 									on:click|preventDefault|stopPropagation={() => window.open(collab.url, '_blank')}
-								>{collab.name}</span>
+									>{collab.name}</span
+								>
 							{:else}
 								{collab.name}
 							{/if}

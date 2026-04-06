@@ -10,15 +10,15 @@
 	onMount(async () => {
 		await playlistHelper.init();
 
-        playlistHelper.subscribeToClientState(state => {
-            initializationState = state;
-        })
+		playlistHelper.subscribeToClientState((state) => {
+			initializationState = state;
+		});
 	});
 </script>
 
 {#if initializationState !== ClientInitState.AUTHENTICATED}
 	<LoginScreen />
-	{:else}
+{:else}
 	<div class="flex flex-col w-full">
 		<PlaylistHelperMain />
 	</div>

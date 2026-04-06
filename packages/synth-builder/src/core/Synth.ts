@@ -1,10 +1,12 @@
-import { BuildOutput, MINIMUM_GAIN, NodeTypes } from "../model/nodes";
+import type { BuildOutput } from "../model/nodes";
+import { MINIMUM_GAIN, NodeTypes } from "../model/nodes";
 import { Pitch, PitchInformation } from "../model/notes";
 import { TimeSensitiveMap } from "./utils/TimeSensitiveMap";
-import { IAudioGraph, WithSource } from "./nodes";
-import { IAudioNode, MutableAudioNode } from "./nodes/MutableAudioNode";
+import type { IAudioGraph, WithSource } from "./nodes";
+import type { IAudioNode } from "./nodes/MutableAudioNode";
+import { MutableAudioNode } from "./nodes/MutableAudioNode";
 import { MutableAudioGraph } from "./nodes/MutableAudioGraph";
-import { ISynth, SynthMetadata } from "../services/synths";
+import type { ISynth, SynthMetadata } from "../services/synths";
 
 export function startingGraph() {
   const osc = new MutableAudioNode(NodeTypes.Oscillator, { type: "sine" }, []);
@@ -248,7 +250,7 @@ export class Synth implements ISynth {
       if (!data.has(an.pitch)) {
         data.set(an.pitch, new Float32Array(an.analyser.fftSize));
       }
-      an.analyser[dataFunction](data.get(an.pitch) as Float32Array);
+      an.analyser[dataFunction](data.get(an.pitch) as Float32Array<ArrayBuffer>);
     });
     return data;
   }

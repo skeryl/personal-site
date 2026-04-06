@@ -20,7 +20,7 @@
 	}
 
 	onMount(() => {
-		console.log("subscribed to playback context!");
+		console.log('subscribed to playback context!');
 		playbackListener = playlistHelper.subscribeToPlaybackContext((ctx) => {
 			context = ctx;
 			currentAnalysis = audioAnalyses.get(ctx?.item?.id ?? '');
@@ -28,9 +28,8 @@
 		});
 
 		return () => {
-
-			console.log("unsubscribed from playback context <3");
-			playlistHelper.unsubscribeFromPlaybackContext(playbackListener)
+			console.log('unsubscribed from playback context <3');
+			playlistHelper.unsubscribeFromPlaybackContext(playbackListener);
 		};
 	});
 
@@ -51,5 +50,5 @@
 	<div>
 		{context?.item?.name ?? '(no track is playing at the moment)'}
 	</div>
-	<PostComponent post={trackVisualizerPost} hideHeader/>
+	<PostComponent post={trackVisualizerPost} hideHeader />
 </div>

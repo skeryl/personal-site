@@ -25,10 +25,22 @@
 
 	function saveParams() {
 		try {
-			localStorage.setItem(STORAGE_KEY, JSON.stringify({
-				speed, springK, pressureK, damping, numRing, numBlobs, showMesh, panelOpen
-			}));
-		} catch { /* storage unavailable */ }
+			localStorage.setItem(
+				STORAGE_KEY,
+				JSON.stringify({
+					speed,
+					springK,
+					pressureK,
+					damping,
+					numRing,
+					numBlobs,
+					showMesh,
+					panelOpen
+				})
+			);
+		} catch {
+			/* storage unavailable */
+		}
 	}
 
 	function loadParams() {
@@ -44,10 +56,12 @@
 			if (p.numBlobs !== undefined) numBlobs = p.numBlobs;
 			if (p.showMesh !== undefined) showMesh = p.showMesh;
 			if (p.panelOpen !== undefined) panelOpen = p.panelOpen;
-		} catch { /* corrupt storage */ }
+		} catch {
+			/* corrupt storage */
+		}
 	}
 
-	$: speed, springK, pressureK, damping, numRing, numBlobs, showMesh, panelOpen, saveParams();
+	$: (speed, springK, pressureK, damping, numRing, numBlobs, showMesh, panelOpen, saveParams());
 
 	// Recording
 	let isRecording = false;
@@ -66,7 +80,9 @@
 			recordingExt = 'mp4';
 		}
 		recorder = new MediaRecorder(stream, { mimeType });
-		recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+		recorder.ondataavailable = (e) => {
+			if (e.data.size > 0) chunks.push(e.data);
+		};
 		recorder.onstop = () => {
 			const blob = new Blob(chunks, { type: mimeType });
 			if (recordingUrl) URL.revokeObjectURL(recordingUrl);
@@ -82,12 +98,15 @@
 	}
 
 	interface VPoint {
-		x: number; y: number;
-		px: number; py: number;
+		x: number;
+		y: number;
+		px: number;
+		py: number;
 	}
 
 	interface SoftBlob {
-		cx: number; cy: number;
+		cx: number;
+		cy: number;
 		ring: VPoint[];
 		restLens: number[];
 		bendLens: number[];
@@ -98,16 +117,36 @@
 
 	// Color palette — cycled for any blob count
 	const palette: [number, number, number][] = [
-		[66, 165, 245], [210, 175, 140], [230, 110, 95],
-		[200, 40, 100], [235, 210, 55], [148, 128, 200],
-		[80, 75, 68], [45, 100, 220], [155, 168, 28],
-		[160, 118, 78], [210, 170, 200], [115, 188, 198],
-		[100, 58, 28], [0, 210, 155], [200, 28, 28],
-		[180, 80, 180], [90, 200, 90], [255, 160, 60],
-		[60, 60, 160], [200, 200, 80], [140, 80, 60],
-		[80, 180, 220], [220, 120, 180], [120, 160, 80],
-		[180, 140, 200], [100, 200, 180], [200, 80, 60],
-		[60, 140, 120], [220, 180, 120], [140, 100, 180],
+		[66, 165, 245],
+		[210, 175, 140],
+		[230, 110, 95],
+		[200, 40, 100],
+		[235, 210, 55],
+		[148, 128, 200],
+		[80, 75, 68],
+		[45, 100, 220],
+		[155, 168, 28],
+		[160, 118, 78],
+		[210, 170, 200],
+		[115, 188, 198],
+		[100, 58, 28],
+		[0, 210, 155],
+		[200, 28, 28],
+		[180, 80, 180],
+		[90, 200, 90],
+		[255, 160, 60],
+		[60, 60, 160],
+		[200, 200, 80],
+		[140, 80, 60],
+		[80, 180, 220],
+		[220, 120, 180],
+		[120, 160, 80],
+		[180, 140, 200],
+		[100, 200, 180],
+		[200, 80, 60],
+		[60, 140, 120],
+		[220, 180, 120],
+		[140, 100, 180]
 	];
 
 	function polyArea(ring: VPoint[]): number {
@@ -143,12 +182,13 @@
 			const sizeVar = 0.8 + Math.random() * 0.4;
 			const aspectVar = 0.85 + Math.random() * 0.3;
 			const rx = baseRadius * sizeVar * aspectVar;
-			const ry = baseRadius * sizeVar / aspectVar;
+			const ry = (baseRadius * sizeVar) / aspectVar;
 
 			const ring: VPoint[] = [];
 			for (let i = 0; i < N; i++) {
 				const angle = (i / N) * Math.PI * 2 + rot;
-				const c = Math.cos(angle - rot), s = Math.sin(angle - rot);
+				const c = Math.cos(angle - rot),
+					s = Math.sin(angle - rot);
 				const r = (rx * ry) / Math.sqrt((ry * c) ** 2 + (rx * s) ** 2);
 				const x = cx + Math.cos(angle) * r;
 				const y = cy + Math.sin(angle) * r;
@@ -168,11 +208,14 @@
 			}
 
 			blobs.push({
-				cx, cy,
-				ring, restLens, bendLens,
+				cx,
+				cy,
+				ring,
+				restLens,
+				bendLens,
 				restArea: polyArea(ring),
 				avgRadius: (rx + ry) / 2,
-				color: palette[idx % palette.length],
+				color: palette[idx % palette.length]
 			});
 		}
 		return blobs;
@@ -187,14 +230,14 @@
 
 		const dt = 1 / SUBSTEPS;
 		for (let step = 0; step < SUBSTEPS; step++) {
-
 			for (const p of blob.ring) {
 				let dx = (p.x - p.px) * damping;
 				let dy = (p.y - p.py) * damping;
 				const spd = Math.sqrt(dx * dx + dy * dy);
 				if (spd > MAX_DISPLACEMENT * dt) {
 					const s = (MAX_DISPLACEMENT * dt) / spd;
-					dx *= s; dy *= s;
+					dx *= s;
+					dy *= s;
 				}
 				p.px = p.x;
 				p.py = p.y;
@@ -206,55 +249,82 @@
 			const P = (pressureK * dt * dt) / Math.max(area, 1);
 			for (let i = 0; i < N; i++) {
 				const j = (i + 1) % N;
-				const pi = blob.ring[i], pj = blob.ring[j];
-				const edgeX = pj.x - pi.x, edgeY = pj.y - pi.y;
+				const pi = blob.ring[i],
+					pj = blob.ring[j];
+				const edgeX = pj.x - pi.x,
+					edgeY = pj.y - pi.y;
 				const edgeLen = Math.sqrt(edgeX * edgeX + edgeY * edgeY) || 0.001;
-				const nx = edgeY / edgeLen, ny = -edgeX / edgeLen;
+				const nx = edgeY / edgeLen,
+					ny = -edgeX / edgeLen;
 				const f = P * edgeLen * 0.5;
-				pi.x += nx * f; pi.y += ny * f;
-				pj.x += nx * f; pj.y += ny * f;
+				pi.x += nx * f;
+				pi.y += ny * f;
+				pj.x += nx * f;
+				pj.y += ny * f;
 			}
 
 			const kEdge = springK * dt;
 			for (let i = 0; i < N; i++) {
 				const j = (i + 1) % N;
-				const pi = blob.ring[i], pj = blob.ring[j];
-				const dx = pj.x - pi.x, dy = pj.y - pi.y;
+				const pi = blob.ring[i],
+					pj = blob.ring[j];
+				const dx = pj.x - pi.x,
+					dy = pj.y - pi.y;
 				const dist = Math.sqrt(dx * dx + dy * dy) || 0.001;
 				const diff = (dist - blob.restLens[i]) / dist;
 				const fx = dx * diff * kEdge * 0.5;
 				const fy = dy * diff * kEdge * 0.5;
-				pi.x += fx; pi.y += fy;
-				pj.x -= fx; pj.y -= fy;
+				pi.x += fx;
+				pi.y += fy;
+				pj.x -= fx;
+				pj.y -= fy;
 			}
 
 			const kBend = springK * 0.4 * dt;
 			for (let i = 0; i < N; i++) {
 				const j = (i + 2) % N;
-				const pi = blob.ring[i], pj = blob.ring[j];
-				const dx = pj.x - pi.x, dy = pj.y - pi.y;
+				const pi = blob.ring[i],
+					pj = blob.ring[j];
+				const dx = pj.x - pi.x,
+					dy = pj.y - pi.y;
 				const dist = Math.sqrt(dx * dx + dy * dy) || 0.001;
 				const diff = (dist - blob.bendLens[i]) / dist;
 				const fx = dx * diff * kBend * 0.5;
 				const fy = dy * diff * kBend * 0.5;
-				pi.x += fx; pi.y += fy;
-				pj.x -= fx; pj.y -= fy;
+				pi.x += fx;
+				pi.y += fy;
+				pj.x -= fx;
+				pj.y -= fy;
 			}
 
 			for (const p of blob.ring) {
-				if (p.x < cellLeft) { p.x = cellLeft; if (p.px < cellLeft) p.px = cellLeft; }
-				if (p.x > cellRight) { p.x = cellRight; if (p.px > cellRight) p.px = cellRight; }
-				if (p.y < cellTop) { p.y = cellTop; if (p.py < cellTop) p.py = cellTop; }
-				if (p.y > cellBottom) { p.y = cellBottom; if (p.py > cellBottom) p.py = cellBottom; }
+				if (p.x < cellLeft) {
+					p.x = cellLeft;
+					if (p.px < cellLeft) p.px = cellLeft;
+				}
+				if (p.x > cellRight) {
+					p.x = cellRight;
+					if (p.px > cellRight) p.px = cellRight;
+				}
+				if (p.y < cellTop) {
+					p.y = cellTop;
+					if (p.py < cellTop) p.py = cellTop;
+				}
+				if (p.y > cellBottom) {
+					p.y = cellBottom;
+					if (p.py > cellBottom) p.py = cellBottom;
+				}
 			}
 		}
 
-		let avgVx = 0, avgVy = 0;
+		let avgVx = 0,
+			avgVy = 0;
 		for (const p of blob.ring) {
 			avgVx += p.x - p.px;
 			avgVy += p.y - p.py;
 		}
-		avgVx /= N; avgVy /= N;
+		avgVx /= N;
+		avgVy /= N;
 
 		const currentSpeed = Math.sqrt(avgVx * avgVx + avgVy * avgVy);
 		if (currentSpeed > 0.0001) {
@@ -275,9 +345,14 @@
 			}
 		}
 
-		blob.cx = 0; blob.cy = 0;
-		for (const p of blob.ring) { blob.cx += p.x; blob.cy += p.y; }
-		blob.cx /= N; blob.cy /= N;
+		blob.cx = 0;
+		blob.cy = 0;
+		for (const p of blob.ring) {
+			blob.cx += p.x;
+			blob.cy += p.y;
+		}
+		blob.cx /= N;
+		blob.cy /= N;
 	}
 
 	function blobPath(ctx: CanvasRenderingContext2D, ring: VPoint[]) {
@@ -287,7 +362,8 @@
 		let midY = (ring[0].y + ring[N - 1].y) / 2;
 		ctx.moveTo(midX, midY);
 		for (let i = 0; i < N; i++) {
-			const curr = ring[i], next = ring[(i + 1) % N];
+			const curr = ring[i],
+				next = ring[(i + 1) % N];
 			midX = (curr.x + next.x) / 2;
 			midY = (curr.y + next.y) / 2;
 			ctx.quadraticCurveTo(curr.x, curr.y, midX, midY);
@@ -300,11 +376,17 @@
 		const ring = blob.ring;
 		const N = ring.length;
 
-		let centX = 0, centY = 0;
-		for (const p of ring) { centX += p.x; centY += p.y; }
-		centX /= N; centY /= N;
+		let centX = 0,
+			centY = 0;
+		for (const p of ring) {
+			centX += p.x;
+			centY += p.y;
+		}
+		centX /= N;
+		centY /= N;
 
-		let maxDX = 0, maxDY = 0;
+		let maxDX = 0,
+			maxDY = 0;
 		for (const p of ring) {
 			maxDX = Math.max(maxDX, Math.abs(p.x - centX));
 			maxDY = Math.max(maxDY, Math.abs(p.y - centY));
@@ -375,7 +457,8 @@
 	function collideBlobs(blobs: SoftBlob[]) {
 		for (let i = 0; i < blobs.length; i++) {
 			for (let j = i + 1; j < blobs.length; j++) {
-				const a = blobs[i], b = blobs[j];
+				const a = blobs[i],
+					b = blobs[j];
 				const dx = b.cx - a.cx;
 				const dy = b.cy - a.cy;
 				const dist = Math.sqrt(dx * dx + dy * dy) || 0.001;
@@ -383,7 +466,8 @@
 
 				if (dist >= minDist) continue;
 
-				const nx = dx / dist, ny = dy / dist;
+				const nx = dx / dist,
+					ny = dy / dist;
 				const overlap = minDist - dist;
 				const push = overlap * 0.15;
 
@@ -452,7 +536,7 @@
 			class:bg-red-500={isRecording}
 			class:text-white={isRecording}
 			class:bg-surface={!isRecording}
-			on:click={() => isRecording ? stopRecording() : startRecording()}
+			on:click={() => (isRecording ? stopRecording() : startRecording())}
 		>
 			{isRecording ? 'Stop' : 'Record'}
 		</button>
@@ -467,32 +551,80 @@
 			<div class="mt-2 w-[220px] bg-surface rounded-md shadow-lg p-4 max-h-[80vh] overflow-y-auto">
 				<div class="flex flex-col my-2.5">
 					<label for="param-blobs" class="text-xs font-bold">Blobs</label>
-					<input id="param-blobs" type="range" min={1} max={50} step={1} bind:value={numBlobs} class="w-full" />
+					<input
+						id="param-blobs"
+						type="range"
+						min={1}
+						max={50}
+						step={1}
+						bind:value={numBlobs}
+						class="w-full"
+					/>
 					<span class="text-xs text-neutral-500">{numBlobs}</span>
 				</div>
 				<div class="flex flex-col my-2.5">
 					<label for="param-speed" class="text-xs font-bold">Speed</label>
-					<input id="param-speed" type="range" min={0.05} max={5} step={0.05} bind:value={speed} class="w-full" />
+					<input
+						id="param-speed"
+						type="range"
+						min={0.05}
+						max={5}
+						step={0.05}
+						bind:value={speed}
+						class="w-full"
+					/>
 					<span class="text-xs text-neutral-500">{speed.toFixed(2)}</span>
 				</div>
 				<div class="flex flex-col my-2.5">
 					<label for="param-springK" class="text-xs font-bold">Spring K</label>
-					<input id="param-springK" type="range" min={0.01} max={1} step={0.01} bind:value={springK} class="w-full" />
+					<input
+						id="param-springK"
+						type="range"
+						min={0.01}
+						max={1}
+						step={0.01}
+						bind:value={springK}
+						class="w-full"
+					/>
 					<span class="text-xs text-neutral-500">{springK.toFixed(2)}</span>
 				</div>
 				<div class="flex flex-col my-2.5">
 					<label for="param-pressure" class="text-xs font-bold">Pressure</label>
-					<input id="param-pressure" type="range" min={50} max={10000} step={50} bind:value={pressureK} class="w-full" />
+					<input
+						id="param-pressure"
+						type="range"
+						min={50}
+						max={10000}
+						step={50}
+						bind:value={pressureK}
+						class="w-full"
+					/>
 					<span class="text-xs text-neutral-500">{pressureK}</span>
 				</div>
 				<div class="flex flex-col my-2.5">
 					<label for="param-damping" class="text-xs font-bold">Damping</label>
-					<input id="param-damping" type="range" min={0.95} max={1} step={0.001} bind:value={damping} class="w-full" />
+					<input
+						id="param-damping"
+						type="range"
+						min={0.95}
+						max={1}
+						step={0.001}
+						bind:value={damping}
+						class="w-full"
+					/>
 					<span class="text-xs text-neutral-500">{damping.toFixed(3)}</span>
 				</div>
 				<div class="flex flex-col my-2.5">
 					<label for="param-ring" class="text-xs font-bold">Ring Nodes</label>
-					<input id="param-ring" type="range" min={12} max={48} step={1} bind:value={numRing} class="w-full" />
+					<input
+						id="param-ring"
+						type="range"
+						min={12}
+						max={48}
+						step={1}
+						bind:value={numRing}
+						class="w-full"
+					/>
 					<span class="text-xs text-neutral-500">{numRing}</span>
 				</div>
 				<div class="flex items-center gap-2 my-2.5">
@@ -504,7 +636,9 @@
 	</div>
 
 	{#if recordingUrl}
-		<div class="absolute bottom-2 right-2 z-10 bg-surface rounded-md shadow-lg p-3 flex gap-2 items-center">
+		<div
+			class="absolute bottom-2 right-2 z-10 bg-surface rounded-md shadow-lg p-3 flex gap-2 items-center"
+		>
 			<a
 				href={recordingUrl}
 				download={`blob-grid.${recordingExt}`}
@@ -514,7 +648,10 @@
 			</a>
 			<button
 				class="text-xs text-neutral-500"
-				on:click={() => { if (recordingUrl) URL.revokeObjectURL(recordingUrl); recordingUrl = null; }}
+				on:click={() => {
+					if (recordingUrl) URL.revokeObjectURL(recordingUrl);
+					recordingUrl = null;
+				}}
 			>
 				dismiss
 			</button>

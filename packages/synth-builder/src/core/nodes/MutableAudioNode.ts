@@ -1,13 +1,15 @@
-import {
+import type {
   ImmutableNodeProperties,
-  NodeConfigs,
   NodeProperties,
-  NodeTypes,
   PropertyValue,
+} from "../../model/nodes";
+import {
+  NodeConfigs,
+  NodeTypes,
 } from "../../model/nodes";
 import { v4 as uuid } from "uuid";
 import { BuildContext } from "./BuildContext";
-import { BuildOutputV2, NodeConnection } from "./index";
+import type { BuildOutputV2, NodeConnection } from "./index";
 
 export interface IAudioNode {
   id: string;

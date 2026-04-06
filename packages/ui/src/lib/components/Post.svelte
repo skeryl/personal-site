@@ -73,7 +73,9 @@
 			try {
 				const data = params.map((p) => ({ id: p.id, value: p.value }));
 				localStorage.setItem(key, JSON.stringify(data));
-			} catch { /* storage full or unavailable */ }
+			} catch {
+				/* storage full or unavailable */
+			}
 		}
 	}
 
@@ -88,7 +90,9 @@
 			return post.params.map((p) =>
 				lookup.has(p.id) ? { ...p, value: lookup.get(p.id) as typeof p.value } : p
 			);
-		} catch { return undefined; }
+		} catch {
+			return undefined;
+		}
 	}
 
 	$: if (post?.params) {
@@ -102,7 +106,11 @@
 
 <div class="flex flex-1 flex-col h-full">
 	{#if !hideHeader}
-		<a href="/" class="text-sm text-neutral-400 hover:text-neutral-600 no-underline transition-colors">← journal</a>
+		<a
+			href="/"
+			class="text-sm text-neutral-400 hover:text-neutral-600 no-underline transition-colors"
+			>← journal</a
+		>
 		<div class="flex flex-row items-baseline mt-2">
 			<h1 class="flex-1">{title}</h1>
 			<div>
@@ -115,7 +123,13 @@
 					<span class="text-sm text-neutral-500">
 						{collab.role}:
 						{#if collab.url}
-							<a href={collab.url} target="_blank" rel="noopener noreferrer" class="underline underline-offset-2 hover:text-neutral-800 transition-colors">{collab.name}</a>
+							<a
+								href={collab.url}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="underline underline-offset-2 hover:text-neutral-800 transition-colors"
+								>{collab.name}</a
+							>
 						{:else}
 							{collab.name}
 						{/if}

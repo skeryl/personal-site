@@ -1,4 +1,4 @@
-import { IAudioNode } from "./MutableAudioNode";
+import type { IAudioNode } from "./MutableAudioNode";
 import { NodeTypes } from "../../model/nodes";
 import { BuildContext } from "./BuildContext";
 

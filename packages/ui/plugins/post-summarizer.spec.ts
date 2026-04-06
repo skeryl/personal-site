@@ -12,8 +12,8 @@ describe('post-summarizer', () => {
 		test('should camelCase a kebab string', () => {
 			expect(toCamelCase('ant-farm')).toEqual('antFarm');
 		});
-		test('should camelCase a kebab filename (and strip extension)', () => {
-			expect(toCamelCase('ant-farm.ts')).toEqual('antFarm');
+		test('should camelCase a kebab filename (without stripping extension)', () => {
+			expect(toCamelCase('ant-farm.ts')).toEqual('antFarm.ts');
 		});
 	});
 });

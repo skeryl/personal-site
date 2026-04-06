@@ -6,10 +6,18 @@
 	class="w-full h-14 px-6 max-sm:px-3 flex flex-row content-between items-center sticky top-0 z-50 nav-bar"
 >
 	<div class="flex flex-1">
-		<NavLink href="/" text="shane's computer" className="font-medium tracking-tight text-neutral-800" />
+		<NavLink
+			href="/"
+			text="shane's computer"
+			className="font-medium tracking-tight text-neutral-800"
+		/>
 	</div>
 	<div class="flex flex-1 justify-end gap-6">
-		<NavLink href="/about" text="about" className="content-end text-neutral-500 hover:text-neutral-800 transition-colors" />
+		<NavLink
+			href="/about"
+			text="about"
+			className="content-end text-neutral-500 hover:text-neutral-800 transition-colors"
+		/>
 	</div>
 </nav>
 

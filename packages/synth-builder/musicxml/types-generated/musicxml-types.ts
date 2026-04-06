@@ -1,4 +1,4 @@
-import { ChordLike } from "../helpers";
+import type { ChordLike } from "../helpers";
 
 export type AboveBelow = "above" | "below";
 

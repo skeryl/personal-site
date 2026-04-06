@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Vec2 } from '$lib/content-params';
 	import Input from '$lib/components/controls/Input.svelte';
-	import type {ChangeEventHandler} from "svelte/elements";
+	import type { ChangeEventHandler } from 'svelte/elements';
 
 	export let value: Vec2;
 	export let label: string;
@@ -13,11 +13,11 @@
 	const triggerChangeX: ChangeEventHandler<HTMLInputElement> = (e) => {
 		const value = Number((e.target as HTMLInputElement).value);
 		onChange([value, y]);
-	}
+	};
 	const triggerChangeY: ChangeEventHandler<HTMLInputElement> = (e) => {
 		const value = Number((e.target as HTMLInputElement).value);
 		onChange([x, value]);
-	}
+	};
 </script>
 
 <div class="flex flex-col w-full">

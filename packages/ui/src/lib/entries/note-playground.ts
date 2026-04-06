@@ -35,7 +35,12 @@ function getAudioGraph() {
 	);
 }
 
-type SynthPitchNodes = { oscillators: { node: OscillatorNode }[]; gains: { node: GainNode }[]; analysers: { node: AnalyserNode }[]; pitch: Pitch };
+type SynthPitchNodes = {
+	oscillators: { node: OscillatorNode }[];
+	gains: { node: GainNode }[];
+	analysers: { node: AnalyserNode }[];
+	pitch: Pitch;
+};
 function getSynthPitches(s: Synth): Map<Pitch, SynthPitchNodes> {
 	return (s as unknown as { pitches: Map<Pitch, SynthPitchNodes> }).pitches;
 }
@@ -53,7 +58,8 @@ function hslToCSS(h: number, s: number, l: number, a = 1): string {
 }
 
 function distanceToPitch(nx: number, ny: number): { pitch: Pitch; pitchNorm: number } {
-	const dx = nx - 0.5, dy = ny - 0.5;
+	const dx = nx - 0.5,
+		dy = ny - 0.5;
 	const dist = Math.sqrt(dx * dx + dy * dy);
 	const norm = Math.max(0, Math.min(1, dist / 0.5));
 	const idx = Math.round(norm * PLAYABLE_RANGE + MIN_PLAYABLE_IDX);
@@ -76,7 +82,10 @@ function consonance(a: number, b: number): number {
 	const ratio = hzA > hzB ? hzA / hzB : hzB / hzA;
 	const simple = [1, 2, 1.5, 4 / 3, 5 / 4, 5 / 3, 6 / 5];
 	let best = 1;
-	for (const r of simple) { const d = Math.abs(ratio - r); if (d < best) best = d; }
+	for (const r of simple) {
+		const d = Math.abs(ratio - r);
+		if (d < best) best = d;
+	}
 	return 1.0 - Math.min(best * 4, 1.0);
 }
 
@@ -84,7 +93,8 @@ function consonance(a: number, b: number): number {
 
 interface NoteOrb {
 	id: string;
-	x: number; y: number;
+	x: number;
+	y: number;
 	pitch: Pitch;
 	pitchNorm: number;
 	hue: number;
@@ -94,8 +104,10 @@ interface NoteOrb {
 }
 
 interface Particle {
-	x: number; y: number;
-	vx: number; vy: number;
+	x: number;
+	y: number;
+	vx: number;
+	vy: number;
 	life: number;
 	hue: number;
 	orbId: string;
@@ -105,15 +117,41 @@ interface Particle {
 
 class NotePlaygroundContent implements ExperimentContent3D {
 	private readonly synth = (() => {
-		const s = new Synth(getAudioGraph(), { attack: 0.95, release: 0.8, unison: 2, unisonDetune: 0.12 });
-		const releasing = (s as unknown as { releasing: { onDelete: (pitch: Pitch, params: AudioParam[]) => void } }).releasing;
+		const s = new Synth(getAudioGraph(), {
+			attack: 0.95,
+			release: 0.8,
+			unison: 2,
+			unisonDetune: 0.12
+		});
+		const releasing = (
+			s as unknown as { releasing: { onDelete: (pitch: Pitch, params: AudioParam[]) => void } }
+		).releasing;
 		releasing.onDelete = (pitch: Pitch) => {
 			const pitches = getSynthPitches(s);
 			const nodes = pitches.get(pitch);
 			if (nodes) {
-				nodes.oscillators.forEach((o) => { try { o.node.stop(); o.node.disconnect(); } catch { /* */ } });
-				nodes.gains.forEach((g) => { try { g.node.disconnect(); } catch { /* */ } });
-				nodes.analysers.forEach((a) => { try { a.node.disconnect(); } catch { /* */ } });
+				nodes.oscillators.forEach((o) => {
+					try {
+						o.node.stop();
+						o.node.disconnect();
+					} catch {
+						/* */
+					}
+				});
+				nodes.gains.forEach((g) => {
+					try {
+						g.node.disconnect();
+					} catch {
+						/* */
+					}
+				});
+				nodes.analysers.forEach((a) => {
+					try {
+						a.node.disconnect();
+					} catch {
+						/* */
+					}
+				});
 				pitches.delete(pitch);
 			}
 		};
@@ -131,7 +169,13 @@ class NotePlaygroundContent implements ExperimentContent3D {
 
 	private readonly orbs: NoteOrb[] = [];
 	private readonly particles: Particle[] = Array.from({ length: MAX_PARTICLES }, () => ({
-		x: 0, y: 0, vx: 0, vy: 0, life: 0, hue: 0, orbId: ''
+		x: 0,
+		y: 0,
+		vx: 0,
+		vy: 0,
+		life: 0,
+		hue: 0,
+		orbId: ''
 	}));
 	private orbIdCounter = 0;
 	private bgHue = 0;
@@ -176,9 +220,15 @@ class NotePlaygroundContent implements ExperimentContent3D {
 			({ pitch: p, pitchNorm: pn } = distanceToPitch(nx, ny));
 		}
 		const orb: NoteOrb = {
-			id: `orb-${this.orbIdCounter++}`, x: nx, y: ny,
-			pitch: p, pitchNorm: pn, hue: pitchToHue(pn),
-			dragging: false, birthTime: performance.now(), keyboard
+			id: `orb-${this.orbIdCounter++}`,
+			x: nx,
+			y: ny,
+			pitch: p,
+			pitchNorm: pn,
+			hue: pitchToHue(pn),
+			dragging: false,
+			birthTime: performance.now(),
+			keyboard
 		};
 		this.orbs.push(orb);
 		this.synth.startPlaying(p);
@@ -216,7 +266,8 @@ class NotePlaygroundContent implements ExperimentContent3D {
 		const orbR = ORB_RADIUS / Math.max(this.w, 1);
 		for (let i = this.orbs.length - 1; i >= 0; i--) {
 			const o = this.orbs[i];
-			const dx = o.x - nx, dy = o.y - ny;
+			const dx = o.x - nx,
+				dy = o.y - ny;
 			if (Math.sqrt(dx * dx + dy * dy) < orbR) return o;
 		}
 		return undefined;
@@ -257,7 +308,8 @@ class NotePlaygroundContent implements ExperimentContent3D {
 	private onPointerUp = (e: PointerEvent) => {
 		if (this.activeOrb) {
 			const { nx, ny } = this.norm(e);
-			const dx = nx - this.pointerDownPos.x, dy = ny - this.pointerDownPos.y;
+			const dx = nx - this.pointerDownPos.x,
+				dy = ny - this.pointerDownPos.y;
 			if (Math.sqrt(dx * dx + dy * dy) < 0.02) {
 				const now = performance.now();
 				if (this.lastTapOrb === this.activeOrb && now - this.lastTapTime < 400) {
@@ -288,7 +340,9 @@ class NotePlaygroundContent implements ExperimentContent3D {
 	private onKeyUp = (e: KeyboardEvent) => {
 		const orb = this.heldKeys.get(e.code);
 		if (!orb) return;
-		for (const [code, o] of this.heldKeys) { if (o.pitch === orb.pitch) this.heldKeys.delete(code); }
+		for (const [code, o] of this.heldKeys) {
+			if (o.pitch === orb.pitch) this.heldKeys.delete(code);
+		}
 		this.removeOrb(orb);
 	};
 
@@ -304,14 +358,16 @@ class NotePlaygroundContent implements ExperimentContent3D {
 
 		/* create 2D canvas overlay */
 		this.canvas2d = document.createElement('canvas');
-		this.canvas2d.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;z-index:1;';
+		this.canvas2d.style.cssText =
+			'position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;z-index:1;';
 		container.appendChild(this.canvas2d);
 		this.ctx = this.canvas2d.getContext('2d')!;
 
 		/* clear all button */
 		this.clearBtn = document.createElement('button');
 		this.clearBtn.textContent = 'Clear All';
-		this.clearBtn.style.cssText = 'position:absolute;bottom:52px;left:16px;z-index:2;padding:4px 12px;font-size:12px;border-radius:9999px;background:rgba(30,30,30,0.6);color:#aaa;border:none;cursor:pointer;backdrop-filter:blur(4px);';
+		this.clearBtn.style.cssText =
+			'position:absolute;bottom:52px;left:16px;z-index:2;padding:4px 12px;font-size:12px;border-radius:9999px;background:rgba(30,30,30,0.6);color:#aaa;border:none;cursor:pointer;backdrop-filter:blur(4px);';
 		this.clearBtn.style.display = 'none';
 		this.clearBtn.addEventListener('click', this.removeAllOrbs);
 		container.appendChild(this.clearBtn);
@@ -361,7 +417,8 @@ class NotePlaygroundContent implements ExperimentContent3D {
 		const { orbs, particles, w, h } = this;
 
 		/* discordance */
-		let disc = 0, pairs = 0;
+		let disc = 0,
+			pairs = 0;
 		for (let a = 0; a < orbs.length; a++) {
 			for (let b = a + 1; b < orbs.length; b++) {
 				disc += 1 - consonance(orbs[a].pitchNorm, orbs[b].pitchNorm);
@@ -385,7 +442,8 @@ class NotePlaygroundContent implements ExperimentContent3D {
 					vx: Math.cos(angle) * 0.002 + (Math.random() - 0.5) * 0.001,
 					vy: Math.sin(angle) * 0.002 + (Math.random() - 0.5) * 0.001,
 					life: 0.7 + Math.random() * 0.5,
-					hue: orb.hue, orbId: orb.id
+					hue: orb.hue,
+					orbId: orb.id
 				};
 				emitted++;
 			}
@@ -398,25 +456,35 @@ class NotePlaygroundContent implements ExperimentContent3D {
 			pt.vx += Math.sin(pt.y * 12 + time * 2) * turb * 0.0004;
 			pt.vy += Math.cos(pt.x * 12 + time * 2) * turb * 0.0004;
 			for (const orb of orbs) {
-				const dx = orb.x - pt.x, dy = orb.y - pt.y;
+				const dx = orb.x - pt.x,
+					dy = orb.y - pt.y;
 				const dist2 = dx * dx + dy * dy + 0.0001;
 				const isOwn = orb.id === pt.orbId;
 				pt.vx += dx * ((isOwn ? 0.000003 : 0.000008) / dist2);
 				pt.vy += dy * ((isOwn ? 0.000003 : 0.000008) / dist2);
 				if (!isOwn) {
 					const dist = Math.sqrt(dist2);
-					if (dist < 0.15) { pt.vx += -dy * 0.00002 / dist; pt.vy += dx * 0.00002 / dist; }
+					if (dist < 0.15) {
+						pt.vx += (-dy * 0.00002) / dist;
+						pt.vy += (dx * 0.00002) / dist;
+					}
 				}
 			}
-			pt.vx *= 0.985; pt.vy *= 0.985;
-			pt.x += pt.vx * delta * 60; pt.y += pt.vy * delta * 60;
+			pt.vx *= 0.985;
+			pt.vy *= 0.985;
+			pt.x += pt.vx * delta * 60;
+			pt.y += pt.vy * delta * 60;
 			pt.life -= delta * 0.35;
 		}
 
 		/* background */
 		if (orbs.length > 0) {
-			let sinSum = 0, cosSum = 0;
-			for (const o of orbs) { sinSum += Math.sin(o.hue * Math.PI * 2); cosSum += Math.cos(o.hue * Math.PI * 2); }
+			let sinSum = 0,
+				cosSum = 0;
+			for (const o of orbs) {
+				sinSum += Math.sin(o.hue * Math.PI * 2);
+				cosSum += Math.cos(o.hue * Math.PI * 2);
+			}
 			const avgHue = (Math.atan2(sinSum, cosSum) / (Math.PI * 2) + 1) % 1;
 			const targetHue = (avgHue + 0.5) % 1;
 			if (Math.abs(targetHue - this.bgHue) > 0.5) this.bgHue = targetHue;
@@ -433,7 +501,8 @@ class NotePlaygroundContent implements ExperimentContent3D {
 		for (let p = 0; p < MAX_PARTICLES; p++) {
 			const pt = particles[p];
 			if (pt.life <= 0) continue;
-			const px = pt.x * w, py = pt.y * h;
+			const px = pt.x * w,
+				py = pt.y * h;
 			const r = (1 + pt.life) * 1.5;
 			const alpha = pt.life * 0.6;
 			const grad = ctx.createRadialGradient(px, py, 0, px, py, r);
@@ -446,7 +515,8 @@ class NotePlaygroundContent implements ExperimentContent3D {
 
 		/* draw orbs */
 		for (const orb of orbs) {
-			const ox = orb.x * w, oy = orb.y * h;
+			const ox = orb.x * w,
+				oy = orb.y * h;
 			const grad = ctx.createRadialGradient(ox, oy, 0, ox, oy, ORB_RADIUS);
 			grad.addColorStop(0, hslToCSS(orb.hue, 0.9, 0.7, 0.9));
 			grad.addColorStop(0.5, hslToCSS(orb.hue, 0.8, 0.5, 0.4));

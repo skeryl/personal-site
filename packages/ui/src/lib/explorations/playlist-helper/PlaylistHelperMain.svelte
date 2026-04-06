@@ -7,7 +7,7 @@
 	import type { DeviceObject, PlaylistTrackObject } from '@sc/spotify';
 	import Track from '$lib/explorations/playlist-helper/Track.svelte';
 	import Selector from '$lib/components/input/Selector.svelte';
-	import {type AutocompleteOption, Tab, TabGroup} from "@skeletonlabs/skeleton";
+	import { type AutocompleteOption, Tab, TabGroup } from '@skeletonlabs/skeleton';
 	import type { Item } from 'svelte-dnd-action';
 	import TrackVisualizer from '$lib/explorations/playlist-helper/visualization/TrackVisualizer.svelte';
 
@@ -86,13 +86,17 @@
 		});
 	});
 
-	let deviceItems:  AutocompleteOption<string>[];
+	let deviceItems: AutocompleteOption<string>[];
 
-	$: deviceItems = devices?.map((dev) => ({ value: dev.id ?? '', label: dev.name ?? '' }));
+	$: deviceItems = devices?.map((dev) => ({
+		value: dev.id ?? '',
+		label: dev.name ?? ''
+	})) as AutocompleteOption<string>[];
 	$: activeDevice = devices.find((dev) => dev.is_active);
 	$: activeDeviceItem = deviceItems.find((item) => item.value === activeDevice?.id);
 
-	let selectedDeviceItem: AutocompleteOption<string> | undefined = activeDeviceItem ?? deviceItems?.[0];
+	let selectedDeviceItem: AutocompleteOption<string> | undefined =
+		activeDeviceItem ?? deviceItems?.[0];
 
 	function onDeviceChange(item: AutocompleteOption<string> | undefined) {
 		selectedDeviceItem = item;
@@ -124,13 +128,9 @@
 
 <div class="flex flex-col w-full">
 	<!--tabs -->
-	<TabGroup >
-		<Tab bind:group={selectedTabId} name="Playlist Manager" value={0}>
-			Playlist Manager
-		</Tab>
-		<Tab bind:group={selectedTabId} value={1} name="Track Visualizer">
-			Track Visualizer
-		</Tab>
+	<TabGroup>
+		<Tab bind:group={selectedTabId} name="Playlist Manager" value={0}>Playlist Manager</Tab>
+		<Tab bind:group={selectedTabId} value={1} name="Track Visualizer">Track Visualizer</Tab>
 		<svelte:fragment slot="panel">
 			{#if selectedTabId === 0}
 				<div>
@@ -138,7 +138,11 @@
 						<div class="flex flex-row justify-between">
 							<h4>Harvest of Shadows / I heard creaking upstairs</h4>
 							<div>
-								<Selector items={deviceItems} value={selectedDeviceItem?.id} onChange={onDeviceChange}/>
+								<Selector
+									items={deviceItems}
+									value={selectedDeviceItem?.value}
+									onChange={onDeviceChange}
+								/>
 							</div>
 							<div>
 								Total runtime: {formatMillis(totalRuntime)}

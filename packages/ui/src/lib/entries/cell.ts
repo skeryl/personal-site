@@ -19,6 +19,7 @@ import {
 } from 'three';
 import cinderBlocks from '$lib/assets/images/cinder-blocks.jpg';
 import { Walker } from '$lib/simulation/helpers/walker';
+import type { KeyPressHelper } from '$lib/simulation/helpers/keyPressHelper';
 
 class Cell implements ExperimentContent3D {
 	private lights: Light[] = [];
@@ -31,7 +32,7 @@ class Cell implements ExperimentContent3D {
 		this.renderer = renderer;
 		scene.background = new Color(0x000000);
 		this.scene = scene;
-		this.walker = new Walker(camera, renderer, scene);
+		this.walker = new Walker(camera, renderer, scene as any);
 
 		this.setupLights(scene);
 
