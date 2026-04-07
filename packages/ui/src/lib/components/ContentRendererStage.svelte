@@ -5,6 +5,7 @@
 	import { Stage } from 'grraf';
 	import { getContext } from 'svelte';
 	import { PlayState, PlayStateChangedEvent, PostControlContext } from '$lib/state/post-control';
+	import type { ContentParams } from '$lib/content-params';
 
 	interface Props {
 		post?: Post<PostContent> | undefined;
@@ -38,6 +39,10 @@
 				ctx.captureRecording(stream);
 			}
 		}
+	});
+
+	ctx.onParamsChanged((params: ContentParams) => {
+		content?.setParams?.(params);
 	});
 
 	run(() => {

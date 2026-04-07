@@ -8,7 +8,9 @@
 		PlayState,
 		PlayStateChangedEvent,
 		PostControlContext,
-		RecordingCompleteEvent
+		RecordingCompleteEvent,
+		IG_FORMATS,
+		type IgFormat
 	} from '$lib/state/post-control';
 	import { type ContentParam, type ContentParams, ParamType } from '$lib/content-params';
 	import ParamInput from '$lib/components/content-params/ParamInput.svelte';
@@ -91,6 +93,13 @@
 	function dismissRecording() {
 		downloadLink = undefined;
 	}
+
+	let igFormat: IgFormat = $state(null);
+
+	function onFormatChange(e: Event) {
+		igFormat = (e.target as HTMLSelectElement).value as IgFormat || null;
+		ctx.setIgFormat(igFormat);
+	}
 </script>
 
 <div class="flex flex-row bg-surface h-12 justify-between">
@@ -102,6 +111,16 @@
 					className={`control-icon ${isRecording ? 'text-red-600' : ''}`}
 			></Icon>
 		</button>-->
+		<select
+			onchange={onFormatChange}
+			disabled={isRecording}
+			class="ml-2 self-center text-xs bg-transparent disabled:opacity-40"
+		>
+			<option value="">Original</option>
+			{#each Object.entries(IG_FORMATS) as [key, fmt]}
+				<option value={key}>{fmt.label}</option>
+			{/each}
+		</select>
 		<button class="p-2 flex self-center" onclick={stopPropagation(onRecordClicked)}>
 			<Icon
 				type={activeCountdownStart
