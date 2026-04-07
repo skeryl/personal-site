@@ -2,7 +2,15 @@ import { BookOfShadersContent } from '$lib/book-of-shaders';
 import { PostType, type Post } from '@sc/model';
 import { colorParam, numberParam, paramsById, type ContentParams } from '$lib/content-params';
 import type { IUniform } from '$lib/three';
-import { Color, Vector4 } from 'three';
+import { Vector3, Vector4 } from 'three';
+
+function hexToVec3(hex: string): Vector3 {
+	return new Vector3(
+		parseInt(hex.slice(1, 3), 16) / 255,
+		parseInt(hex.slice(3, 5), 16) / 255,
+		parseInt(hex.slice(5, 7), 16) / 255
+	);
+}
 
 const defaultFlowSpeed = 1.0;
 const defaultBoundaryWidth = 0.03;
@@ -20,6 +28,7 @@ const params = [
 	colorParam('Zone 2 Color',  defaultColors[1]),
 	colorParam('Zone 3 Color',  defaultColors[2]),
 	colorParam('Zone 4 Color',  defaultColors[3]),
+	colorParam('Boundary Color', '#f5cc38'),
 	numberParam('Zone 1 Size',  defaultSizes[0], { min: 0.05, max: 0.7, step: 0.01 }),
 	numberParam('Zone 2 Size',  defaultSizes[1], { min: 0.05, max: 0.7, step: 0.01 }),
 	numberParam('Zone 3 Size',  defaultSizes[2], { min: 0.05, max: 0.7, step: 0.01 }),
@@ -44,6 +53,7 @@ uniform vec3 u_color0;
 uniform vec3 u_color1;
 uniform vec3 u_color2;
 uniform vec3 u_color3;
+uniform vec3 u_boundaryColor;
 
 // Cumulative zone breakpoints — allows each zone to be a different size.
 // x = end of zone 0, y = end of zone 1, z = end of zone 2, w = 1.0
@@ -101,9 +111,9 @@ vec3 computeTint(vec3 c) {
     return clamp(c + vec3(0.28, 0.07, -0.20), 0.0, 1.0);
 }
 
-// Boundary haze — brightened version of the zone color, pulled toward warm yellow
+// Boundary haze — brightened version of the zone color, pulled toward boundary color
 vec3 computeBoundary(vec3 c) {
-    return mix(min(c * 1.5, vec3(1.0)), vec3(0.96, 0.80, 0.22), 0.4);
+    return mix(min(c * 1.5, vec3(1.0)), u_boundaryColor, 0.4);
 }
 
 int prevZone(int idx) {
@@ -120,7 +130,8 @@ void main() {
     vec2 warped = domainWarp(uv, t);
 
     vec2 fieldCoord = vec2(warped.x * 0.9, warped.y * 2.8 + t * 0.07);
-    float field = clamp(fbm(fieldCoord), 0.0, 0.9999);
+    // 3-octave FBM tops out at ~0.875 — normalize so all 4 zones get equal area
+    float field = clamp(fbm(fieldCoord) / 0.875, 0.0, 0.9999);
 
     // Variable-width zone membership from u_breaks
     int   zoneIdx;
@@ -165,10 +176,11 @@ class LavaTerritories extends BookOfShadersContent {
 		this.uniforms['u_flowSpeed']      = { value: defaultFlowSpeed }      as unknown as IUniform;
 		this.uniforms['u_boundaryWidth']  = { value: defaultBoundaryWidth }  as unknown as IUniform;
 		this.uniforms['u_dripIntensity']  = { value: defaultDripIntensity }  as unknown as IUniform;
-		this.uniforms['u_color0']         = { value: new Color(defaultColors[0]) } as unknown as IUniform;
-		this.uniforms['u_color1']         = { value: new Color(defaultColors[1]) } as unknown as IUniform;
-		this.uniforms['u_color2']         = { value: new Color(defaultColors[2]) } as unknown as IUniform;
-		this.uniforms['u_color3']         = { value: new Color(defaultColors[3]) } as unknown as IUniform;
+		this.uniforms['u_color0']         = { value: hexToVec3(defaultColors[0]) } as unknown as IUniform;
+		this.uniforms['u_color1']         = { value: hexToVec3(defaultColors[1]) } as unknown as IUniform;
+		this.uniforms['u_color2']         = { value: hexToVec3(defaultColors[2]) } as unknown as IUniform;
+		this.uniforms['u_color3']         = { value: hexToVec3(defaultColors[3]) } as unknown as IUniform;
+		this.uniforms['u_boundaryColor']  = { value: hexToVec3('#f5cc38') }        as unknown as IUniform;
 		this.uniforms['u_breaks']         = { value: computeBreaks(...defaultSizes as [number,number,number,number]) } as unknown as IUniform;
 	}
 
@@ -185,14 +197,16 @@ class LavaTerritories extends BookOfShadersContent {
 		if (width !== undefined) this.uniforms['u_boundaryWidth'].value = width;
 		if (drip  !== undefined) this.uniforms['u_dripIntensity'].value = drip;
 
-		const c0 = p['zone-1-color']?.value as string | undefined;
-		const c1 = p['zone-2-color']?.value as string | undefined;
-		const c2 = p['zone-3-color']?.value as string | undefined;
-		const c3 = p['zone-4-color']?.value as string | undefined;
-		if (c0) (this.uniforms['u_color0'].value as Color).set(c0);
-		if (c1) (this.uniforms['u_color1'].value as Color).set(c1);
-		if (c2) (this.uniforms['u_color2'].value as Color).set(c2);
-		if (c3) (this.uniforms['u_color3'].value as Color).set(c3);
+		const c0 = p['zone-1-color']?.value    as string | undefined;
+		const c1 = p['zone-2-color']?.value    as string | undefined;
+		const c2 = p['zone-3-color']?.value    as string | undefined;
+		const c3 = p['zone-4-color']?.value    as string | undefined;
+		const bc = p['boundary-color']?.value  as string | undefined;
+		if (c0) this.uniforms['u_color0'].value = hexToVec3(c0);
+		if (c1) this.uniforms['u_color1'].value = hexToVec3(c1);
+		if (c2) this.uniforms['u_color2'].value = hexToVec3(c2);
+		if (c3) this.uniforms['u_color3'].value = hexToVec3(c3);
+		if (bc) this.uniforms['u_boundaryColor'].value = hexToVec3(bc);
 
 		const s0 = p['zone-1-size']?.value as number | undefined;
 		const s1 = p['zone-2-size']?.value as number | undefined;
