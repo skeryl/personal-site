@@ -111,9 +111,8 @@ vec3 computeTint(vec3 c) {
     return clamp(c + vec3(0.28, 0.07, -0.20), 0.0, 1.0);
 }
 
-// Boundary haze — brightened version of the zone color, pulled toward boundary color
 vec3 computeBoundary(vec3 c) {
-    return mix(min(c * 1.5, vec3(1.0)), u_boundaryColor, 0.4);
+    return u_boundaryColor;
 }
 
 int prevZone(int idx) {
@@ -164,7 +163,7 @@ void main() {
 
     // Soft boundary haze — peaks near the zone entry, derived from zone color
     float warmPeak = exp(-pow((transT - 0.35) * 3.8, 2.0));
-    color = mix(color, computeBoundary(curBase), warmPeak * 0.42);
+    color = mix(color, computeBoundary(curBase), warmPeak * 0.7);
 
     gl_FragColor = vec4(color, 1.0);
 }

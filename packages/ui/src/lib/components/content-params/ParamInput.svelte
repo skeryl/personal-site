@@ -20,9 +20,19 @@
 		onChange({ ...param, value });
 	}
 
+	let hexDraft = $state(param.value as string);
+
 	function onColorChanged(e: Event) {
 		const value = (e.target as HTMLInputElement).value;
+		hexDraft = value;
 		onChange({ ...param, value });
+	}
+
+	function onHexTextInput(e: Event) {
+		hexDraft = (e.target as HTMLInputElement).value;
+		if (/^#[0-9a-fA-F]{6}$/.test(hexDraft)) {
+			onChange({ ...param, value: hexDraft });
+		}
 	}
 
 	function onVec2ValueChanged(vec2: Vec2) {
@@ -83,13 +93,23 @@
 	{:else if param.type === ParamType.color}
 		<div class="flex flex-col gap-1">
 			<label for={inputId} class="text-xs font-bold">{param.name}</label>
-			<input
-				id={inputId}
-				type="color"
-				value={param.value}
-				oninput={onColorChanged}
-				class="h-8 w-16 cursor-pointer rounded border-0 p-0.5"
-			/>
+			<div class="flex items-center gap-2">
+				<input
+					id={inputId}
+					type="color"
+					value={param.value}
+					oninput={onColorChanged}
+					class="h-8 w-10 cursor-pointer rounded border-0 p-0.5"
+				/>
+				<input
+					type="text"
+					value={hexDraft}
+					oninput={onHexTextInput}
+					maxlength={7}
+					class="w-20 rounded border border-neutral-300 bg-transparent px-2 py-1 font-mono text-xs"
+					placeholder="#000000"
+				/>
+			</div>
 		</div>
 	{:else}
 		<input id={inputId} type="text" />
