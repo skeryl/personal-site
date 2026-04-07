@@ -232,17 +232,13 @@ class BlobGridContent implements StageContent {
 			const restLens: number[] = [];
 			for (let i = 0; i < N; i++) {
 				const j = (i + 1) % N;
-				restLens.push(
-					Math.sqrt((ring[j].x - ring[i].x) ** 2 + (ring[j].y - ring[i].y) ** 2)
-				);
+				restLens.push(Math.sqrt((ring[j].x - ring[i].x) ** 2 + (ring[j].y - ring[i].y) ** 2));
 			}
 
 			const bendLens: number[] = [];
 			for (let i = 0; i < N; i++) {
 				const j = (i + 2) % N;
-				bendLens.push(
-					Math.sqrt((ring[j].x - ring[i].x) ** 2 + (ring[j].y - ring[i].y) ** 2)
-				);
+				bendLens.push(Math.sqrt((ring[j].x - ring[i].x) ** 2 + (ring[j].y - ring[i].y) ** 2));
 			}
 
 			blobs.push({
@@ -373,7 +369,6 @@ class BlobGridContent implements StageContent {
 				p.px -= dvx;
 				p.py -= dvy;
 			}
-
 		} else {
 			const angle = Math.random() * Math.PI * 2;
 			const push = this.speed * 0.5;
