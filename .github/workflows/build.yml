@@ -59,9 +59,38 @@ jobs:
           cache: npm
       - run: npm install
       - name: build
-        env:
-          BASE_PATH: "/${{ github.event.repository.name }}"
         run: npm run build -w @sc/ui
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: packages/ui/build/
+
+  preview:
+    name: Preview Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Download build output
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: build/
+      - name: Deploy to Netlify
+        id: netlify
+        uses: nwtgck/actions-netlify@v3
+        with:
+          publish-dir: build/
+          production-deploy: false
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: 'PR #${{ github.event.number }}: ${{ github.event.pull_request.title }}'
+          alias: pr-${{ github.event.number }}
+          enable-commit-comment: false
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
 
   smoke:
     name: Smoke Tests
