@@ -109,7 +109,7 @@
 					: isRecording
 						? 'player-stop-filled'
 						: 'player-record-filled'}
-				className={`hover:text-red-600 control-icon ${isRecording || activeCountdownStart ? 'text-red-600' : ''}`}
+				className={`hover:text-theme-danger control-icon ${isRecording || activeCountdownStart ? 'text-theme-danger' : ''}`}
 			/>
 			{#if countdownSecondsLeft}
 				<span class="content-center pl-1">
@@ -122,12 +122,14 @@
 				<a
 					href={downloadLink}
 					download={`${postId}.${typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('video/mp4') ? 'mp4' : 'webm'}`}
-					class="flex items-center text-neutral-600 text-sm"
+					class="flex items-center text-theme-text text-sm"
 				>
-					<span class="flex items-center bg-emerald-50/40 px-4 py-1 rounded-full"
+					<span
+						class="flex items-center px-4 py-1 rounded-full"
+						style="background-color: color-mix(in srgb, var(--color-accent-success-bg) 40%, transparent)"
 						><Icon
 							type="download"
-							className="text-emerald-600 mr-1 hover:text-emerald-600"
+							className="text-theme-success mr-1 hover:text-theme-success"
 							size="sm"
 						></Icon> download recording</span
 					>
@@ -137,7 +139,7 @@
 					aria-label="click to dismiss recording"
 					onclick={dismissRecording}
 				>
-					<Icon type="circle-x" className="hover:text-red-600" size="sm" />
+					<Icon type="circle-x" className="hover:text-theme-danger" size="sm" />
 				</button>
 			</div>
 		{/if}

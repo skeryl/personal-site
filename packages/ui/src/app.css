@@ -1,12 +1,14 @@
+@import './theme.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
 	body {
-		@apply bg-neutral-50;
-		@apply text-neutral-700;
-		font-family: 'Literata', Georgia, serif;
+		background-color: var(--color-bg);
+		color: var(--color-text);
+		font-family: var(--font-body);
 	}
 	h1 {
 		@apply text-2xl;
@@ -31,7 +33,7 @@
 	h4,
 	h5 {
 		@apply font-semibold;
-		font-family: 'Sora', sans-serif;
+		font-family: var(--font-heading);
 	}
 	p {
 		@apply py-2;
@@ -42,17 +44,17 @@
 		@apply underline-offset-2;
 	}
 	.bg-surface {
-		background-color: theme('colors.neutral.200');
+		background-color: var(--color-surface);
 	}
 	.bg-surface-secondary {
-		background-color: theme('colors.white');
+		background-color: var(--color-surface-secondary);
 	}
 	.control-icon {
 		@apply hover:scale-110;
 		@apply transition-transform;
 	}
 	.text-success {
-		@apply text-emerald-600;
+		color: var(--color-accent-success);
 	}
 
 	input[type='range'] {
@@ -60,7 +62,7 @@
 		appearance: none;
 		height: 6px;
 		border-radius: 3px;
-		background: theme('colors.neutral.300');
+		background: var(--range-track);
 		outline: none;
 	}
 	input[type='range']::-webkit-slider-thumb {
@@ -69,20 +71,20 @@
 		width: 18px;
 		height: 18px;
 		border-radius: 50%;
-		background: theme('colors.neutral.600');
+		background: var(--range-thumb);
 		cursor: pointer;
 	}
 	input[type='range']::-moz-range-thumb {
 		width: 18px;
 		height: 18px;
 		border-radius: 50%;
-		background: theme('colors.neutral.600');
+		background: var(--range-thumb);
 		cursor: pointer;
 		border: none;
 	}
 	input[type='range']::-moz-range-track {
 		height: 6px;
 		border-radius: 3px;
-		background: theme('colors.neutral.300');
+		background: var(--range-track);
 	}
 }

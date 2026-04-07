@@ -9,23 +9,23 @@
 		<NavLink
 			href="/"
 			text="shane's computer"
-			className="font-medium tracking-tight text-neutral-800"
+			className="font-medium tracking-tight text-theme-text-heading"
 		/>
 	</div>
 	<div class="flex flex-1 justify-end gap-6">
 		<NavLink
 			href="/about"
 			text="about"
-			className="content-end text-neutral-500 hover:text-neutral-800 transition-colors"
+			className="content-end text-theme-text-secondary hover:text-theme-text-heading transition-colors"
 		/>
 	</div>
 </nav>
 
 <style>
 	.nav-bar {
-		background: rgba(250, 250, 249, 0.6);
-		backdrop-filter: blur(16px);
-		-webkit-backdrop-filter: blur(16px);
-		border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+		background: var(--nav-bg);
+		backdrop-filter: blur(var(--nav-blur));
+		-webkit-backdrop-filter: blur(var(--nav-blur));
+		border-bottom: 1px solid var(--nav-border);
 	}
 </style>
