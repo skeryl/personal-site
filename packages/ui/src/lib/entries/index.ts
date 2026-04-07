@@ -8,6 +8,7 @@ import cubePegTorusHole from "$lib/entries/cube-peg-torus-hole";
 import downSouth from "$lib/entries/down-south";
 import follow from "$lib/entries/follow";
 import gravitySwell from "$lib/entries/gravity-swell";
+import lavaTerritories from "$lib/entries/lava-territories";
 import mathJourney from "$lib/entries/math-journey";
 import mirrors from "$lib/entries/mirrors";
 import notePlayground from "$lib/entries/note-playground";
@@ -34,6 +35,7 @@ const posts = {
     [downSouth.summary.id]: downSouth,
     [follow.summary.id]: follow,
     [gravitySwell.summary.id]: gravitySwell,
+    [lavaTerritories.summary.id]: lavaTerritories,
     [mathJourney.summary.id]: mathJourney,
     [mirrors.summary.id]: mirrors,
     [notePlayground.summary.id]: notePlayground,

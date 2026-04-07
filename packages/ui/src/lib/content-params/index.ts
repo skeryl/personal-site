@@ -1,7 +1,8 @@
 export enum ParamType {
 	number = 'number',
 	string = 'string',
-	vec2 = 'vec2'
+	vec2 = 'vec2',
+	color = 'color'
 }
 
 interface Range {
@@ -63,6 +64,20 @@ export function createParam<T extends ParamType>(
 		name,
 		id,
 		range
+	};
+}
+
+export function colorParam(
+	name: string,
+	defaultValue: string,
+	id: string = name.replace(/\s/g, '-').toLowerCase()
+): ContentParam<ParamType.color> {
+	return {
+		value: defaultValue,
+		defaultValue,
+		type: ParamType.color,
+		name,
+		id
 	};
 }
 
