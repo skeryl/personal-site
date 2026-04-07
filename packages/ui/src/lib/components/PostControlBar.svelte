@@ -124,7 +124,9 @@
 					download={`${postId}.${typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('video/mp4') ? 'mp4' : 'webm'}`}
 					class="flex items-center text-theme-text text-sm"
 				>
-					<span class="flex items-center px-4 py-1 rounded-full" style="background-color: color-mix(in srgb, var(--color-accent-success-bg) 40%, transparent)"
+					<span
+						class="flex items-center px-4 py-1 rounded-full"
+						style="background-color: color-mix(in srgb, var(--color-accent-success-bg) 40%, transparent)"
 						><Icon
 							type="download"
 							className="text-theme-success mr-1 hover:text-theme-success"
