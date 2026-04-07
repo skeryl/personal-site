@@ -7,7 +7,7 @@
 	import ContentRendererThree from '$lib/components/ContentRendererThree.svelte';
 	import ContentRendererExploration from '$lib/components/ContentRendererExploration.svelte';
 	import PostControlBar from '$lib/components/PostControlBar.svelte';
-	import { PlayState, PostControlContext } from '$lib/state/post-control';
+	import { PlayState, PostControlContext, IgFormatChangedEvent, IG_FORMATS, type IgFormat } from '$lib/state/post-control';
 	import type { ContentParams } from '$lib/content-params';
 	import PostParams from '$lib/components/PostParams.svelte';
 
@@ -30,6 +30,14 @@
 	let requiresCanvas = $derived(
 		post?.summary?.type === PostType.experiment || post?.summary?.type === PostType.experiment3d
 	);
+
+	let igFormat: IgFormat = $state((post?.summary.preferredFormat as IgFormat) ?? null);
+	let igRatio = $derived(igFormat ? IG_FORMATS[igFormat].ratio : null);
+
+	postControlContext.addEventListener('post-ig-format-changed', (ev) => {
+		igFormat = (ev as IgFormatChangedEvent).format;
+		setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+	});
 
 	let container: HTMLDivElement | undefined = $state(undefined);
 	let cnv: HTMLCanvasElement | undefined = $state(undefined);
@@ -148,7 +156,11 @@
 		{/if}
 	{/if}
 
-	<div bind:this={container} class="flex flex-1 relative min-h-[80vh]">
+	<div
+		bind:this={container}
+		class="relative {igRatio ? 'mx-auto' : 'flex flex-1 min-h-[80vh]'}"
+		style={igRatio ? `aspect-ratio: ${igRatio}; height: 80vh;` : ''}
+	>
 		{#if requiresCanvas}
 			<canvas bind:this={cnv}>your browser does not support HTML canvas :(</canvas>
 		{/if}
@@ -165,7 +177,7 @@
 	</div>
 
 	{#if requiresCanvas}
-		<div class="relative" bind:this={controlArea}>
+		<div class="relative mt-4" bind:this={controlArea}>
 			{#if areParamsOpen && post && post.params}
 				<PostParams params={post.params} {onParamsChange} />
 			{/if}

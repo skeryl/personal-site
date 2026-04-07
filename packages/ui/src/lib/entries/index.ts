@@ -5,6 +5,7 @@ import blobGrid from "$lib/entries/blob-grid";
 import cell from "$lib/entries/cell";
 import chrysanthemum from "$lib/entries/chrysanthemum";
 import cubePegTorusHole from "$lib/entries/cube-peg-torus-hole";
+import desertLife from "$lib/entries/desert-life";
 import downSouth from "$lib/entries/down-south";
 import follow from "$lib/entries/follow";
 import gravitySwell from "$lib/entries/gravity-swell";
@@ -32,6 +33,7 @@ const posts = {
     [cell.summary.id]: cell,
     [chrysanthemum.summary.id]: chrysanthemum,
     [cubePegTorusHole.summary.id]: cubePegTorusHole,
+    [desertLife.summary.id]: desertLife,
     [downSouth.summary.id]: downSouth,
     [follow.summary.id]: follow,
     [gravitySwell.summary.id]: gravitySwell,
