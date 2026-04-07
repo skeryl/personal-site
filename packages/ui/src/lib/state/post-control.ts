@@ -47,6 +47,20 @@ export class RecordingCompleteEvent extends Event {
 	}
 }
 
+export type IgFormat = 'reel' | 'portrait' | 'square' | null;
+
+export const IG_FORMATS: Record<NonNullable<IgFormat>, { label: string; ratio: string }> = {
+	reel: { label: '9:16 - Stories & Reels', ratio: '9 / 16' },
+	portrait: { label: '4:5 - Portrait Posts', ratio: '4 / 5' },
+	square: { label: '1:1 - Square Posts', ratio: '1 / 1' }
+};
+
+export class IgFormatChangedEvent extends Event {
+	constructor(public readonly format: IgFormat) {
+		super('post-ig-format-changed');
+	}
+}
+
 export class ParamsChangedEvent extends Event {
 	static EVENT_NAME = 'content-params-changed';
 
@@ -111,6 +125,10 @@ export class PostControlContext extends EventTarget {
 
 		recorder.start();
 		this.recorder = recorder;
+	}
+
+	public setIgFormat(format: IgFormat): void {
+		this.dispatchEvent(new IgFormatChangedEvent(format));
 	}
 
 	public setParams(params: ContentParams) {

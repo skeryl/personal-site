@@ -3,6 +3,7 @@
 
 	import { type Post, type RendererParams, type ExperimentContent3D } from '@sc/model';
 	import { PerspectiveCamera, Scene, Vector2, WebGLRenderer } from 'three';
+	import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 	import { getContext, onMount } from 'svelte';
 	import {
 		FullScreenChangeEvent,
@@ -19,6 +20,7 @@
 	let { post = undefined, cnv = undefined }: Props = $props();
 
 	let renderParams: RendererParams | undefined = $state();
+	let controls: OrbitControls | undefined;
 
 	let content = $derived(post?.content() as ExperimentContent3D);
 
@@ -54,6 +56,7 @@
 	function animate() {
 		const params = renderParams;
 		if (isRunning && params) {
+			controls?.update();
 			params.renderer.render(params.scene, params.camera);
 			if (content.onRender) {
 				content.onRender();
@@ -99,6 +102,7 @@
 		document.addEventListener('fullscreenchange', onFullscreenChange);
 		return () => {
 			document.removeEventListener('fullscreenchange', onFullscreenChange);
+			controls?.dispose();
 			content?.stop();
 		};
 	});
@@ -123,6 +127,9 @@
 					renderer,
 					container: cnv.parentElement as HTMLElement
 				};
+
+				controls = new OrbitControls(camera, canvas);
+				controls.enableDamping = true;
 
 				window.addEventListener('resize', handleResize);
 				handleResize();

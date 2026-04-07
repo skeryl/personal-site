@@ -20,6 +20,11 @@
 		onChange({ ...param, value });
 	}
 
+	function onColorChanged(e: Event) {
+		const value = (e.target as HTMLInputElement).value;
+		onChange({ ...param, value });
+	}
+
 	function onVec2ValueChanged(vec2: Vec2) {
 		onChange({ ...param, value: vec2 });
 	}
@@ -74,6 +79,17 @@
 					<option value={option}>{option}</option>
 				{/each}
 			</select>
+		</div>
+	{:else if param.type === ParamType.color}
+		<div class="flex flex-col gap-1">
+			<label for={inputId} class="text-xs font-bold">{param.name}</label>
+			<input
+				id={inputId}
+				type="color"
+				value={param.value}
+				oninput={onColorChanged}
+				class="h-8 w-16 cursor-pointer rounded border-0 p-0.5"
+			/>
 		</div>
 	{:else}
 		<input id={inputId} type="text" />
