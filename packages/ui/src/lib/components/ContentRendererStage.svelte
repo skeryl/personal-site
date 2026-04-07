@@ -20,6 +20,10 @@
 
 	let playState = ctx.state.playState;
 
+	ctx.onParamsChanged((p) => {
+		content?.setParams?.(p);
+	});
+
 	ctx.addEventListener('post-play-state-changed', (ev) => {
 		playState = (ev as PlayStateChangedEvent).currentPlayState;
 		if (playState === PlayState.paused) {
