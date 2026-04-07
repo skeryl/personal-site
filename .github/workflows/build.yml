@@ -2,10 +2,33 @@ name: CI
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, closed]
 
 jobs:
+  cleanup-preview:
+    name: Cleanup Preview
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete Netlify preview deploy
+        run: |
+          DEPLOYS=$(curl -sf -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
+            "https://api.netlify.com/api/v1/sites/$NETLIFY_SITE_ID/deploys?per_page=100")
+          DEPLOY_ID=$(echo "$DEPLOYS" | jq -r '.[] | select(.deploy_ssl_url != null and (.deploy_ssl_url | contains("pr-${{ github.event.number }}"))) | .id' | head -1)
+          if [ -n "$DEPLOY_ID" ]; then
+            curl -sf -X DELETE -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
+              "https://api.netlify.com/api/v1/deploys/$DEPLOY_ID"
+            echo "Deleted deploy $DEPLOY_ID for PR #${{ github.event.number }}"
+          else
+            echo "No deploy found for PR #${{ github.event.number }}"
+          fi
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+
   check:
     name: Type Check
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,6 +42,7 @@ jobs:
 
   lint:
     name: Lint
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,6 +60,7 @@ jobs:
 
   test:
     name: Unit Tests
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,6 +75,7 @@ jobs:
 
   build:
     name: Build
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -94,6 +120,7 @@ jobs:
 
   smoke:
     name: Smoke Tests
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
