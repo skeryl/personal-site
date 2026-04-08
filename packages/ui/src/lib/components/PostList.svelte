@@ -5,6 +5,7 @@
 	import Tags from '$lib/components/Tags.svelte';
 	import allPosts from '$lib/entries';
 	import PostVideoPreview from '$lib/components/PostVideoPreview.svelte';
+	import MobileCardCarousel from '$lib/components/MobileCardCarousel.svelte';
 
 	interface Props {
 		limit?: number | undefined;
@@ -73,14 +74,17 @@
 	let isAnyHovered = $derived(hoveredPost !== undefined);
 </script>
 
-<PostVideoPreview selectedPost={hoveredPost} />
+<!-- Desktop: fullscreen background video preview (hidden on mobile) -->
+<div class="hidden sm:block">
+	<PostVideoPreview selectedPost={hoveredPost} />
+</div>
 
 <!-- Filter bar -->
-<div class="mb-6">
-	<div class="flex flex-wrap items-center gap-2 mb-3">
+<div class="mb-6 max-sm:mb-2">
+	<div class="flex flex-wrap items-center gap-2 max-sm:gap-1.5 mb-3 max-sm:mb-1.5">
 		{#each allTypes as type}
 			<button
-				class="px-3 py-1 text-sm font-medium rounded-md transition-colors no-underline"
+				class="px-3 py-1 max-sm:px-2 max-sm:py-0.5 text-sm max-sm:text-xs font-medium rounded-md transition-colors no-underline"
 				class:bg-theme-filter-active-bg={activeType === type}
 				class:text-theme-filter-active-text={activeType === type}
 				class:bg-theme-filter-bg={activeType !== type}
@@ -94,16 +98,21 @@
 
 		{#if hasFilters}
 			<button
-				class="px-3 py-1 text-sm text-theme-text-muted hover:text-theme-text-secondary transition-colors no-underline"
+				class="px-3 py-1 max-sm:px-2 max-sm:py-0.5 text-sm max-sm:text-xs text-theme-text-muted hover:text-theme-text-secondary transition-colors no-underline"
 				onclick={clearFilters}
 			>
 				Clear filters
 			</button>
 		{/if}
+
+		<!-- Post count (inline on mobile) -->
+		<span class="text-xs text-theme-text-muted sm:hidden ml-auto">
+			{filteredPosts.length}/{allPostSummaries.length}
+		</span>
 	</div>
 
 	{#if hasFilters && activeTags.size > 0}
-		<div class="flex flex-wrap gap-1.5 mb-2">
+		<div class="flex flex-wrap gap-1.5 mb-2 max-sm:mb-1">
 			{#each [...activeTags] as tag}
 				<button
 					class="rounded-full py-0.5 px-2.5 text-xs bg-theme-tag-active-bg text-theme-tag-active-text border border-theme-tag-active-border transition-colors no-underline"
@@ -116,14 +125,19 @@
 	{/if}
 </div>
 
-<!-- Post count -->
-<div class="text-xs text-theme-text-muted mb-6">
+<!-- Post count (desktop only) -->
+<div class="text-xs text-theme-text-muted mb-6 max-sm:hidden">
 	{filteredPosts.length} of {allPostSummaries.length} entries
 </div>
 
-<!-- Card grid -->
+<!-- Mobile: swipeable card carousel with inline preview -->
+<div class="sm:hidden">
+	<MobileCardCarousel posts={filteredPosts} />
+</div>
+
+<!-- Desktop: card grid (hidden on mobile) -->
 <div
-	class="card-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
+	class="card-grid hidden sm:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
 	class:has-hover={isAnyHovered}
 	onmouseleave={() => (hoveredPost = undefined)}
 >
