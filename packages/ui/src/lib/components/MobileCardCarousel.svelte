@@ -218,37 +218,55 @@
 	// Swiping on the preview mirrors finger movement onto the caption
 	// carousel in real-time, then snaps to the nearest card on release.
 	// Movement is dampened so it's harder to accidentally skip multiple cards.
+	// Once a horizontal swipe is detected, vertical scrolling is locked out.
 	let touchStartX: number | undefined;
+	let touchStartY: number | undefined;
 	let scrollStartLeft: number = 0;
+	let swipeAxis: 'horizontal' | 'vertical' | undefined;
 	const SWIPE_THRESHOLD = 10; // min px before we start tracking
 	const DRAG_DAMPING = 0.5; // preview drag moves caption at 50% speed
 
 	function onPreviewTouchStart(e: TouchEvent) {
 		if (!scrollContainer) return;
 		touchStartX = e.touches[0].clientX;
+		touchStartY = e.touches[0].clientY;
 		scrollStartLeft = scrollContainer.scrollLeft;
+		swipeAxis = undefined;
 		// Disable snap during drag so the scroll feels fluid
 		scrollContainer.style.scrollSnapType = 'none';
 	}
 
 	function onPreviewTouchMove(e: TouchEvent) {
-		if (touchStartX === undefined || !scrollContainer) return;
+		if (touchStartX === undefined || touchStartY === undefined || !scrollContainer) return;
 		const dx = e.touches[0].clientX - touchStartX;
-		if (Math.abs(dx) < SWIPE_THRESHOLD) return;
-		// Mirror with damping: finger moves right → scroll decreases (previous card)
+		const dy = e.touches[0].clientY - touchStartY;
+
+		// Lock in the swipe axis once we exceed the threshold
+		if (!swipeAxis && (Math.abs(dx) > SWIPE_THRESHOLD || Math.abs(dy) > SWIPE_THRESHOLD)) {
+			swipeAxis = Math.abs(dx) >= Math.abs(dy) ? 'horizontal' : 'vertical';
+		}
+
+		if (swipeAxis === 'vertical') return; // let the browser scroll normally
+		if (!swipeAxis) return; // not enough movement yet
+
+		// Horizontal swipe — prevent vertical scrolling and drive the carousel
+		e.preventDefault();
 		scrollContainer.scrollLeft = scrollStartLeft - dx * DRAG_DAMPING;
 	}
 
 	function onPreviewTouchEnd(e: TouchEvent) {
 		if (touchStartX === undefined || !scrollContainer) return;
 		const dx = e.changedTouches[0].clientX - touchStartX;
+		const wasHorizontal = swipeAxis === 'horizontal';
 		touchStartX = undefined;
+		touchStartY = undefined;
+		swipeAxis = undefined;
 
 		// Re-enable snap so it settles onto the nearest card
 		scrollContainer.style.scrollSnapType = 'x mandatory';
 
-		// If the drag was large enough, nudge to next/prev card
-		if (Math.abs(dx) > SWIPE_THRESHOLD) {
+		// Only navigate if this was a horizontal swipe
+		if (wasHorizontal && Math.abs(dx) > SWIPE_THRESHOLD) {
 			if (dx < 0 && activeIndex < posts.length - 1) {
 				scrollToIndex(activeIndex + 1);
 			} else if (dx > 0 && activeIndex > 0) {
@@ -349,7 +367,7 @@
 		overflow: hidden;
 		background: var(--card-bg);
 		border: 1px solid var(--card-border);
-		touch-action: pan-y;
+		touch-action: none;
 	}
 
 	/* Video elements are appended via JS; this styles them all */
