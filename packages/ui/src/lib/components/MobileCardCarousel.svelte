@@ -23,11 +23,13 @@
 	let vid: HTMLVideoElement | undefined = $state(undefined);
 	let currentVideoId: string | undefined = $state(undefined);
 	let isVideoReady: boolean = $state(false);
+	let isLoading: boolean = $state(false);
 
 	$effect(() => {
 		if (activePost && activePost.id in videos && vid) {
 			if (currentVideoId !== activePost.id) {
 				isVideoReady = false;
+				isLoading = true;
 				const sources = Array.from(vid.querySelectorAll('source'));
 				sources.forEach((src) => src.remove());
 				vid.load();
@@ -53,6 +55,7 @@
 			vid.load();
 			currentVideoId = undefined;
 			isVideoReady = false;
+			isLoading = false;
 		}
 	});
 
@@ -61,7 +64,12 @@
 	});
 
 	function handleVideoCanPlay() {
-		isVideoReady = true;
+		// Wait one frame so the browser paints the video at its cover dimensions
+		// before we reveal it — avoids the visible resize snap.
+		requestAnimationFrame(() => {
+			isVideoReady = true;
+			isLoading = false;
+		});
 	}
 
 	// Re-observe cards whenever the post list changes (e.g. filtering)
@@ -109,7 +117,7 @@
 </script>
 
 <div class="carousel-wrapper">
-	<!-- Video preview behind the carousel -->
+	<!-- Video preview area -->
 	<div class="preview-area" class:has-video={hasVideo && isVideoReady}>
 		<video
 			bind:this={vid}
@@ -120,7 +128,15 @@
 			class="preview-video"
 			oncanplay={handleVideoCanPlay}
 		></video>
-		{#if !hasVideo || !isVideoReady}
+
+		<!-- Skeleton loader: covers the video while it loads to hide the resize snap -->
+		{#if isLoading}
+			<div class="skeleton-overlay">
+				<div class="skeleton-shimmer"></div>
+			</div>
+		{/if}
+
+		{#if !hasVideo && !isLoading}
 			<div class="preview-placeholder">
 				<span class="preview-placeholder-text">
 					{#if activePost}
@@ -208,7 +224,8 @@
 	.preview-area {
 		position: relative;
 		width: 100%;
-		height: 200px;
+		aspect-ratio: 3 / 4;
+		max-height: 55vh;
 		border-radius: 1rem;
 		overflow: hidden;
 		background: var(--card-bg);
@@ -222,11 +239,40 @@
 		height: 100%;
 		object-fit: cover;
 		opacity: 0;
-		transition: opacity 0.4s ease;
+		transition: opacity 0.35s ease;
 	}
 
 	.preview-area.has-video .preview-video {
 		opacity: 1;
+	}
+
+	/* ── Skeleton loader ──────────────────────────────────── */
+	.skeleton-overlay {
+		position: absolute;
+		inset: 0;
+		background: var(--color-surface);
+		z-index: 1;
+	}
+
+	.skeleton-shimmer {
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(
+			110deg,
+			transparent 30%,
+			var(--color-surface-secondary) 50%,
+			transparent 70%
+		);
+		animation: shimmer 1.4s ease-in-out infinite;
+	}
+
+	@keyframes shimmer {
+		0% {
+			transform: translateX(-100%);
+		}
+		100% {
+			transform: translateX(100%);
+		}
 	}
 
 	.preview-placeholder {
