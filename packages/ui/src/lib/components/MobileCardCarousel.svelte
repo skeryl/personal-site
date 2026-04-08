@@ -408,6 +408,7 @@
 	/* ── Caption card ─────────────────────────────────────── */
 	.carousel-card {
 		flex: 0 0 84%;
+		min-width: 0;
 		scroll-snap-align: center;
 		text-decoration: none;
 	}
@@ -419,6 +420,7 @@
 		border: 1px solid var(--card-border);
 		backdrop-filter: blur(12px);
 		-webkit-backdrop-filter: blur(12px);
+		overflow: hidden;
 		transition:
 			background 0.3s ease,
 			border-color 0.3s ease;
@@ -444,6 +446,7 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
+		min-width: 0;
 		margin: 0;
 	}
 
