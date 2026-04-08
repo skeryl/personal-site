@@ -146,14 +146,24 @@
 		}
 	});
 
-	// Measure wrapper height on mount
+	// Size the wrapper to fill from its top edge to the bottom of the viewport.
+	// Use requestAnimationFrame so the browser has completed layout before we measure.
 	onMount(() => {
 		if (!wrapper) return;
-		const top = wrapper.getBoundingClientRect().top;
-		wrapper.style.height = `calc(100dvh - ${top}px - 8px)`;
+
+		function measure() {
+			if (!wrapper) return;
+			const top = wrapper.getBoundingClientRect().top;
+			wrapper.style.height = `calc(100dvh - ${top}px - 8px)`;
+		}
+
+		requestAnimationFrame(measure);
+
+		// Re-measure when the mobile address bar collapses/expands
+		window.addEventListener('resize', measure);
 
 		return () => {
-			// Cleanup all pooled videos
+			window.removeEventListener('resize', measure);
 			for (const [, entry] of pool) {
 				entry.video.pause();
 				entry.video.removeAttribute('src');
