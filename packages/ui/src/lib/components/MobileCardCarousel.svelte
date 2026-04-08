@@ -3,6 +3,8 @@
 	import type { PostSummary } from '@sc/model';
 	import videos from '$lib/assets/videos/posts/index.js';
 
+	const PREFETCH_RADIUS = 2; // preload ±2 around active = 5 total
+
 	interface Props {
 		posts: PostSummary[];
 	}
@@ -10,68 +12,159 @@
 	let { posts }: Props = $props();
 
 	let wrapper: HTMLDivElement | undefined = $state(undefined);
+	let previewContainer: HTMLDivElement | undefined = $state(undefined);
 	let scrollContainer: HTMLDivElement | undefined = $state(undefined);
 
-	// Measure how far from the top of the viewport this component sits,
-	// then size the wrapper to fill exactly the remaining space.
-	onMount(() => {
-		if (!wrapper) return;
-		const top = wrapper.getBoundingClientRect().top;
-		// 8px bottom breathing room
-		wrapper.style.height = `calc(100dvh - ${top}px - 8px)`;
-	});
 	let activeIndex: number = $state(0);
 	let activePost: PostSummary | undefined = $derived(posts[activeIndex]);
 	let hasVideo = $derived(activePost ? activePost.id in videos : false);
 
-	// Video preview state
-	let vid: HTMLVideoElement | undefined = $state(undefined);
-	let currentVideoId: string | undefined = $state(undefined);
-	let isVideoReady: boolean = $state(false);
-	let isLoading: boolean = $state(false);
+	// ── Video pool ───────────────────────────────────────────
+	// Each entry holds a <video> element that's already appended to the
+	// preview container (absolutely positioned, object-fit:cover, opacity:0).
+	// When its readyState reaches HAVE_FUTURE_DATA the video is decoded at
+	// its final cover dimensions — flipping opacity is jitter-free.
+	interface PoolEntry {
+		video: HTMLVideoElement;
+		ready: boolean;
+	}
+	let pool: Map<string, PoolEntry> = new Map();
 
-	$effect(() => {
-		if (activePost && activePost.id in videos && vid) {
-			if (currentVideoId !== activePost.id) {
-				isVideoReady = false;
-				isLoading = true;
-				const sources = Array.from(vid.querySelectorAll('source'));
-				sources.forEach((src) => src.remove());
-				vid.load();
+	let isActiveReady: boolean = $state(false);
 
-				const source = document.createElement('source');
-				const src = videos[activePost.id];
-				source.setAttribute('src', `${src}#t=[3]`);
-				const ext = src.split('.').pop()?.split('?')[0] ?? '';
-				const mimeTypes: Record<string, string> = {
-					mp4: 'video/mp4',
-					webm: 'video/webm',
-					mov: 'video/quicktime'
-				};
-				source.setAttribute('type', mimeTypes[ext] || 'video/mp4');
-				vid.appendChild(source);
-				vid.load();
-				vid.play();
-				currentVideoId = activePost.id;
+	function getMimeType(src: string): string {
+		const ext = src.split('.').pop()?.split('?')[0] ?? '';
+		const types: Record<string, string> = {
+			mp4: 'video/mp4',
+			webm: 'video/webm',
+			mov: 'video/quicktime'
+		};
+		return types[ext] || 'video/mp4';
+	}
+
+	function createVideoElement(postId: string): PoolEntry {
+		const video = document.createElement('video');
+		video.autoplay = false;
+		video.loop = true;
+		video.muted = true;
+		video.playsInline = true;
+		video.preload = 'auto';
+		video.className = 'preview-video';
+
+		const source = document.createElement('source');
+		const src = videos[postId];
+		source.src = `${src}#t=[3]`;
+		source.type = getMimeType(src);
+		video.appendChild(source);
+
+		const entry: PoolEntry = { video, ready: false };
+
+		video.addEventListener('canplay', () => {
+			entry.ready = true;
+			// If this is the currently active video, reveal it
+			if (activePost?.id === postId) {
+				requestAnimationFrame(() => {
+					isActiveReady = true;
+				});
 			}
-		} else if (vid && !activePost) {
-			const sources = Array.from(vid.querySelectorAll('source'));
-			sources.forEach((src) => src.remove());
-			vid.load();
-			currentVideoId = undefined;
-			isVideoReady = false;
-			isLoading = false;
+		});
+
+		video.load();
+		previewContainer?.appendChild(video);
+
+		return entry;
+	}
+
+	function getWindowPostIds(): string[] {
+		const ids: string[] = [];
+		for (
+			let i = Math.max(0, activeIndex - PREFETCH_RADIUS);
+			i <= Math.min(posts.length - 1, activeIndex + PREFETCH_RADIUS);
+			i++
+		) {
+			const id = posts[i]?.id;
+			if (id && id in videos) {
+				ids.push(id);
+			}
+		}
+		return ids;
+	}
+
+	// Sync the pool whenever the active index or post list changes
+	$effect(() => {
+		// Dependencies
+		void activeIndex;
+		void posts.length;
+
+		if (!previewContainer) return;
+
+		const windowIds = new Set(getWindowPostIds());
+
+		// Remove entries outside the window
+		for (const [id, entry] of pool) {
+			if (!windowIds.has(id)) {
+				entry.video.pause();
+				entry.video.removeAttribute('src');
+				entry.video.load();
+				entry.video.remove();
+				pool.delete(id);
+			}
+		}
+
+		// Add entries inside the window that aren't pooled yet
+		for (const id of windowIds) {
+			if (!pool.has(id)) {
+				pool.set(id, createVideoElement(id));
+			}
+		}
+
+		// Update visibility: only the active video is shown
+		const activeId = activePost?.id;
+		for (const [id, entry] of pool) {
+			if (id === activeId) {
+				entry.video.classList.add('is-visible');
+				entry.video.play().catch(() => {});
+			} else {
+				entry.video.classList.remove('is-visible');
+				entry.video.pause();
+			}
+		}
+
+		// Update ready state for skeleton
+		if (activeId && pool.has(activeId)) {
+			const entry = pool.get(activeId)!;
+			if (entry.ready) {
+				// Already decoded at cover size — reveal immediately
+				requestAnimationFrame(() => {
+					isActiveReady = true;
+				});
+			} else {
+				isActiveReady = false;
+			}
+		} else {
+			isActiveReady = false;
 		}
 	});
 
-	function handleVideoCanPlay() {
-		requestAnimationFrame(() => {
-			isVideoReady = true;
-			isLoading = false;
-		});
-	}
+	// Measure wrapper height on mount
+	onMount(() => {
+		if (!wrapper) return;
+		const top = wrapper.getBoundingClientRect().top;
+		wrapper.style.height = `calc(100dvh - ${top}px - 8px)`;
 
-	// Re-observe cards whenever the post list changes (e.g. filtering)
+		return () => {
+			// Cleanup all pooled videos
+			for (const [, entry] of pool) {
+				entry.video.pause();
+				entry.video.removeAttribute('src');
+				entry.video.load();
+				entry.video.remove();
+			}
+			pool.clear();
+		};
+	});
+
+	// Re-observe cards whenever the post list changes
 	$effect(() => {
 		void posts.length;
 
@@ -113,25 +206,20 @@
 </script>
 
 <div class="carousel-wrapper" bind:this={wrapper}>
-	<!-- Preview area: takes all available vertical space -->
-	<div class="preview-area" class:has-video={hasVideo && isVideoReady}>
-		<video
-			bind:this={vid}
-			autoplay
-			loop
-			muted
-			playsinline
-			class="preview-video"
-			oncanplay={handleVideoCanPlay}
-		></video>
-
-		{#if isLoading}
+	<!-- Preview area: pool videos are appended here via JS -->
+	<div
+		class="preview-area"
+		class:has-video={hasVideo && isActiveReady}
+		bind:this={previewContainer}
+	>
+		<!-- Skeleton loader while active video decodes -->
+		{#if hasVideo && !isActiveReady}
 			<div class="skeleton-overlay">
 				<div class="skeleton-shimmer"></div>
 			</div>
 		{/if}
 
-		{#if !hasVideo && !isLoading}
+		{#if !hasVideo}
 			<div class="preview-placeholder">
 				<span class="preview-placeholder-text">
 					{#if activePost}
@@ -141,7 +229,7 @@
 			</div>
 		{/if}
 
-		<!-- Dot indicators overlaid at bottom of preview -->
+		<!-- Dot indicators -->
 		{#if posts.length > 1}
 			<div class="dots">
 				{#each posts as _, i}
@@ -206,18 +294,25 @@
 		border: 1px solid var(--card-border);
 	}
 
-	.preview-video {
+	/* Video elements are appended via JS; this styles them all */
+	.preview-area :global(.preview-video) {
 		position: absolute;
 		inset: 0;
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
 		opacity: 0;
-		transition: opacity 0.35s ease;
+		transition: opacity 0.3s ease;
+		pointer-events: none;
 	}
 
-	.preview-area.has-video .preview-video {
+	.preview-area :global(.preview-video.is-visible) {
 		opacity: 1;
+	}
+
+	/* Hide all videos until at least the active one is ready */
+	.preview-area:not(.has-video) :global(.preview-video) {
+		opacity: 0 !important;
 	}
 
 	/* ── Skeleton loader ──────────────────────────────────── */
