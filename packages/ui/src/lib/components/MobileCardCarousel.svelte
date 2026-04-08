@@ -162,8 +162,14 @@
 		// Re-measure when the mobile address bar collapses/expands
 		window.addEventListener('resize', measure);
 
+		// Attach touchmove with { passive: false } so we can call
+		// preventDefault() to suppress vertical scrolling during
+		// horizontal swipes, even with touch-action: pan-y.
+		previewContainer?.addEventListener('touchmove', onPreviewTouchMove, { passive: false });
+
 		return () => {
 			window.removeEventListener('resize', measure);
+			previewContainer?.removeEventListener('touchmove', onPreviewTouchMove);
 			for (const [, entry] of pool) {
 				entry.video.pause();
 				entry.video.removeAttribute('src');
@@ -284,7 +290,6 @@
 		class:has-video={hasVideo && isActiveReady}
 		bind:this={previewContainer}
 		ontouchstart={onPreviewTouchStart}
-		ontouchmove={onPreviewTouchMove}
 		ontouchend={onPreviewTouchEnd}
 	>
 		<!-- Skeleton loader while active video decodes -->
@@ -367,7 +372,7 @@
 		overflow: hidden;
 		background: var(--card-bg);
 		border: 1px solid var(--card-border);
-		touch-action: none;
+		touch-action: pan-y pinch-zoom;
 	}
 
 	/* Video elements are appended via JS; this styles them all */
