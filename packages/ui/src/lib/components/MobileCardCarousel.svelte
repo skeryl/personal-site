@@ -221,7 +221,7 @@
 	let touchStartX: number | undefined;
 	let scrollStartLeft: number = 0;
 	const SWIPE_THRESHOLD = 10; // min px before we start tracking
-	const DRAG_DAMPING = 0.35; // preview drag moves caption at 35% speed
+	const DRAG_DAMPING = 0.5; // preview drag moves caption at 50% speed
 
 	function onPreviewTouchStart(e: TouchEvent) {
 		if (!scrollContainer) return;
