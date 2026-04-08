@@ -131,7 +131,7 @@
 </div>
 
 <!-- Mobile: swipeable card carousel with inline preview -->
-<div class="sm:hidden">
+<div class="sm:hidden flex-1 flex flex-col min-h-0">
 	<MobileCardCarousel posts={filteredPosts} />
 </div>
 

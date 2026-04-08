@@ -11,7 +11,6 @@
 
 	let { posts }: Props = $props();
 
-	let wrapper: HTMLDivElement | undefined = $state(undefined);
 	let previewContainer: HTMLDivElement | undefined = $state(undefined);
 	let scrollContainer: HTMLDivElement | undefined = $state(undefined);
 
@@ -146,29 +145,13 @@
 		}
 	});
 
-	// Size the wrapper to fill from its top edge to the bottom of the viewport.
-	// Use requestAnimationFrame so the browser has completed layout before we measure.
 	onMount(() => {
-		if (!wrapper) return;
-
-		function measure() {
-			if (!wrapper) return;
-			const top = wrapper.getBoundingClientRect().top;
-			wrapper.style.height = `calc(100dvh - ${top}px - 8px)`;
-		}
-
-		requestAnimationFrame(measure);
-
-		// Re-measure when the mobile address bar collapses/expands
-		window.addEventListener('resize', measure);
-
 		// Attach touchmove with { passive: false } so we can call
 		// preventDefault() to suppress vertical scrolling during
 		// horizontal swipes, even with touch-action: pan-y.
 		previewContainer?.addEventListener('touchmove', onPreviewTouchMove, { passive: false });
 
 		return () => {
-			window.removeEventListener('resize', measure);
 			previewContainer?.removeEventListener('touchmove', onPreviewTouchMove);
 			for (const [, entry] of pool) {
 				entry.video.pause();
@@ -282,7 +265,7 @@
 	}
 </script>
 
-<div class="carousel-wrapper" bind:this={wrapper}>
+<div class="carousel-wrapper">
 	<!-- Preview area: pool videos are appended here via JS -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
@@ -360,6 +343,8 @@
 	.carousel-wrapper {
 		display: flex;
 		flex-direction: column;
+		flex: 1 1 0%;
+		min-height: 0;
 		gap: 0.5rem;
 	}
 
