@@ -213,14 +213,42 @@
 		const cards = scrollContainer.querySelectorAll('.carousel-card');
 		cards[index]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
 	}
+
+	// ── Preview swipe handling ───────────────────────────────
+	// Swiping on the preview drives the caption carousel (and thus the
+	// active index via IntersectionObserver). The preview itself stays
+	// fixed — only the content crossfades.
+	let touchStartX: number | undefined;
+	const SWIPE_THRESHOLD = 40; // min px to count as a swipe
+
+	function onPreviewTouchStart(e: TouchEvent) {
+		touchStartX = e.touches[0].clientX;
+	}
+
+	function onPreviewTouchEnd(e: TouchEvent) {
+		if (touchStartX === undefined) return;
+		const dx = e.changedTouches[0].clientX - touchStartX;
+		touchStartX = undefined;
+
+		if (Math.abs(dx) < SWIPE_THRESHOLD) return;
+
+		if (dx < 0 && activeIndex < posts.length - 1) {
+			scrollToIndex(activeIndex + 1);
+		} else if (dx > 0 && activeIndex > 0) {
+			scrollToIndex(activeIndex - 1);
+		}
+	}
 </script>
 
 <div class="carousel-wrapper" bind:this={wrapper}>
 	<!-- Preview area: pool videos are appended here via JS -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		class="preview-area"
 		class:has-video={hasVideo && isActiveReady}
 		bind:this={previewContainer}
+		ontouchstart={onPreviewTouchStart}
+		ontouchend={onPreviewTouchEnd}
 	>
 		<!-- Skeleton loader while active video decodes -->
 		{#if hasVideo && !isActiveReady}
@@ -302,6 +330,7 @@
 		overflow: hidden;
 		background: var(--card-bg);
 		border: 1px solid var(--card-border);
+		touch-action: pan-y;
 	}
 
 	/* Video elements are appended via JS; this styles them all */
