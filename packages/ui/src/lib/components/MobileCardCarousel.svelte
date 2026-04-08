@@ -215,27 +215,43 @@
 	}
 
 	// ── Preview swipe handling ───────────────────────────────
-	// Swiping on the preview drives the caption carousel (and thus the
-	// active index via IntersectionObserver). The preview itself stays
-	// fixed — only the content crossfades.
+	// Swiping on the preview mirrors finger movement onto the caption
+	// carousel in real-time, then snaps to the nearest card on release.
 	let touchStartX: number | undefined;
-	const SWIPE_THRESHOLD = 40; // min px to count as a swipe
+	let scrollStartLeft: number = 0;
+	const SWIPE_THRESHOLD = 10; // min px before we start tracking
 
 	function onPreviewTouchStart(e: TouchEvent) {
+		if (!scrollContainer) return;
 		touchStartX = e.touches[0].clientX;
+		scrollStartLeft = scrollContainer.scrollLeft;
+		// Disable snap during drag so the scroll feels fluid
+		scrollContainer.style.scrollSnapType = 'none';
+	}
+
+	function onPreviewTouchMove(e: TouchEvent) {
+		if (touchStartX === undefined || !scrollContainer) return;
+		const dx = e.touches[0].clientX - touchStartX;
+		if (Math.abs(dx) < SWIPE_THRESHOLD) return;
+		// Mirror: finger moves right → scroll decreases (previous card)
+		scrollContainer.scrollLeft = scrollStartLeft - dx;
 	}
 
 	function onPreviewTouchEnd(e: TouchEvent) {
-		if (touchStartX === undefined) return;
+		if (touchStartX === undefined || !scrollContainer) return;
 		const dx = e.changedTouches[0].clientX - touchStartX;
 		touchStartX = undefined;
 
-		if (Math.abs(dx) < SWIPE_THRESHOLD) return;
+		// Re-enable snap so it settles onto the nearest card
+		scrollContainer.style.scrollSnapType = 'x mandatory';
 
-		if (dx < 0 && activeIndex < posts.length - 1) {
-			scrollToIndex(activeIndex + 1);
-		} else if (dx > 0 && activeIndex > 0) {
-			scrollToIndex(activeIndex - 1);
+		// If the drag was large enough, nudge to next/prev card
+		if (Math.abs(dx) > SWIPE_THRESHOLD) {
+			if (dx < 0 && activeIndex < posts.length - 1) {
+				scrollToIndex(activeIndex + 1);
+			} else if (dx > 0 && activeIndex > 0) {
+				scrollToIndex(activeIndex - 1);
+			}
 		}
 	}
 </script>
@@ -248,6 +264,7 @@
 		class:has-video={hasVideo && isActiveReady}
 		bind:this={previewContainer}
 		ontouchstart={onPreviewTouchStart}
+		ontouchmove={onPreviewTouchMove}
 		ontouchend={onPreviewTouchEnd}
 	>
 		<!-- Skeleton loader while active video decodes -->
