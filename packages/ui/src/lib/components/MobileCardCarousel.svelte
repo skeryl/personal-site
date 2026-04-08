@@ -1,20 +1,25 @@
 <script lang="ts">
-	import { preventDefault, stopPropagation } from 'svelte/legacy';
-	import { tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import type { PostSummary } from '@sc/model';
-	import Tags from '$lib/components/Tags.svelte';
 	import videos from '$lib/assets/videos/posts/index.js';
 
 	interface Props {
 		posts: PostSummary[];
-		activeTags: Set<string>;
-		onTagClick: (tag: string) => void;
-		onActivePostChange?: (post: PostSummary | undefined) => void;
 	}
 
-	let { posts, activeTags, onTagClick, onActivePostChange }: Props = $props();
+	let { posts }: Props = $props();
 
+	let wrapper: HTMLDivElement | undefined = $state(undefined);
 	let scrollContainer: HTMLDivElement | undefined = $state(undefined);
+
+	// Measure how far from the top of the viewport this component sits,
+	// then size the wrapper to fill exactly the remaining space.
+	onMount(() => {
+		if (!wrapper) return;
+		const top = wrapper.getBoundingClientRect().top;
+		// 8px bottom breathing room
+		wrapper.style.height = `calc(100dvh - ${top}px - 8px)`;
+	});
 	let activeIndex: number = $state(0);
 	let activePost: PostSummary | undefined = $derived(posts[activeIndex]);
 	let hasVideo = $derived(activePost ? activePost.id in videos : false);
@@ -59,13 +64,7 @@
 		}
 	});
 
-	$effect(() => {
-		onActivePostChange?.(activePost);
-	});
-
 	function handleVideoCanPlay() {
-		// Wait one frame so the browser paints the video at its cover dimensions
-		// before we reveal it — avoids the visible resize snap.
 		requestAnimationFrame(() => {
 			isVideoReady = true;
 			isLoading = false;
@@ -74,7 +73,6 @@
 
 	// Re-observe cards whenever the post list changes (e.g. filtering)
 	$effect(() => {
-		// Track `posts` so we re-run when the list changes
 		void posts.length;
 
 		if (!scrollContainer) return;
@@ -96,13 +94,11 @@
 			}
 		);
 
-		// Wait for DOM to update with the new cards
 		tick().then(() => {
 			const cards = scrollContainer!.querySelectorAll('.carousel-card');
 			cards.forEach((card) => observer.observe(card));
 		});
 
-		// Reset scroll position and active index on filter change
 		activeIndex = 0;
 		scrollContainer.scrollTo({ left: 0 });
 
@@ -116,8 +112,8 @@
 	}
 </script>
 
-<div class="carousel-wrapper">
-	<!-- Video preview area -->
+<div class="carousel-wrapper" bind:this={wrapper}>
+	<!-- Preview area: takes all available vertical space -->
 	<div class="preview-area" class:has-video={hasVideo && isVideoReady}>
 		<video
 			bind:this={vid}
@@ -129,7 +125,6 @@
 			oncanplay={handleVideoCanPlay}
 		></video>
 
-		<!-- Skeleton loader: covers the video while it loads to hide the resize snap -->
 		{#if isLoading}
 			<div class="skeleton-overlay">
 				<div class="skeleton-shimmer"></div>
@@ -145,9 +140,23 @@
 				</span>
 			</div>
 		{/if}
+
+		<!-- Dot indicators overlaid at bottom of preview -->
+		{#if posts.length > 1}
+			<div class="dots">
+				{#each posts as _, i}
+					<button
+						class="dot no-underline"
+						class:active={activeIndex === i}
+						onclick={() => scrollToIndex(i)}
+						aria-label={`Go to card ${i + 1}`}
+					></button>
+				{/each}
+			</div>
+		{/if}
 	</div>
 
-	<!-- Scrollable card carousel -->
+	<!-- Slim caption carousel -->
 	<div class="carousel-scroll" bind:this={scrollContainer}>
 		{#each posts as post, i}
 			<a
@@ -156,77 +165,42 @@
 				class:is-active={activeIndex === i}
 				data-index={i}
 			>
-				<div class="card-inner">
-					<div class="flex items-start justify-between gap-2 mb-2">
-						<h3 class="text-base font-semibold text-theme-text-heading no-underline">
-							{post.title}
-						</h3>
-						<span class="text-xs text-theme-text-muted whitespace-nowrap pt-0.5">
+				<div class="caption-inner">
+					<div class="caption-row">
+						<h3 class="caption-title">{post.title}</h3>
+						<span class="caption-date">
 							{new Date(post.timestamp).toLocaleDateString('en-US', {
 								month: 'short',
 								year: 'numeric'
 							})}
 						</span>
 					</div>
-
-					{#if post.collaborators?.length}
-						<div class="mb-2">
-							{#each post.collaborators as collab}
-								<span class="text-xs text-theme-text-secondary italic">
-									{collab.role}:
-									{#if collab.url}
-										<span
-											class="collab-link underline underline-offset-2"
-											onclick={stopPropagation(
-												preventDefault(() => window.open(collab.url, '_blank'))
-											)}>{collab.name}</span
-										>
-									{:else}
-										{collab.name}
-									{/if}
-								</span>
+					{#if post.tags?.length}
+						<div class="caption-tags">
+							{#each post.tags as tag}
+								<span class="caption-tag">{tag}</span>
 							{/each}
 						</div>
 					{/if}
-
-					<div class="mt-auto pt-2">
-						<Tags tags={post.tags ?? []} {activeTags} {onTagClick} />
-					</div>
 				</div>
 			</a>
 		{/each}
 	</div>
-
-	<!-- Dot indicators -->
-	{#if posts.length > 1}
-		<div class="dots">
-			{#each posts as _, i}
-				<button
-					class="dot no-underline"
-					class:active={activeIndex === i}
-					onclick={() => scrollToIndex(i)}
-					aria-label={`Go to card ${i + 1}`}
-				></button>
-			{/each}
-		</div>
-	{/if}
 </div>
 
 <style>
 	.carousel-wrapper {
-		position: relative;
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 0.5rem;
 	}
 
 	/* ── Preview area ─────────────────────────────────────── */
 	.preview-area {
 		position: relative;
-		width: 100%;
-		aspect-ratio: 3 / 4;
-		max-height: 55vh;
-		border-radius: 1rem;
+		flex: 1 1 0%;
+		min-height: 0;
+		border-radius: 0.75rem;
 		overflow: hidden;
 		background: var(--card-bg);
 		border: 1px solid var(--card-border);
@@ -292,62 +266,16 @@
 		text-align: center;
 	}
 
-	/* ── Scroll container ─────────────────────────────────── */
-	.carousel-scroll {
-		display: flex;
-		overflow-x: auto;
-		scroll-snap-type: x mandatory;
-		-webkit-overflow-scrolling: touch;
-		gap: 0.75rem;
-		padding: 0 8%;
-		scrollbar-width: none;
-	}
-
-	.carousel-scroll::-webkit-scrollbar {
-		display: none;
-	}
-
-	/* ── Card ─────────────────────────────────────────────── */
-	.carousel-card {
-		flex: 0 0 84%;
-		scroll-snap-align: center;
-		text-decoration: none;
-		transition: all 0.3s ease;
-	}
-
-	.card-inner {
-		display: flex;
-		flex-direction: column;
-		padding: 1.25rem;
-		border-radius: 1rem;
-		background: var(--card-bg);
-		border: 1px solid var(--card-border);
-		box-shadow: var(--card-shadow);
-		min-height: 100px;
-		backdrop-filter: blur(12px);
-		-webkit-backdrop-filter: blur(12px);
-		transition: all 0.3s ease;
-	}
-
-	.carousel-card.is-active .card-inner {
-		background: var(--card-bg-active);
-		border-color: var(--card-border-active);
-		box-shadow: var(--card-shadow-active);
-	}
-
-	.collab-link {
-		cursor: pointer;
-		text-decoration: underline;
-		color: inherit;
-	}
-
-	/* ── Dots ─────────────────────────────────────────────── */
+	/* ── Dots (overlaid on preview) ───────────────────────── */
 	.dots {
+		position: absolute;
+		bottom: 0.5rem;
+		left: 0;
+		right: 0;
 		display: flex;
 		justify-content: center;
 		gap: 0.375rem;
-		padding: 0.25rem 0;
-		flex-wrap: wrap;
+		z-index: 2;
 	}
 
 	.dot {
@@ -356,19 +284,100 @@
 		border-radius: 50%;
 		border: none;
 		padding: 0;
-		background: var(--color-border-strong);
-		opacity: 0.35;
+		background: rgba(255, 255, 255, 0.5);
 		transition: all 0.25s ease;
 		cursor: pointer;
 	}
 
 	.dot.active {
-		opacity: 1;
-		background: var(--color-text-heading);
+		background: rgba(255, 255, 255, 0.95);
 		transform: scale(1.3);
 	}
 
-	a h3 {
+	/* ── Scroll container ─────────────────────────────────── */
+	.carousel-scroll {
+		flex-shrink: 0;
+		display: flex;
+		overflow-x: auto;
+		scroll-snap-type: x mandatory;
+		-webkit-overflow-scrolling: touch;
+		gap: 0.5rem;
+		padding: 0 8%;
+		scrollbar-width: none;
+	}
+
+	.carousel-scroll::-webkit-scrollbar {
+		display: none;
+	}
+
+	/* ── Caption card ─────────────────────────────────────── */
+	.carousel-card {
+		flex: 0 0 84%;
+		scroll-snap-align: center;
 		text-decoration: none;
+	}
+
+	.caption-inner {
+		padding: 0.625rem 0.875rem;
+		border-radius: 0.625rem;
+		background: var(--card-bg);
+		border: 1px solid var(--card-border);
+		backdrop-filter: blur(12px);
+		-webkit-backdrop-filter: blur(12px);
+		transition:
+			background 0.3s ease,
+			border-color 0.3s ease;
+	}
+
+	.carousel-card.is-active .caption-inner {
+		background: var(--card-bg-active);
+		border-color: var(--card-border-active);
+	}
+
+	.caption-row {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.5rem;
+	}
+
+	.caption-title {
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: var(--color-text-heading);
+		text-decoration: none;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		margin: 0;
+	}
+
+	.caption-date {
+		font-size: 0.6875rem;
+		color: var(--color-text-muted);
+		white-space: nowrap;
+		flex-shrink: 0;
+	}
+
+	.caption-tags {
+		display: flex;
+		gap: 0.375rem;
+		margin-top: 0.25rem;
+		overflow-x: auto;
+		scrollbar-width: none;
+	}
+
+	.caption-tags::-webkit-scrollbar {
+		display: none;
+	}
+
+	.caption-tag {
+		font-size: 0.625rem;
+		color: var(--color-tag-text);
+		background: var(--color-tag-bg);
+		border-radius: 9999px;
+		padding: 0.1rem 0.5rem;
+		white-space: nowrap;
+		flex-shrink: 0;
 	}
 </style>

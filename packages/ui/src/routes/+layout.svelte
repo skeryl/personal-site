@@ -10,6 +10,6 @@
 
 <Nav />
 
-<div class="pt-3 pb-8 px-6 max-sm:px-3">
+<div class="pt-3 pb-8 px-6 max-sm:px-3 max-sm:pt-1 max-sm:pb-2">
 	<slot />
 </div>
