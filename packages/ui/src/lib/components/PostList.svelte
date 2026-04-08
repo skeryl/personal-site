@@ -5,6 +5,7 @@
 	import Tags from '$lib/components/Tags.svelte';
 	import allPosts from '$lib/entries';
 	import PostVideoPreview from '$lib/components/PostVideoPreview.svelte';
+	import MobileCardCarousel from '$lib/components/MobileCardCarousel.svelte';
 
 	interface Props {
 		limit?: number | undefined;
@@ -73,7 +74,10 @@
 	let isAnyHovered = $derived(hoveredPost !== undefined);
 </script>
 
-<PostVideoPreview selectedPost={hoveredPost} />
+<!-- Desktop: fullscreen background video preview (hidden on mobile) -->
+<div class="hidden sm:block">
+	<PostVideoPreview selectedPost={hoveredPost} />
+</div>
 
 <!-- Filter bar -->
 <div class="mb-6">
@@ -121,9 +125,14 @@
 	{filteredPosts.length} of {allPostSummaries.length} entries
 </div>
 
-<!-- Card grid -->
+<!-- Mobile: swipeable card carousel with inline preview -->
+<div class="sm:hidden">
+	<MobileCardCarousel posts={filteredPosts} {activeTags} onTagClick={toggleTag} />
+</div>
+
+<!-- Desktop: card grid (hidden on mobile) -->
 <div
-	class="card-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
+	class="card-grid hidden sm:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
 	class:has-hover={isAnyHovered}
 	onmouseleave={() => (hoveredPost = undefined)}
 >
