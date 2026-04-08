@@ -217,9 +217,11 @@
 	// ── Preview swipe handling ───────────────────────────────
 	// Swiping on the preview mirrors finger movement onto the caption
 	// carousel in real-time, then snaps to the nearest card on release.
+	// Movement is dampened so it's harder to accidentally skip multiple cards.
 	let touchStartX: number | undefined;
 	let scrollStartLeft: number = 0;
 	const SWIPE_THRESHOLD = 10; // min px before we start tracking
+	const DRAG_DAMPING = 0.35; // preview drag moves caption at 35% speed
 
 	function onPreviewTouchStart(e: TouchEvent) {
 		if (!scrollContainer) return;
@@ -233,8 +235,8 @@
 		if (touchStartX === undefined || !scrollContainer) return;
 		const dx = e.touches[0].clientX - touchStartX;
 		if (Math.abs(dx) < SWIPE_THRESHOLD) return;
-		// Mirror: finger moves right → scroll decreases (previous card)
-		scrollContainer.scrollLeft = scrollStartLeft - dx;
+		// Mirror with damping: finger moves right → scroll decreases (previous card)
+		scrollContainer.scrollLeft = scrollStartLeft - dx * DRAG_DAMPING;
 	}
 
 	function onPreviewTouchEnd(e: TouchEvent) {
