@@ -404,11 +404,12 @@ class GlassEngravingContent implements ExperimentContent3D {
 	private glassMesh: Mesh | undefined;
 	private animationTime = 0;
 	private backLight: PointLight | undefined;
+	private lightbox: Mesh | undefined;
 	private edgeLights: PointLight[] = [];
 
 	start = ({ scene, camera, renderer, container }: RendererParams) => {
 		this.scene = scene;
-		scene.background = new Color(0x1a1a2e);
+		scene.background = new Color(0x2a1f14);
 
 		renderer.toneMappingExposure = 1.2;
 		renderer.shadowMap.enabled = true;
@@ -466,51 +467,67 @@ class GlassEngravingContent implements ExperimentContent3D {
 
 		// --- Lighting setup designed to highlight the engraving ---
 
-		// Ambient fill (low)
-		const ambient = new AmbientLight(0x404060, 0.3);
+		// Warm ambient fill — enough to see the scene
+		const ambient = new AmbientLight(0xffe8d0, 0.6);
 		scene.add(ambient);
 
-		// Back light — positioned behind the glass to make engraved frosted areas glow
-		this.backLight = new PointLight(0xffeedd, 8, 15);
-		this.backLight.position.set(0, 0, -1.5);
+		// Bright warm backlight panel — a lit plane behind the glass acts as a lightbox.
+		// The frosted engraved areas scatter this light while clear areas transmit it,
+		// creating the contrast that makes the design readable.
+		const lightboxGeom = new PlaneGeometry(4, 4);
+		const lightboxMat = new MeshStandardMaterial({
+			color: 0xffeedd,
+			emissive: 0xffeedd,
+			emissiveIntensity: 1.2,
+			roughness: 1,
+			metalness: 0
+		});
+		this.lightbox = new Mesh(lightboxGeom, lightboxMat);
+		this.lightbox.position.z = -0.8;
+		scene.add(this.lightbox);
+
+		// Back point light to reinforce the lightbox glow
+		this.backLight = new PointLight(0xffeedd, 6, 12);
+		this.backLight.position.set(0, 0, -1.2);
 		scene.add(this.backLight);
 
-		// Front key light — positioned in front to catch specular highlights on clear glass
-		const frontLight = new PointLight(0xffffff, 3, 15);
-		frontLight.position.set(2, 2, 4);
+		// Front key light — catch specular highlights on the clear glass surface
+		const frontLight = new PointLight(0xffffff, 2, 15);
+		frontLight.position.set(2, 2, 5);
 		scene.add(frontLight);
 
-		// Edge lights — colored lights from the sides to simulate bar ambiance
-		// and to catch the glass edges (like how real bar mirrors have neon edge glow)
-		const edgeLeft = new PointLight(0x4488ff, 4, 10);
+		// Soft edge lights for warmth
+		const edgeLeft = new PointLight(0xffcc88, 3, 10);
 		edgeLeft.position.set(-3, 0, 0.5);
 		scene.add(edgeLeft);
 		this.edgeLights.push(edgeLeft);
 
-		const edgeRight = new PointLight(0xff8844, 4, 10);
+		const edgeRight = new PointLight(0xffaa66, 3, 10);
 		edgeRight.position.set(3, 0, 0.5);
 		scene.add(edgeRight);
 		this.edgeLights.push(edgeRight);
 
 		// Top rim light
-		const topLight = new PointLight(0xaaccff, 2, 10);
+		const topLight = new PointLight(0xfff0dd, 2, 10);
 		topLight.position.set(0, 3, 1);
 		scene.add(topLight);
 
-		// Bottom warm light (like bar counter reflection)
+		// Bottom warm light (bar counter reflection)
 		const bottomLight = new PointLight(0xffaa66, 1.5, 8);
 		bottomLight.position.set(0, -3, 0.5);
 		scene.add(bottomLight);
 
-		// --- Dark backdrop behind the glass ---
+		// --- Warm backdrop behind the lightbox ---
 		const backdropGeom = new PlaneGeometry(12, 12);
 		const backdropMat = new MeshStandardMaterial({
-			color: 0x0a0a15,
+			color: 0x3d2b1a,
+			emissive: 0x1a0f05,
+			emissiveIntensity: 0.5,
 			roughness: 0.9,
 			metalness: 0.1
 		});
 		const backdrop = new Mesh(backdropGeom, backdropMat);
-		backdrop.position.z = -3;
+		backdrop.position.z = -4;
 		scene.add(backdrop);
 	};
 
@@ -518,9 +535,13 @@ class GlassEngravingContent implements ExperimentContent3D {
 		this.animationTime += 0.005;
 		this.controls?.update();
 
-		// Gently pulse the backlight to simulate flickering bar ambiance
+		// Gently pulse the backlight and lightbox to simulate warm flickering ambiance
 		if (this.backLight) {
-			this.backLight.intensity = 8 + Math.sin(this.animationTime * 2) * 1.5;
+			this.backLight.intensity = 6 + Math.sin(this.animationTime * 2) * 0.8;
+		}
+		if (this.lightbox) {
+			const mat = this.lightbox.material as MeshStandardMaterial;
+			mat.emissiveIntensity = 1.2 + Math.sin(this.animationTime * 2) * 0.15;
 		}
 
 		// Subtle sway on edge lights
