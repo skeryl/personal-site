@@ -55,19 +55,26 @@ function createEngravingTexture(width: number, height: number): CanvasTexture {
 	drawSprig(ctx, width - margin * 0.85, cy, Math.min(width, height) * 0.1, Math.PI / 2);
 
 	// --- Title text (bar mirror style) ---
-	const fontSize = Math.floor(width * 0.055);
-	ctx.font = `italic ${fontSize}px Georgia, serif`;
+	const fontSize = Math.floor(width * 0.06);
+	ctx.font = `italic bold ${fontSize}px Georgia, serif`;
 	ctx.textAlign = 'center';
 	ctx.textBaseline = 'middle';
 	ctx.fillStyle = '#fff';
 	ctx.fillText('The Glass & Mirror', cx, cy - Math.min(width, height) * 0.34);
 
-	const fontSize2 = Math.floor(width * 0.03);
-	ctx.font = `small-caps ${fontSize2}px Georgia, serif`;
+	const fontSize2 = Math.floor(width * 0.035);
+	ctx.font = `bold small-caps ${fontSize2}px Georgia, serif`;
 	ctx.fillText('Est. 2026', cx, cy + Math.min(width, height) * 0.34);
 
-	// Soften the texture with a slight blur for more realistic engraving
-	applyBlur(ctx, width, height, 1.5);
+	// Add grain/noise to simulate the rough frosted texture of real engraving.
+	// Real etched glass has an irregular, granular surface — not smooth lines.
+	applyEngravingGrain(ctx, width, height);
+
+	// Heavier blur softens edges to look ground/etched rather than printed
+	applyBlur(ctx, width, height, 3);
+
+	// Second grain pass after blur for fine surface texture
+	applyEngravingGrain(ctx, width, height, 0.3);
 
 	const texture = new CanvasTexture(canvas);
 	texture.needsUpdate = true;
@@ -77,10 +84,10 @@ function createEngravingTexture(width: number, height: number): CanvasTexture {
 function drawBorder(ctx: CanvasRenderingContext2D, w: number, h: number) {
 	const inset = Math.min(w, h) * 0.08;
 	const cornerRadius = Math.min(w, h) * 0.04;
-	const lineWidth = Math.min(w, h) * 0.008;
+	const lineWidth = Math.min(w, h) * 0.016;
 
 	// Double border
-	for (const offset of [0, lineWidth * 3]) {
+	for (const offset of [0, lineWidth * 2.5]) {
 		const i = inset + offset;
 		ctx.lineWidth = lineWidth;
 		ctx.beginPath();
@@ -99,7 +106,7 @@ function drawBorder(ctx: CanvasRenderingContext2D, w: number, h: number) {
 
 /** Draw a classic four-loop celtic knot with over/under weaving. */
 function drawCelticKnot(ctx: CanvasRenderingContext2D, cx: number, cy: number, radius: number) {
-	const bandWidth = radius * 0.18;
+	const bandWidth = radius * 0.3;
 	ctx.lineWidth = bandWidth;
 	ctx.strokeStyle = '#fff';
 
@@ -181,15 +188,15 @@ function drawCelticKnot(ctx: CanvasRenderingContext2D, cx: number, cy: number, r
 	}
 
 	// Outer ring around the knot
-	ctx.lineWidth = bandWidth * 0.4;
+	ctx.lineWidth = bandWidth * 0.5;
 	ctx.globalCompositeOperation = 'source-over';
 	ctx.beginPath();
 	ctx.arc(cx, cy, radius * 0.9, 0, Math.PI * 2);
 	ctx.stroke();
 
 	ctx.beginPath();
-	ctx.arc(cx, cy, radius * 0.95, 0, Math.PI * 2);
-	ctx.lineWidth = bandWidth * 0.15;
+	ctx.arc(cx, cy, radius * 0.98, 0, Math.PI * 2);
+	ctx.lineWidth = bandWidth * 0.25;
 	ctx.stroke();
 }
 
@@ -200,7 +207,7 @@ function drawFlourish(ctx: CanvasRenderingContext2D, x: number, y: number, dx: n
 	ctx.scale(dx, dy);
 
 	const scale = ctx.canvas.width * 0.001;
-	ctx.lineWidth = 2.5 * scale;
+	ctx.lineWidth = 5 * scale;
 	ctx.strokeStyle = '#fff';
 	ctx.fillStyle = '#fff';
 
@@ -233,7 +240,7 @@ function drawFlourish(ctx: CanvasRenderingContext2D, x: number, y: number, dx: n
 		[-18, 8]
 	] as const) {
 		ctx.beginPath();
-		ctx.arc(bx * scale, by * scale, 2 * scale, 0, Math.PI * 2);
+		ctx.arc(bx * scale, by * scale, 3.5 * scale, 0, Math.PI * 2);
 		ctx.fill();
 	}
 
@@ -303,7 +310,7 @@ function drawSprig(
 	ctx.rotate(angle);
 
 	const s = size;
-	ctx.lineWidth = s * 0.06;
+	ctx.lineWidth = s * 0.12;
 	ctx.strokeStyle = '#fff';
 	ctx.fillStyle = '#fff';
 
@@ -339,6 +346,32 @@ function drawSprig(
 	ctx.fillStyle = '#fff';
 
 	ctx.restore();
+}
+
+/**
+ * Add granular noise to engraved (white) areas to simulate the rough frosted
+ * surface of real glass engraving. Leaves black (clear) areas untouched.
+ */
+function applyEngravingGrain(
+	ctx: CanvasRenderingContext2D,
+	w: number,
+	h: number,
+	intensity: number = 0.5
+) {
+	const imgData = ctx.getImageData(0, 0, w, h);
+	const d = imgData.data;
+	for (let i = 0; i < d.length; i += 4) {
+		const brightness = d[i]; // how white (engraved) is this pixel
+		if (brightness > 10) {
+			// Only add grain to engraved areas
+			const noise = (Math.random() - 0.5) * 255 * intensity;
+			const v = Math.max(0, Math.min(255, brightness + noise));
+			d[i] = v;
+			d[i + 1] = v;
+			d[i + 2] = v;
+		}
+	}
+	ctx.putImageData(imgData, 0, 0);
 }
 
 /** Simple box blur. */
@@ -428,7 +461,7 @@ class GlassEngravingContent implements ExperimentContent3D {
 		// --- Create engraving texture ---
 		const texSize = 1024;
 		const engravingTexture = createEngravingTexture(texSize, texSize);
-		const normalMap = createNormalMapFromCanvas(engravingTexture.image as HTMLCanvasElement, 4);
+		const normalMap = createNormalMapFromCanvas(engravingTexture.image as HTMLCanvasElement, 6);
 
 		// --- Glass panel: dark tinted glass with glowing engraved lines ---
 		// The key insight: instead of relying on roughness-based transmission contrast
@@ -455,7 +488,7 @@ class GlassEngravingContent implements ExperimentContent3D {
 
 			// Normal map gives depth to the grooves
 			normalMap: normalMap,
-			normalScale: new Vector2(0.4, 0.4),
+			normalScale: new Vector2(0.6, 0.6),
 
 			envMapIntensity: 0.5,
 			clearcoat: 0.5,
