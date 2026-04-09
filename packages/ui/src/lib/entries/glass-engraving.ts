@@ -66,15 +66,24 @@ function createEngravingTexture(width: number, height: number): CanvasTexture {
 	ctx.font = `bold small-caps ${fontSize2}px Georgia, serif`;
 	ctx.fillText('Est. 2026', cx, cy + Math.min(width, height) * 0.34);
 
-	// Add grain/noise to simulate the rough frosted texture of real engraving.
-	// Real etched glass has an irregular, granular surface — not smooth lines.
-	applyEngravingGrain(ctx, width, height);
+	// --- Post-processing pipeline for realistic hand-engraved look ---
 
-	// Heavier blur softens edges to look ground/etched rather than printed
-	applyBlur(ctx, width, height, 3);
+	// 1. Slight blur first to anti-alias the raw drawing
+	applyBlur(ctx, width, height, 1.5);
 
-	// Second grain pass after blur for fine surface texture
-	applyEngravingGrain(ctx, width, height, 0.3);
+	// 2. Hand-wobble: displace pixels with low-frequency noise to simulate
+	//    the shaky, organic look of someone guiding a dremel by hand
+	applyHandWobble(ctx, width, height, 6, 30);
+
+	// 3. Another blur to soften the wobbled edges
+	applyBlur(ctx, width, height, 2);
+
+	// 4. Compute V-groove profile: bright beveled edges, darker valley center.
+	//    This reshapes flat white areas into concave grooves.
+	applyVGrooveProfile(ctx, width, height);
+
+	// 5. Grain/noise for rough frosted texture with uneven pressure
+	applyEngravingGrain(ctx, width, height, 0.45);
 
 	const texture = new CanvasTexture(canvas);
 	texture.needsUpdate = true;
@@ -348,6 +357,152 @@ function drawSprig(
 	ctx.restore();
 }
 
+/** Simple value noise for hand-wobble displacement. */
+function valueNoise(x: number, y: number, seed: number): number {
+	const n = Math.sin(x * 127.1 + y * 311.7 + seed * 53.3) * 43758.5453;
+	return n - Math.floor(n);
+}
+
+/** Smoothed noise via bilinear interpolation of value noise. */
+function smoothNoise(x: number, y: number, seed: number): number {
+	const ix = Math.floor(x);
+	const iy = Math.floor(y);
+	const fx = x - ix;
+	const fy = y - iy;
+	// Smoothstep
+	const sx = fx * fx * (3 - 2 * fx);
+	const sy = fy * fy * (3 - 2 * fy);
+
+	const n00 = valueNoise(ix, iy, seed);
+	const n10 = valueNoise(ix + 1, iy, seed);
+	const n01 = valueNoise(ix, iy + 1, seed);
+	const n11 = valueNoise(ix + 1, iy + 1, seed);
+
+	const nx0 = n00 + (n10 - n00) * sx;
+	const nx1 = n01 + (n11 - n01) * sx;
+	return nx0 + (nx1 - nx0) * sy;
+}
+
+/**
+ * Displace pixels using low-frequency noise to simulate a hand guiding a
+ * dremel — wobbly, organic, slightly irregular lines.
+ * @param amplitude Max pixel displacement
+ * @param scale Noise frequency (larger = gentler wobble)
+ */
+function applyHandWobble(
+	ctx: CanvasRenderingContext2D,
+	w: number,
+	h: number,
+	amplitude: number,
+	scale: number
+) {
+	const src = ctx.getImageData(0, 0, w, h);
+	const dst = ctx.createImageData(w, h);
+	const sd = src.data;
+	const dd = dst.data;
+
+	for (let y = 0; y < h; y++) {
+		for (let x = 0; x < w; x++) {
+			// Multi-octave noise for natural hand shake
+			const dx =
+				(smoothNoise(x / scale, y / scale, 0) - 0.5) * amplitude +
+				(smoothNoise(x / (scale * 0.5), y / (scale * 0.5), 100) - 0.5) * amplitude * 0.5;
+			const dy =
+				(smoothNoise(x / scale, y / scale, 50) - 0.5) * amplitude +
+				(smoothNoise(x / (scale * 0.5), y / (scale * 0.5), 150) - 0.5) * amplitude * 0.5;
+
+			const sx = Math.max(0, Math.min(w - 1, Math.round(x + dx)));
+			const sy = Math.max(0, Math.min(h - 1, Math.round(y + dy)));
+			const si = (sy * w + sx) * 4;
+			const di = (y * w + x) * 4;
+			dd[di] = sd[si];
+			dd[di + 1] = sd[si + 1];
+			dd[di + 2] = sd[si + 2];
+			dd[di + 3] = sd[si + 3];
+		}
+	}
+	ctx.putImageData(dst, 0, 0);
+}
+
+/**
+ * Transform flat white engraved areas into a concave V-groove profile.
+ * Computes an approximate distance-to-edge, then maps it so the bevel edges
+ * are bright (where the angled walls catch light) and the valley center is
+ * darker. This gives the sense of a V-shaped cut.
+ */
+function applyVGrooveProfile(ctx: CanvasRenderingContext2D, w: number, h: number) {
+	const imgData = ctx.getImageData(0, 0, w, h);
+	const d = imgData.data;
+
+	// Build a brightness array and approximate distance-to-edge via iterative erosion
+	const brightness = new Float32Array(w * h);
+	const dist = new Float32Array(w * h);
+
+	for (let i = 0; i < w * h; i++) {
+		brightness[i] = d[i * 4] / 255;
+	}
+
+	// Chamfer distance transform: approximate distance to nearest black pixel
+	// Forward pass
+	for (let y = 0; y < h; y++) {
+		for (let x = 0; x < w; x++) {
+			const i = y * w + x;
+			if (brightness[i] < 0.1) {
+				dist[i] = 0;
+			} else {
+				let d = 1000;
+				if (x > 0) d = Math.min(d, dist[i - 1] + 1);
+				if (y > 0) d = Math.min(d, dist[(y - 1) * w + x] + 1);
+				if (x > 0 && y > 0) d = Math.min(d, dist[(y - 1) * w + (x - 1)] + 1.414);
+				if (x < w - 1 && y > 0) d = Math.min(d, dist[(y - 1) * w + (x + 1)] + 1.414);
+				dist[i] = d;
+			}
+		}
+	}
+	// Backward pass
+	for (let y = h - 1; y >= 0; y--) {
+		for (let x = w - 1; x >= 0; x--) {
+			const i = y * w + x;
+			if (x < w - 1) dist[i] = Math.min(dist[i], dist[i + 1] + 1);
+			if (y < h - 1) dist[i] = Math.min(dist[i], dist[(y + 1) * w + x] + 1);
+			if (x < w - 1 && y < h - 1) dist[i] = Math.min(dist[i], dist[(y + 1) * w + (x + 1)] + 1.414);
+			if (x > 0 && y < h - 1) dist[i] = Math.min(dist[i], dist[(y + 1) * w + (x - 1)] + 1.414);
+		}
+	}
+
+	// Find max distance for normalization
+	let maxDist = 0;
+	for (let i = 0; i < dist.length; i++) {
+		if (brightness[i] > 0.1 && dist[i] > maxDist) maxDist = dist[i];
+	}
+	if (maxDist < 1) maxDist = 1;
+
+	// Apply V-groove profile: edges bright, center darker (valley of the V)
+	for (let i = 0; i < w * h; i++) {
+		if (brightness[i] < 0.1) continue;
+
+		const normalizedDist = Math.min(dist[i] / maxDist, 1);
+
+		// V-profile: bright bevel near edge (dist ~0), dips to valley, slight center
+		// This simulates the concave V cross-section of a dremel cut
+		const edgeBevel = Math.exp(-normalizedDist * 4) * 0.9; // bright bevel at edge
+		const valleyFloor = 0.25 + normalizedDist * 0.15; // dim valley
+		const profile = Math.max(edgeBevel, valleyFloor);
+
+		// Modulate with uneven pressure (low-freq noise)
+		const px = (i % w) / w;
+		const py = Math.floor(i / w) / h;
+		const pressure = 0.7 + smoothNoise(px * 8, py * 8, 200) * 0.6;
+
+		const v = Math.max(0, Math.min(255, brightness[i] * profile * pressure * 255));
+		const idx = i * 4;
+		d[idx] = v;
+		d[idx + 1] = v;
+		d[idx + 2] = v;
+	}
+	ctx.putImageData(imgData, 0, 0);
+}
+
 /**
  * Add granular noise to engraved (white) areas to simulate the rough frosted
  * surface of real glass engraving. Leaves black (clear) areas untouched.
@@ -361,9 +516,8 @@ function applyEngravingGrain(
 	const imgData = ctx.getImageData(0, 0, w, h);
 	const d = imgData.data;
 	for (let i = 0; i < d.length; i += 4) {
-		const brightness = d[i]; // how white (engraved) is this pixel
-		if (brightness > 10) {
-			// Only add grain to engraved areas
+		const brightness = d[i];
+		if (brightness > 5) {
 			const noise = (Math.random() - 0.5) * 255 * intensity;
 			const v = Math.max(0, Math.min(255, brightness + noise));
 			d[i] = v;
@@ -381,7 +535,12 @@ function applyBlur(ctx: CanvasRenderingContext2D, w: number, h: number, radius: 
 	ctx.filter = 'none';
 }
 
-/** Create a normal map from the engraving texture to give depth to the grooves. */
+/**
+ * Create a V-groove normal map from the engraving texture.
+ * Uses the distance-to-edge to generate angled normals that represent the
+ * sloped walls of a concave V-shaped groove — steep at the edges, flatter
+ * in the valley. Also adds micro-roughness noise for the hand-ground look.
+ */
 function createNormalMapFromCanvas(source: HTMLCanvasElement, strength: number = 3): CanvasTexture {
 	const w = source.width;
 	const h = source.height;
@@ -399,25 +558,43 @@ function createNormalMapFromCanvas(source: HTMLCanvasElement, strength: number =
 		for (let x = 0; x < w; x++) {
 			const idx = (y * w + x) * 4;
 
-			// Sample neighboring heights
 			const getHeight = (px: number, py: number) => {
 				const cx = Math.max(0, Math.min(w - 1, px));
 				const cy = Math.max(0, Math.min(h - 1, py));
 				return srcData[(cy * w + cx) * 4] / 255;
 			};
 
-			const left = getHeight(x - 1, y);
-			const right = getHeight(x + 1, y);
-			const up = getHeight(x, y - 1);
-			const down = getHeight(x, y + 1);
+			// Sample at multiple radii for the V-groove slope
+			const near = 1;
+			const far = 3;
+			const leftN = getHeight(x - near, y);
+			const rightN = getHeight(x + near, y);
+			const upN = getHeight(x, y - near);
+			const downN = getHeight(x, y + near);
+			const leftF = getHeight(x - far, y);
+			const rightF = getHeight(x + far, y);
+			const upF = getHeight(x, y - far);
+			const downF = getHeight(x, y + far);
 
-			// Compute normal from height differences
-			const nx = (left - right) * strength;
-			const ny = (up - down) * strength;
+			// Combine near (sharp bevel edge) and far (broad groove shape) gradients
+			const nxNear = (leftN - rightN) * strength * 1.5;
+			const nyNear = (upN - downN) * strength * 1.5;
+			const nxFar = (leftF - rightF) * strength * 0.5;
+			const nyFar = (upF - downF) * strength * 0.5;
+			let nx = nxNear + nxFar;
+			let ny = nyNear + nyFar;
+
+			// Add micro-roughness noise for the hand-ground surface
+			const current = getHeight(x, y);
+			if (current > 0.05) {
+				const micro = 0.3;
+				nx += (Math.random() - 0.5) * micro;
+				ny += (Math.random() - 0.5) * micro;
+			}
+
 			const nz = 1.0;
 			const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
 
-			// Encode normal as RGB (tangent space: 0.5 = zero, 0 = -1, 1 = +1)
 			dst[idx] = ((nx / len) * 0.5 + 0.5) * 255;
 			dst[idx + 1] = ((ny / len) * 0.5 + 0.5) * 255;
 			dst[idx + 2] = ((nz / len) * 0.5 + 0.5) * 255;
@@ -488,7 +665,7 @@ class GlassEngravingContent implements ExperimentContent3D {
 
 			// Normal map gives depth to the grooves
 			normalMap: normalMap,
-			normalScale: new Vector2(0.6, 0.6),
+			normalScale: new Vector2(0.8, 0.8),
 
 			envMapIntensity: 0.5,
 			clearcoat: 0.5,
