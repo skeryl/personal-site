@@ -401,17 +401,15 @@ function createNormalMapFromCanvas(source: HTMLCanvasElement, strength: number =
 class GlassEngravingContent implements ExperimentContent3D {
 	private scene: Scene | undefined;
 	private controls: OrbitControls | undefined;
-	private glassMesh: Mesh | undefined;
 	private animationTime = 0;
 	private backLight: PointLight | undefined;
-	private lightbox: Mesh | undefined;
 	private edgeLights: PointLight[] = [];
 
 	start = ({ scene, camera, renderer, container }: RendererParams) => {
 		this.scene = scene;
-		scene.background = new Color(0x2a1f14);
+		scene.background = new Color(0x1a1a2e);
 
-		renderer.toneMappingExposure = 1.2;
+		renderer.toneMappingExposure = 1.0;
 		renderer.shadowMap.enabled = true;
 
 		// Camera
@@ -432,102 +430,93 @@ class GlassEngravingContent implements ExperimentContent3D {
 		const engravingTexture = createEngravingTexture(texSize, texSize);
 		const normalMap = createNormalMapFromCanvas(engravingTexture.image as HTMLCanvasElement, 4);
 
-		// --- Glass panel ---
+		// --- Glass panel: dark tinted glass with glowing engraved lines ---
+		// The key insight: instead of relying on roughness-based transmission contrast
+		// (which is subtle), we use the engraving as an emissive map so the etched lines
+		// glow warmly against the dark glass — like a real backlit bar sign.
 		const glassGeometry = new BoxGeometry(3, 3, 0.08, 1, 1, 1);
 		const glassMaterial = new MeshPhysicalMaterial({
-			color: new Color(0xeeffee),
+			color: new Color(0x556655),
 			metalness: 0.0,
-			roughness: 0.05,
-			transmission: 0.92,
+			roughness: 0.15,
+			transmission: 0.4,
 			ior: 1.52,
 			transparent: true,
 			opacity: 1,
 			side: DoubleSide,
 
-			// Engraving: the roughness map makes engraved regions frosted
+			// The engraving texture drives roughness (frosted in grooves)
 			roughnessMap: engravingTexture,
+
+			// Engraved lines glow — this is what makes the design visible
+			emissive: new Color(0xffeedd),
+			emissiveMap: engravingTexture,
+			emissiveIntensity: 0.8,
 
 			// Normal map gives depth to the grooves
 			normalMap: normalMap,
-			normalScale: new Vector2(0.3, 0.3),
+			normalScale: new Vector2(0.4, 0.4),
 
-			envMapIntensity: 1.0,
-			clearcoat: 0.3,
-			clearcoatRoughness: 0.1
+			envMapIntensity: 0.5,
+			clearcoat: 0.5,
+			clearcoatRoughness: 0.05
 		});
 		// Set properties not in the type defs for this Three.js version
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const mat = glassMaterial as any;
-		mat.thickness = 0.5;
+		mat.thickness = 0.8;
 		mat.specularColor = new Color(0xffffff);
 		mat.specularIntensity = 1.0;
 
-		this.glassMesh = new Mesh(glassGeometry, glassMaterial);
-		scene.add(this.glassMesh);
+		const glassMesh = new Mesh(glassGeometry, glassMaterial);
+		scene.add(glassMesh);
 
-		// --- Lighting setup designed to highlight the engraving ---
+		// --- Lighting ---
 
-		// Warm ambient fill — enough to see the scene
-		const ambient = new AmbientLight(0xffe8d0, 0.6);
+		// Low ambient so the emissive engraving dominates
+		const ambient = new AmbientLight(0x404060, 0.3);
 		scene.add(ambient);
 
-		// Bright warm backlight panel — a lit plane behind the glass acts as a lightbox.
-		// The frosted engraved areas scatter this light while clear areas transmit it,
-		// creating the contrast that makes the design readable.
-		const lightboxGeom = new PlaneGeometry(4, 4);
-		const lightboxMat = new MeshStandardMaterial({
-			color: 0xffeedd,
-			emissive: 0xffeedd,
-			emissiveIntensity: 1.2,
-			roughness: 1,
-			metalness: 0
-		});
-		this.lightbox = new Mesh(lightboxGeom, lightboxMat);
-		this.lightbox.position.z = -0.8;
-		scene.add(this.lightbox);
-
-		// Back point light to reinforce the lightbox glow
-		this.backLight = new PointLight(0xffeedd, 6, 12);
-		this.backLight.position.set(0, 0, -1.2);
+		// Backlight — reinforces the glow through the glass
+		this.backLight = new PointLight(0xffeedd, 4, 12);
+		this.backLight.position.set(0, 0, -1.5);
 		scene.add(this.backLight);
 
-		// Front key light — catch specular highlights on the clear glass surface
-		const frontLight = new PointLight(0xffffff, 2, 15);
+		// Front key light — specular highlights on the glass surface
+		const frontLight = new PointLight(0xffffff, 1.5, 15);
 		frontLight.position.set(2, 2, 5);
 		scene.add(frontLight);
 
-		// Soft edge lights for warmth
-		const edgeLeft = new PointLight(0xffcc88, 3, 10);
+		// Colored edge lights for bar ambiance
+		const edgeLeft = new PointLight(0x4488ff, 2, 10);
 		edgeLeft.position.set(-3, 0, 0.5);
 		scene.add(edgeLeft);
 		this.edgeLights.push(edgeLeft);
 
-		const edgeRight = new PointLight(0xffaa66, 3, 10);
+		const edgeRight = new PointLight(0xff8844, 2, 10);
 		edgeRight.position.set(3, 0, 0.5);
 		scene.add(edgeRight);
 		this.edgeLights.push(edgeRight);
 
 		// Top rim light
-		const topLight = new PointLight(0xfff0dd, 2, 10);
+		const topLight = new PointLight(0xaaccff, 1.5, 10);
 		topLight.position.set(0, 3, 1);
 		scene.add(topLight);
 
-		// Bottom warm light (bar counter reflection)
-		const bottomLight = new PointLight(0xffaa66, 1.5, 8);
+		// Bottom warm light
+		const bottomLight = new PointLight(0xffaa66, 1, 8);
 		bottomLight.position.set(0, -3, 0.5);
 		scene.add(bottomLight);
 
-		// --- Warm backdrop behind the lightbox ---
+		// --- Dark backdrop ---
 		const backdropGeom = new PlaneGeometry(12, 12);
 		const backdropMat = new MeshStandardMaterial({
-			color: 0x3d2b1a,
-			emissive: 0x1a0f05,
-			emissiveIntensity: 0.5,
+			color: 0x0a0a15,
 			roughness: 0.9,
 			metalness: 0.1
 		});
 		const backdrop = new Mesh(backdropGeom, backdropMat);
-		backdrop.position.z = -4;
+		backdrop.position.z = -3;
 		scene.add(backdrop);
 	};
 
@@ -535,13 +524,9 @@ class GlassEngravingContent implements ExperimentContent3D {
 		this.animationTime += 0.005;
 		this.controls?.update();
 
-		// Gently pulse the backlight and lightbox to simulate warm flickering ambiance
+		// Gently pulse the backlight
 		if (this.backLight) {
-			this.backLight.intensity = 6 + Math.sin(this.animationTime * 2) * 0.8;
-		}
-		if (this.lightbox) {
-			const mat = this.lightbox.material as MeshStandardMaterial;
-			mat.emissiveIntensity = 1.2 + Math.sin(this.animationTime * 2) * 0.15;
+			this.backLight.intensity = 4 + Math.sin(this.animationTime * 2) * 0.8;
 		}
 
 		// Subtle sway on edge lights
