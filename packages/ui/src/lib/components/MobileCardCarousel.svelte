@@ -11,7 +11,6 @@
 
 	let { posts }: Props = $props();
 
-	let wrapper: HTMLDivElement | undefined = $state(undefined);
 	let previewContainer: HTMLDivElement | undefined = $state(undefined);
 	let scrollContainer: HTMLDivElement | undefined = $state(undefined);
 
@@ -146,24 +145,14 @@
 		}
 	});
 
-	// Size the wrapper to fill from its top edge to the bottom of the viewport.
-	// Use requestAnimationFrame so the browser has completed layout before we measure.
 	onMount(() => {
-		if (!wrapper) return;
-
-		function measure() {
-			if (!wrapper) return;
-			const top = wrapper.getBoundingClientRect().top;
-			wrapper.style.height = `calc(100dvh - ${top}px - 8px)`;
-		}
-
-		requestAnimationFrame(measure);
-
-		// Re-measure when the mobile address bar collapses/expands
-		window.addEventListener('resize', measure);
+		// Attach touchmove with { passive: false } so we can call
+		// preventDefault() to suppress vertical scrolling during
+		// horizontal swipes, even with touch-action: pan-y.
+		previewContainer?.addEventListener('touchmove', onPreviewTouchMove, { passive: false });
 
 		return () => {
-			window.removeEventListener('resize', measure);
+			previewContainer?.removeEventListener('touchmove', onPreviewTouchMove);
 			for (const [, entry] of pool) {
 				entry.video.pause();
 				entry.video.removeAttribute('src');
@@ -213,14 +202,78 @@
 		const cards = scrollContainer.querySelectorAll('.carousel-card');
 		cards[index]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
 	}
+
+	// ── Preview swipe handling ───────────────────────────────
+	// Swiping on the preview mirrors finger movement onto the caption
+	// carousel in real-time, then snaps to the nearest card on release.
+	// Movement is dampened so it's harder to accidentally skip multiple cards.
+	// Once a horizontal swipe is detected, vertical scrolling is locked out.
+	let touchStartX: number | undefined;
+	let touchStartY: number | undefined;
+	let scrollStartLeft: number = 0;
+	let swipeAxis: 'horizontal' | 'vertical' | undefined;
+	const SWIPE_THRESHOLD = 10; // min px before we start tracking
+	const DRAG_DAMPING = 0.5; // preview drag moves caption at 50% speed
+
+	function onPreviewTouchStart(e: TouchEvent) {
+		if (!scrollContainer) return;
+		touchStartX = e.touches[0].clientX;
+		touchStartY = e.touches[0].clientY;
+		scrollStartLeft = scrollContainer.scrollLeft;
+		swipeAxis = undefined;
+		// Disable snap during drag so the scroll feels fluid
+		scrollContainer.style.scrollSnapType = 'none';
+	}
+
+	function onPreviewTouchMove(e: TouchEvent) {
+		if (touchStartX === undefined || touchStartY === undefined || !scrollContainer) return;
+		const dx = e.touches[0].clientX - touchStartX;
+		const dy = e.touches[0].clientY - touchStartY;
+
+		// Lock in the swipe axis once we exceed the threshold
+		if (!swipeAxis && (Math.abs(dx) > SWIPE_THRESHOLD || Math.abs(dy) > SWIPE_THRESHOLD)) {
+			swipeAxis = Math.abs(dx) >= Math.abs(dy) ? 'horizontal' : 'vertical';
+		}
+
+		if (swipeAxis === 'vertical') return; // let the browser scroll normally
+		if (!swipeAxis) return; // not enough movement yet
+
+		// Horizontal swipe — prevent vertical scrolling and drive the carousel
+		e.preventDefault();
+		scrollContainer.scrollLeft = scrollStartLeft - dx * DRAG_DAMPING;
+	}
+
+	function onPreviewTouchEnd(e: TouchEvent) {
+		if (touchStartX === undefined || !scrollContainer) return;
+		const dx = e.changedTouches[0].clientX - touchStartX;
+		const wasHorizontal = swipeAxis === 'horizontal';
+		touchStartX = undefined;
+		touchStartY = undefined;
+		swipeAxis = undefined;
+
+		// Re-enable snap so it settles onto the nearest card
+		scrollContainer.style.scrollSnapType = 'x mandatory';
+
+		// Only navigate if this was a horizontal swipe
+		if (wasHorizontal && Math.abs(dx) > SWIPE_THRESHOLD) {
+			if (dx < 0 && activeIndex < posts.length - 1) {
+				scrollToIndex(activeIndex + 1);
+			} else if (dx > 0 && activeIndex > 0) {
+				scrollToIndex(activeIndex - 1);
+			}
+		}
+	}
 </script>
 
-<div class="carousel-wrapper" bind:this={wrapper}>
+<div class="carousel-wrapper">
 	<!-- Preview area: pool videos are appended here via JS -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		class="preview-area"
 		class:has-video={hasVideo && isActiveReady}
 		bind:this={previewContainer}
+		ontouchstart={onPreviewTouchStart}
+		ontouchend={onPreviewTouchEnd}
 	>
 		<!-- Skeleton loader while active video decodes -->
 		{#if hasVideo && !isActiveReady}
@@ -290,6 +343,8 @@
 	.carousel-wrapper {
 		display: flex;
 		flex-direction: column;
+		flex: 1 1 0%;
+		min-height: 0;
 		gap: 0.5rem;
 	}
 
@@ -302,6 +357,7 @@
 		overflow: hidden;
 		background: var(--card-bg);
 		border: 1px solid var(--card-border);
+		touch-action: pan-y pinch-zoom;
 	}
 
 	/* Video elements are appended via JS; this styles them all */
