@@ -71,9 +71,9 @@ function createEngravingTexture(width: number, height: number): CanvasTexture {
 	// 1. Slight blur first to anti-alias the raw drawing
 	applyBlur(ctx, width, height, 1.5);
 
-	// 2. Hand-wobble: displace pixels with low-frequency noise to simulate
-	//    the shaky, organic look of someone guiding a dremel by hand
-	applyHandWobble(ctx, width, height, 6, 30);
+	// 2. Hand-wobble: subtle displacement — skilled craftsperson, steady hand,
+	//    but still human (not CNC-perfect)
+	applyHandWobble(ctx, width, height, 2.5, 50);
 
 	// 3. Another blur to soften the wobbled edges
 	applyBlur(ctx, width, height, 2);
@@ -470,29 +470,28 @@ function applyVGrooveProfile(ctx: CanvasRenderingContext2D, w: number, h: number
 		}
 	}
 
-	// Find max distance for normalization
-	let maxDist = 0;
-	for (let i = 0; i < dist.length; i++) {
-		if (brightness[i] > 0.1 && dist[i] > maxDist) maxDist = dist[i];
-	}
-	if (maxDist < 1) maxDist = 1;
+	// Apply V-groove profile using absolute pixel distance (not normalized).
+	// This way thin lines and thick areas both get a proper V cross-section.
+	// The groove depth is defined in pixels: bevels within ~6px of edge are bright,
+	// everything deeper falls into the dark valley.
+	const grooveDepthPx = 8; // how many pixels deep the bevel extends
 
-	// Apply V-groove profile: edges bright, center darker (valley of the V)
 	for (let i = 0; i < w * h; i++) {
 		if (brightness[i] < 0.1) continue;
 
-		const normalizedDist = Math.min(dist[i] / maxDist, 1);
+		const d_px = dist[i]; // absolute distance from edge in pixels
 
-		// V-profile: bright bevel near edge (dist ~0), dips to valley, slight center
-		// This simulates the concave V cross-section of a dremel cut
-		const edgeBevel = Math.exp(-normalizedDist * 4) * 0.9; // bright bevel at edge
-		const valleyFloor = 0.25 + normalizedDist * 0.15; // dim valley
-		const profile = Math.max(edgeBevel, valleyFloor);
+		// V-profile: steep bright bevel at edges, dark valley in center
+		// Edge bevel: peaks at ~1-2px from edge, falls off sharply
+		const bevelPeak = Math.min(d_px / 2, 1) * Math.exp(-d_px / (grooveDepthPx * 0.4));
+		// Valley floor: very dim — this is the deepest part of the V
+		const valleyFloor = 0.08;
+		const profile = Math.max(bevelPeak, valleyFloor);
 
-		// Modulate with uneven pressure (low-freq noise)
+		// Subtle uneven pressure (skilled but human)
 		const px = (i % w) / w;
 		const py = Math.floor(i / w) / h;
-		const pressure = 0.7 + smoothNoise(px * 8, py * 8, 200) * 0.6;
+		const pressure = 0.85 + smoothNoise(px * 6, py * 6, 200) * 0.3;
 
 		const v = Math.max(0, Math.min(255, brightness[i] * profile * pressure * 255));
 		const idx = i * 4;
@@ -564,30 +563,25 @@ function createNormalMapFromCanvas(source: HTMLCanvasElement, strength: number =
 				return srcData[(cy * w + cx) * 4] / 255;
 			};
 
-			// Sample at multiple radii for the V-groove slope
-			const near = 1;
-			const far = 3;
-			const leftN = getHeight(x - near, y);
-			const rightN = getHeight(x + near, y);
-			const upN = getHeight(x, y - near);
-			const downN = getHeight(x, y + near);
-			const leftF = getHeight(x - far, y);
-			const rightF = getHeight(x + far, y);
-			const upF = getHeight(x, y - far);
-			const downF = getHeight(x, y + far);
+			// Sample at three radii for aggressive V-groove normals
+			const r1 = 1;
+			const r2 = 3;
+			const r3 = 6;
 
-			// Combine near (sharp bevel edge) and far (broad groove shape) gradients
-			const nxNear = (leftN - rightN) * strength * 1.5;
-			const nyNear = (upN - downN) * strength * 1.5;
-			const nxFar = (leftF - rightF) * strength * 0.5;
-			const nyFar = (upF - downF) * strength * 0.5;
-			let nx = nxNear + nxFar;
-			let ny = nyNear + nyFar;
+			const gx1 = (getHeight(x - r1, y) - getHeight(x + r1, y)) * strength * 2.0;
+			const gy1 = (getHeight(x, y - r1) - getHeight(x, y + r1)) * strength * 2.0;
+			const gx2 = (getHeight(x - r2, y) - getHeight(x + r2, y)) * strength * 1.0;
+			const gy2 = (getHeight(x, y - r2) - getHeight(x, y + r2)) * strength * 1.0;
+			const gx3 = (getHeight(x - r3, y) - getHeight(x + r3, y)) * strength * 0.4;
+			const gy3 = (getHeight(x, y - r3) - getHeight(x, y + r3)) * strength * 0.4;
 
-			// Add micro-roughness noise for the hand-ground surface
+			let nx = gx1 + gx2 + gx3;
+			let ny = gy1 + gy2 + gy3;
+
+			// Micro-roughness noise for hand-ground surface texture
 			const current = getHeight(x, y);
-			if (current > 0.05) {
-				const micro = 0.3;
+			if (current > 0.03) {
+				const micro = 0.4;
 				nx += (Math.random() - 0.5) * micro;
 				ny += (Math.random() - 0.5) * micro;
 			}
@@ -638,7 +632,7 @@ class GlassEngravingContent implements ExperimentContent3D {
 		// --- Create engraving texture ---
 		const texSize = 1024;
 		const engravingTexture = createEngravingTexture(texSize, texSize);
-		const normalMap = createNormalMapFromCanvas(engravingTexture.image as HTMLCanvasElement, 6);
+		const normalMap = createNormalMapFromCanvas(engravingTexture.image as HTMLCanvasElement, 8);
 
 		// --- Glass panel: dark tinted glass with glowing engraved lines ---
 		// The key insight: instead of relying on roughness-based transmission contrast
@@ -665,7 +659,7 @@ class GlassEngravingContent implements ExperimentContent3D {
 
 			// Normal map gives depth to the grooves
 			normalMap: normalMap,
-			normalScale: new Vector2(0.8, 0.8),
+			normalScale: new Vector2(1.2, 1.2),
 
 			envMapIntensity: 0.5,
 			clearcoat: 0.5,
