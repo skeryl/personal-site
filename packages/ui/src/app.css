@@ -64,19 +64,20 @@
 		border-radius: 3px;
 		background: var(--range-track);
 		outline: none;
+		touch-action: none;
 	}
 	input[type='range']::-webkit-slider-thumb {
 		-webkit-appearance: none;
 		appearance: none;
-		width: 18px;
-		height: 18px;
+		width: 22px;
+		height: 22px;
 		border-radius: 50%;
 		background: var(--range-thumb);
 		cursor: pointer;
 	}
 	input[type='range']::-moz-range-thumb {
-		width: 18px;
-		height: 18px;
+		width: 22px;
+		height: 22px;
 		border-radius: 50%;
 		background: var(--range-thumb);
 		cursor: pointer;
@@ -86,5 +87,32 @@
 		height: 6px;
 		border-radius: 3px;
 		background: var(--range-track);
+	}
+
+	@media (pointer: coarse) {
+		input[type='range'] {
+			height: 8px;
+			border-radius: 4px;
+			padding: 14px 0;
+			box-sizing: content-box;
+			background-clip: content-box;
+		}
+		input[type='range']::-webkit-slider-thumb {
+			width: 36px;
+			height: 36px;
+		}
+		input[type='range']::-moz-range-thumb {
+			width: 36px;
+			height: 36px;
+		}
+		input[type='range']::-moz-range-track {
+			height: 8px;
+			border-radius: 4px;
+		}
+		input[type='number'],
+		select {
+			min-height: 44px;
+			font-size: 16px;
+		}
 	}
 }

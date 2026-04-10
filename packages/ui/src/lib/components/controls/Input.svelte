@@ -5,10 +5,11 @@
 		label?: string;
 		wrapperClass?: string;
 		onChange: ChangeEventHandler<HTMLInputElement>;
+		onInput?: ChangeEventHandler<HTMLInputElement>;
 		[key: string]: any;
 	}
 
-	let { label = '', wrapperClass = '', onChange, ...rest }: Props = $props();
+	let { label = '', wrapperClass = '', onChange, onInput, ...rest }: Props = $props();
 </script>
 
 <div class={`flex flex-col ${wrapperClass}`}>
@@ -17,5 +18,10 @@
 			<span class="text-xs font-bold">{label}</span>
 		{/if}
 	</label>
-	<input {...rest} class={`rounded !text-md px-2 py-1 ${rest.class}`} onchange={onChange} />
+	<input
+		{...rest}
+		class={`rounded !text-md px-2 py-1 ${rest.class}`}
+		onchange={onChange}
+		oninput={onInput}
+	/>
 </div>

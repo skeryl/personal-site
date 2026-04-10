@@ -41,6 +41,7 @@
 				max={numberRange.max}
 				step={numberRange.step ?? 'any'}
 				onChange={onNumberParamChanged}
+				onInput={onNumberParamChanged}
 				value={param.value}
 				label={param.name}
 				name={inputId}
@@ -66,7 +67,7 @@
 			<label for={inputId} class="text-xs font-bold">{param.name}</label>
 			<select
 				id={inputId}
-				class="rounded text-md px-2 py-1"
+				class="rounded text-md px-2 py-2 min-h-[44px]"
 				value={param.value}
 				onchange={onStringSelectChanged}
 			>

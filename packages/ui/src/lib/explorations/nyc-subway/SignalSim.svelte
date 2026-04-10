@@ -1247,11 +1247,30 @@
 
 	@media (max-width: 600px) {
 		.sim-controls {
-			padding: 10px 12px;
+			padding: 12px;
+			gap: 10px;
+		}
+		.speed-btn {
+			padding: 8px 12px;
+			font-size: 13px;
+			min-height: 36px;
+		}
+		.control-slider input[type='range'] {
+			width: 120px;
+		}
+		.toggle {
 			gap: 8px;
 		}
+		.toggle input[type='checkbox'] {
+			width: 20px;
+			height: 20px;
+		}
 		.toggle-label {
-			font-size: 11px;
+			font-size: 12px;
+		}
+		.delay-btn {
+			padding: 10px 16px;
+			font-size: 14px;
 		}
 	}
 </style>
