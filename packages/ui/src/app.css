@@ -65,6 +65,8 @@
 		background: var(--range-track);
 		outline: none;
 		touch-action: none;
+		user-select: none;
+		-webkit-touch-callout: none;
 	}
 	input[type='range']::-webkit-slider-thumb {
 		-webkit-appearance: none;
@@ -93,17 +95,17 @@
 		input[type='range'] {
 			height: 8px;
 			border-radius: 4px;
-			padding: 14px 0;
+			padding: 10px 0;
 			box-sizing: content-box;
 			background-clip: content-box;
 		}
 		input[type='range']::-webkit-slider-thumb {
-			width: 36px;
-			height: 36px;
+			width: 28px;
+			height: 28px;
 		}
 		input[type='range']::-moz-range-thumb {
-			width: 36px;
-			height: 36px;
+			width: 28px;
+			height: 28px;
 		}
 		input[type='range']::-moz-range-track {
 			height: 8px;

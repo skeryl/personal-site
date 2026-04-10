@@ -31,10 +31,11 @@
 	let vec2Value = $derived(param.value as unknown as Vec2);
 </script>
 
-<div class="flex-col px-2">
+<div class="flex flex-col w-full px-2">
 	{#if param.type === ParamType.number}
 		{#if numberRange}
 			<Input
+				wrapperClass="w-full"
 				class="w-full"
 				type="range"
 				min={numberRange.min}
