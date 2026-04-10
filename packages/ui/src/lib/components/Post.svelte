@@ -113,7 +113,7 @@
 	});
 </script>
 
-<div class="flex flex-1 flex-col h-full">
+<div class="flex flex-1 flex-col h-full" class:experiment-layout={requiresCanvas}>
 	{#if !hideHeader}
 		<a
 			href="/"
@@ -148,7 +148,10 @@
 		{/if}
 	{/if}
 
-	<div bind:this={container} class="flex flex-1 relative min-h-[80vh]">
+	<div
+		bind:this={container}
+		class={`flex flex-1 relative ${requiresCanvas ? 'min-h-0' : 'min-h-[80vh]'}`}
+	>
 		{#if requiresCanvas}
 			<canvas bind:this={cnv}>your browser does not support HTML canvas :(</canvas>
 		{/if}
@@ -165,7 +168,7 @@
 	</div>
 
 	{#if requiresCanvas}
-		<div class="relative" bind:this={controlArea}>
+		<div class="relative flex-shrink-0" bind:this={controlArea}>
 			{#if areParamsOpen && post && post.params}
 				<PostParams params={post.params} {onParamsChange} />
 			{/if}
@@ -178,3 +181,15 @@
 		</div>
 	{/if}
 </div>
+
+<style>
+	.experiment-layout {
+		height: calc(100dvh - 6.25rem);
+	}
+
+	@media (max-width: 639px) {
+		.experiment-layout {
+			height: calc(100dvh - 4.25rem);
+		}
+	}
+</style>
