@@ -10,6 +10,7 @@
 	import { PlayState, PostControlContext } from '$lib/state/post-control';
 	import type { ContentParams } from '$lib/content-params';
 	import PostParams from '$lib/components/PostParams.svelte';
+	import { compactNav } from '$lib/state/layout';
 
 	const postControlContext = new PostControlContext({
 		playState: PlayState.playing,
@@ -30,6 +31,11 @@
 	let requiresCanvas = $derived(
 		post?.summary?.type === PostType.experiment || post?.summary?.type === PostType.experiment3d
 	);
+
+	$effect(() => {
+		compactNav.set(!!requiresCanvas);
+		return () => compactNav.set(false);
+	});
 
 	let container: HTMLDivElement | undefined = $state(undefined);
 	let cnv: HTMLCanvasElement | undefined = $state(undefined);
@@ -115,20 +121,21 @@
 
 <div class="flex flex-1 flex-col h-full" class:experiment-layout={requiresCanvas}>
 	{#if !hideHeader}
-		<div class="post-header" class:experiment-header={requiresCanvas}>
+		<!-- Full header: desktop always, mobile for non-experiments -->
+		<div class="post-header" class:experiment-header-full={requiresCanvas}>
 			<a
 				href="/"
 				class="text-sm text-theme-text-muted hover:text-theme-text-secondary no-underline transition-colors"
 				>← journal</a
 			>
-			<div class="flex flex-row items-baseline mt-1">
+			<div class="flex flex-row items-baseline mt-2">
 				<h1 class="flex-1">{title}</h1>
 				<div>
 					{date?.toLocaleDateString()}
 				</div>
 			</div>
 			{#if post?.summary.collaborators?.length}
-				<div class="flex flex-wrap gap-x-4 gap-y-1 mb-1 -mt-1">
+				<div class="flex flex-wrap gap-x-4 gap-y-1 mb-3 -mt-1">
 					{#each post.summary.collaborators as collab}
 						<span class="text-sm text-theme-text-secondary">
 							{collab.role}:
@@ -148,6 +155,19 @@
 				</div>
 			{/if}
 		</div>
+
+		<!-- Compact header: mobile experiments only -->
+		{#if requiresCanvas}
+			<div class="experiment-header-compact flex-shrink-0">
+				<a
+					href="/"
+					class="text-theme-text-muted hover:text-theme-text-secondary no-underline transition-colors shrink-0"
+					>←</a
+				>
+				<span class="text-base font-semibold truncate flex-1">{title}</span>
+				<span class="text-xs text-theme-text-muted shrink-0">{date?.toLocaleDateString()}</span>
+			</div>
+		{/if}
 	{/if}
 
 	<div
@@ -186,29 +206,27 @@
 
 <style>
 	.experiment-layout {
-		position: relative;
 		height: calc(100dvh - 6.25rem);
+	}
+
+	.experiment-header-compact {
+		display: none;
 	}
 
 	@media (max-width: 639px) {
 		.experiment-layout {
-			height: calc(100dvh - 4.25rem);
+			height: calc(100dvh - 0.75rem);
 		}
 
-		.experiment-header {
-			position: absolute;
-			top: 0;
-			left: 0;
-			right: 0;
-			z-index: 10;
-			padding-bottom: 1.5rem;
-			background: linear-gradient(to bottom, var(--color-bg) 40%, transparent);
-			pointer-events: none;
+		.experiment-header-full {
+			display: none;
 		}
 
-		.experiment-header :global(a),
-		.experiment-header :global(button) {
-			pointer-events: auto;
+		.experiment-header-compact {
+			display: flex;
+			align-items: baseline;
+			gap: 0.5rem;
+			padding: 0.25rem 0;
 		}
 	}
 </style>
