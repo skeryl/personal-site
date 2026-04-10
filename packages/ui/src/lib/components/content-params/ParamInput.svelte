@@ -31,9 +31,13 @@
 	let vec2Value = $derived(param.value as unknown as Vec2);
 </script>
 
-<div class="flex flex-col w-full px-2">
+<div class="flex flex-col w-full">
 	{#if param.type === ParamType.number}
 		{#if numberRange}
+			<div class="flex items-center justify-between mb-1">
+				<span class="text-xs font-bold">{param.name}</span>
+				<span class="text-xs text-neutral-500 tabular-nums">{param.value}</span>
+			</div>
 			<Input
 				wrapperClass="w-full"
 				class="w-full"
@@ -44,10 +48,8 @@
 				onChange={onNumberParamChanged}
 				onInput={onNumberParamChanged}
 				value={param.value}
-				label={param.name}
 				name={inputId}
 			/>
-			<span class="text-xs text-neutral-500">{param.value}</span>
 		{:else}
 			<Input
 				wrapperClass="w-full"

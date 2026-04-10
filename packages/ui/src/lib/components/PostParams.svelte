@@ -9,6 +9,9 @@
 
 	let { params = $bindable(), onParamsChange }: Props = $props();
 
+	let activeIndex = $state(0);
+	let activeParam = $derived(params[activeIndex]);
+
 	function onParamChange(changedParam: ContentParam<ParamType>) {
 		if (params && onParamsChange) {
 			const newParams = params.map((p) => (p.id === changedParam.id ? changedParam : p));
@@ -18,20 +21,65 @@
 	}
 </script>
 
-<div
-	class="absolute bottom-[calc(100%+0.5rem)] right-2 w-fit min-w-[200px] max-w-[calc(100vw-1rem)] max-h-[60vh] rounded-md shadow-lg p-4 overflow-y-auto z-10 sm:min-w-[200px] max-sm:left-2 max-sm:min-w-0 max-sm:w-auto max-sm:p-5 params-panel"
->
-	{#each params as param}
-		<div class="flex w-full my-2.5 max-sm:my-4">
-			<ParamInput {param} onChange={onParamChange} />
-		</div>
-	{/each}
+<div class="params-strip">
+	<div class="param-control">
+		<ParamInput param={activeParam} onChange={onParamChange} />
+	</div>
+	<div class="param-tabs">
+		{#each params as param, i}
+			<button class="param-tab" class:active={i === activeIndex} onclick={() => (activeIndex = i)}>
+				{param.name}
+			</button>
+		{/each}
+	</div>
 </div>
 
 <style>
-	.params-panel {
+	.params-strip {
 		background: color-mix(in srgb, var(--color-surface) 82%, transparent);
 		backdrop-filter: blur(12px);
 		-webkit-backdrop-filter: blur(12px);
+		border-top: 1px solid var(--color-border-subtle);
+	}
+
+	.param-control {
+		padding: 0.5rem 0.75rem 0;
+	}
+
+	.param-tabs {
+		display: flex;
+		overflow-x: auto;
+		gap: 0.375rem;
+		padding: 0.5rem 0.75rem;
+		-webkit-overflow-scrolling: touch;
+		scrollbar-width: none;
+	}
+
+	.param-tabs::-webkit-scrollbar {
+		display: none;
+	}
+
+	.param-tab {
+		flex-shrink: 0;
+		padding: 0.375rem 0.75rem;
+		border-radius: 9999px;
+		font-size: 0.8125rem;
+		font-weight: 500;
+		color: var(--color-text-secondary);
+		background: transparent;
+		border: 1px solid transparent;
+		cursor: pointer;
+		transition: all 0.15s;
+		white-space: nowrap;
+	}
+
+	.param-tab:hover {
+		color: var(--color-text);
+	}
+
+	.param-tab.active {
+		color: var(--color-text-heading);
+		background: var(--color-surface-active);
+		border-color: var(--color-border);
 	}
 </style>

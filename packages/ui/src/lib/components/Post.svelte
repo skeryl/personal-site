@@ -168,7 +168,7 @@
 	</div>
 
 	{#if requiresCanvas}
-		<div class="relative flex-shrink-0" bind:this={controlArea}>
+		<div class="flex-shrink-0 flex flex-col" bind:this={controlArea}>
 			{#if areParamsOpen && post && post.params}
 				<PostParams params={post.params} {onParamsChange} />
 			{/if}
