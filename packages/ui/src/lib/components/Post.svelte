@@ -115,37 +115,39 @@
 
 <div class="flex flex-1 flex-col h-full" class:experiment-layout={requiresCanvas}>
 	{#if !hideHeader}
-		<a
-			href="/"
-			class="text-sm text-theme-text-muted hover:text-theme-text-secondary no-underline transition-colors"
-			>← journal</a
-		>
-		<div class="flex flex-row items-baseline mt-2">
-			<h1 class="flex-1">{title}</h1>
-			<div>
-				{date?.toLocaleDateString()}
+		<div class="post-header" class:experiment-header={requiresCanvas}>
+			<a
+				href="/"
+				class="text-sm text-theme-text-muted hover:text-theme-text-secondary no-underline transition-colors"
+				>← journal</a
+			>
+			<div class="flex flex-row items-baseline mt-1">
+				<h1 class="flex-1">{title}</h1>
+				<div>
+					{date?.toLocaleDateString()}
+				</div>
 			</div>
+			{#if post?.summary.collaborators?.length}
+				<div class="flex flex-wrap gap-x-4 gap-y-1 mb-1 -mt-1">
+					{#each post.summary.collaborators as collab}
+						<span class="text-sm text-theme-text-secondary">
+							{collab.role}:
+							{#if collab.url}
+								<a
+									href={collab.url}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="underline underline-offset-2 hover:text-theme-text-heading transition-colors"
+									>{collab.name}</a
+								>
+							{:else}
+								{collab.name}
+							{/if}
+						</span>
+					{/each}
+				</div>
+			{/if}
 		</div>
-		{#if post?.summary.collaborators?.length}
-			<div class="flex flex-wrap gap-x-4 gap-y-1 mb-3 -mt-1">
-				{#each post.summary.collaborators as collab}
-					<span class="text-sm text-theme-text-secondary">
-						{collab.role}:
-						{#if collab.url}
-							<a
-								href={collab.url}
-								target="_blank"
-								rel="noopener noreferrer"
-								class="underline underline-offset-2 hover:text-theme-text-heading transition-colors"
-								>{collab.name}</a
-							>
-						{:else}
-							{collab.name}
-						{/if}
-					</span>
-				{/each}
-			</div>
-		{/if}
 	{/if}
 
 	<div
@@ -184,12 +186,29 @@
 
 <style>
 	.experiment-layout {
+		position: relative;
 		height: calc(100dvh - 6.25rem);
 	}
 
 	@media (max-width: 639px) {
 		.experiment-layout {
 			height: calc(100dvh - 4.25rem);
+		}
+
+		.experiment-header {
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			z-index: 10;
+			padding-bottom: 1.5rem;
+			background: linear-gradient(to bottom, var(--color-bg) 40%, transparent);
+			pointer-events: none;
+		}
+
+		.experiment-header :global(a),
+		.experiment-header :global(button) {
+			pointer-events: auto;
 		}
 	}
 </style>
