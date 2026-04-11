@@ -5,9 +5,11 @@
 	interface Props {
 		params: ContentParams;
 		onParamsChange: (p: ContentParams) => void;
+		onSave: () => void;
+		onCancel: () => void;
 	}
 
-	let { params = $bindable(), onParamsChange }: Props = $props();
+	let { params = $bindable(), onParamsChange, onSave, onCancel }: Props = $props();
 
 	let activeIndex = $state(0);
 	let activeParam = $derived(params[activeIndex]);
@@ -42,6 +44,10 @@
 			</button>
 		{/each}
 	</div>
+</div>
+<div class="action-bar">
+	<button class="action-btn cancel-btn" onclick={onCancel}>Cancel</button>
+	<button class="action-btn save-btn" onclick={onSave}>Save</button>
 </div>
 
 <style>
@@ -100,5 +106,43 @@
 		margin-left: 0.25rem;
 		font-variant-numeric: tabular-nums;
 		opacity: 0.6;
+	}
+
+	.action-bar {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		height: 3rem;
+		padding: 0 0.75rem;
+		background-color: var(--color-surface);
+	}
+
+	.action-btn {
+		padding: 0.375rem 1.25rem;
+		border-radius: 9999px;
+		font-size: 0.875rem;
+		font-weight: 500;
+		cursor: pointer;
+		transition: all 0.15s;
+		border: none;
+	}
+
+	.cancel-btn {
+		color: var(--color-text-secondary);
+		background: transparent;
+	}
+
+	.cancel-btn:hover {
+		color: var(--color-text);
+	}
+
+	.save-btn {
+		color: var(--color-text-strong);
+		background: var(--color-surface-active);
+		border: 1px solid var(--color-border);
+	}
+
+	.save-btn:hover {
+		background: var(--color-border);
 	}
 </style>

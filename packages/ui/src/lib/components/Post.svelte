@@ -41,10 +41,11 @@
 	let cnv: HTMLCanvasElement | undefined = $state(undefined);
 	let controlArea: HTMLDivElement | undefined = $state(undefined);
 	let areParamsOpen = $state(false);
+	let paramsSnapshot: ContentParams | undefined = $state(undefined);
 
 	function onDocumentClick(e: MouseEvent) {
 		if (areParamsOpen && controlArea && !controlArea.contains(e.target as Node)) {
-			areParamsOpen = false;
+			cancelParams();
 		}
 	}
 
@@ -72,24 +73,48 @@
 	}
 
 	function toggleParams() {
-		areParamsOpen = !areParamsOpen;
+		if (!areParamsOpen && post?.params) {
+			paramsSnapshot = post.params.map((p) => ({ ...p }));
+			areParamsOpen = true;
+		} else {
+			cancelParams();
+		}
 	}
 
 	function getParamsStorageKey(): string | undefined {
 		return post?.summary?.id ? `post-params:${post.summary.id}` : undefined;
 	}
 
-	function onParamsChange(params: ContentParams) {
+	function onParamsPreview(params: ContentParams) {
 		postControlContext.setParams(params);
-		const key = getParamsStorageKey();
-		if (key) {
-			try {
-				const data = params.map((p) => ({ id: p.id, value: p.value }));
-				localStorage.setItem(key, JSON.stringify(data));
-			} catch {
-				/* storage full or unavailable */
+		if (post) {
+			post = { ...post, params };
+		}
+	}
+
+	function saveParams() {
+		if (post?.params) {
+			const key = getParamsStorageKey();
+			if (key) {
+				try {
+					const data = post.params.map((p) => ({ id: p.id, value: p.value }));
+					localStorage.setItem(key, JSON.stringify(data));
+				} catch {
+					/* storage full or unavailable */
+				}
 			}
 		}
+		areParamsOpen = false;
+		paramsSnapshot = undefined;
+	}
+
+	function cancelParams() {
+		if (paramsSnapshot && post) {
+			post = { ...post, params: paramsSnapshot };
+			postControlContext.setParams(paramsSnapshot);
+		}
+		areParamsOpen = false;
+		paramsSnapshot = undefined;
 	}
 
 	function loadSavedParams(): ContentParams | undefined {
@@ -192,14 +217,20 @@
 	{#if requiresCanvas}
 		<div class="flex-shrink-0 flex flex-col control-area" bind:this={controlArea}>
 			{#if areParamsOpen && post && post.params}
-				<PostParams params={post.params} {onParamsChange} />
+				<PostParams
+					params={post.params}
+					onParamsChange={onParamsPreview}
+					onSave={saveParams}
+					onCancel={cancelParams}
+				/>
+			{:else}
+				<PostControlBar
+					{toggleFullScreen}
+					postId={post?.summary.id}
+					hasParams={Boolean(post?.params)}
+					{toggleParams}
+				/>
 			{/if}
-			<PostControlBar
-				{toggleFullScreen}
-				postId={post?.summary.id}
-				hasParams={Boolean(post?.params)}
-				{toggleParams}
-			/>
 		</div>
 	{/if}
 </div>
