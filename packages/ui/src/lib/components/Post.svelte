@@ -276,6 +276,8 @@
 
 		.control-area {
 			margin: 0 -0.75rem -0.5rem;
+			position: relative;
+			z-index: 10;
 		}
 	}
 </style>
