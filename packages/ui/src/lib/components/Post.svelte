@@ -161,10 +161,10 @@
 			<div class="experiment-header-compact flex-shrink-0">
 				<a
 					href="/"
-					class="text-theme-text-muted hover:text-theme-text-secondary no-underline transition-colors shrink-0"
+					class="text-sm text-theme-text-muted hover:text-theme-text-secondary no-underline transition-colors shrink-0"
 					>←</a
 				>
-				<span class="text-base font-semibold truncate flex-1">{title}</span>
+				<span class="text-sm font-semibold truncate flex-1">{title}</span>
 				<span class="text-xs text-theme-text-muted shrink-0">{date?.toLocaleDateString()}</span>
 			</div>
 		{/if}
@@ -206,6 +206,7 @@
 
 <style>
 	.experiment-layout {
+		flex: none;
 		height: calc(100dvh - 6.25rem);
 	}
 
@@ -224,7 +225,7 @@
 
 		.experiment-header-compact {
 			display: flex;
-			align-items: baseline;
+			align-items: center;
 			gap: 0.5rem;
 			padding: 0.25rem 0;
 		}
