@@ -161,7 +161,7 @@
 			<div class="experiment-header-compact flex-shrink-0">
 				<a
 					href="/"
-					class="text-sm text-theme-text-muted hover:text-theme-text-secondary no-underline transition-colors shrink-0"
+					class="flex items-center justify-center text-theme-text-muted hover:text-theme-text-secondary no-underline transition-colors shrink-0 back-btn"
 					>←</a
 				>
 				<span class="text-sm font-semibold truncate flex-1">{title}</span>
@@ -190,7 +190,7 @@
 	</div>
 
 	{#if requiresCanvas}
-		<div class="flex-shrink-0 flex flex-col" bind:this={controlArea}>
+		<div class="flex-shrink-0 flex flex-col control-area" bind:this={controlArea}>
 			{#if areParamsOpen && post && post.params}
 				<PostParams params={post.params} {onParamsChange} />
 			{/if}
@@ -226,8 +226,21 @@
 		.experiment-header-compact {
 			display: flex;
 			align-items: center;
-			gap: 0.5rem;
-			padding: 0.25rem 0;
+			gap: 0.25rem;
+			height: 2.75rem;
+			margin: 0 -0.75rem;
+			padding: 0 0.75rem;
+		}
+
+		.experiment-header-compact .back-btn {
+			width: 2.75rem;
+			height: 2.75rem;
+			margin-left: -0.75rem;
+			font-size: 1.125rem;
+		}
+
+		.control-area {
+			margin: 0 -0.75rem -0.5rem;
 		}
 	}
 </style>
