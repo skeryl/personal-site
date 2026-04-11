@@ -34,13 +34,8 @@
 		const { camera, renderer } = renderParams;
 		const parent = canvas.parentElement;
 		if (renderer && canvas && parent && camera) {
-			/* Collapse canvas so it doesn't inflate the parent's measured size */
-			canvas.style.width = '0';
-			canvas.style.height = '0';
 			const width = parent.clientWidth;
 			const height = parent.clientHeight;
-			canvas.style.width = '';
-			canvas.style.height = '';
 			res.x = width;
 			res.y = height;
 			canvas.width = width;
@@ -97,8 +92,17 @@
 
 	onMount(() => {
 		document.addEventListener('fullscreenchange', onFullscreenChange);
+
+		let observer: ResizeObserver | undefined;
+		const parent = cnv?.parentElement;
+		if (parent) {
+			observer = new ResizeObserver(handleResize);
+			observer.observe(parent);
+		}
+
 		return () => {
 			document.removeEventListener('fullscreenchange', onFullscreenChange);
+			observer?.disconnect();
 			content?.stop();
 		};
 	});
@@ -124,7 +128,6 @@
 					container: cnv.parentElement as HTMLElement
 				};
 
-				window.addEventListener('resize', handleResize);
 				handleResize();
 				content.start(renderParams);
 				isRunning = true;
