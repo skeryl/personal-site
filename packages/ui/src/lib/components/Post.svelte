@@ -10,6 +10,7 @@
 	import { PlayState, PostControlContext } from '$lib/state/post-control';
 	import type { ContentParams } from '$lib/content-params';
 	import PostParams from '$lib/components/PostParams.svelte';
+	import Icon from '$lib/components/icons/Icon.svelte';
 	import { compactNav } from '$lib/state/layout';
 
 	const postControlContext = new PostControlContext({
@@ -181,10 +182,8 @@
 		<!-- Compact header: mobile experiments only -->
 		{#if requiresCanvas}
 			<div class="experiment-header-compact flex-shrink-0">
-				<a
-					href="/"
-					class="flex items-center justify-center text-theme-text-muted hover:text-theme-text-secondary no-underline transition-colors shrink-0 back-btn"
-					>←</a
+				<a href="/" class="flex items-center justify-center no-underline shrink-0 back-btn"
+					><Icon type="chevron-left" size="sm" className="!text-inherit hover:!text-inherit" /></a
 				>
 				<span class="text-sm font-semibold truncate flex-1">{title}</span>
 				<span class="text-xs text-theme-text-muted shrink-0">{date?.toLocaleDateString()}</span>
@@ -266,7 +265,12 @@
 			width: 2.75rem;
 			height: 2.75rem;
 			margin-left: -0.75rem;
-			font-size: 1.125rem;
+			color: var(--color-text-secondary);
+			transition: color 0.15s;
+		}
+
+		.experiment-header-compact .back-btn:hover {
+			color: var(--color-text-heading);
 		}
 
 		.control-area {
