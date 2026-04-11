@@ -42,7 +42,6 @@
 	let controlArea: HTMLDivElement | undefined = $state(undefined);
 	let areParamsOpen = $state(false);
 	let paramsSnapshot: ContentParams | undefined = $state(undefined);
-	let pendingParams: ContentParams | undefined = $state(undefined);
 
 	function onDocumentClick(e: MouseEvent) {
 		if (areParamsOpen && controlArea && !controlArea.contains(e.target as Node)) {
@@ -88,25 +87,20 @@
 
 	function onParamsPreview(params: ContentParams) {
 		postControlContext.setParams(params);
-		pendingParams = params;
 	}
 
-	function saveParams() {
-		const paramsToSave = pendingParams ?? post?.params;
-		if (paramsToSave) {
-			const key = getParamsStorageKey();
-			if (key) {
-				try {
-					const data = paramsToSave.map((p) => ({ id: p.id, value: p.value }));
-					localStorage.setItem(key, JSON.stringify(data));
-				} catch {
-					/* storage full or unavailable */
-				}
+	function saveParams(params: ContentParams) {
+		const key = getParamsStorageKey();
+		if (key) {
+			try {
+				const data = params.map((p) => ({ id: p.id, value: p.value }));
+				localStorage.setItem(key, JSON.stringify(data));
+			} catch {
+				/* storage full or unavailable */
 			}
 		}
 		areParamsOpen = false;
 		paramsSnapshot = undefined;
-		pendingParams = undefined;
 	}
 
 	function cancelParams() {
@@ -115,7 +109,6 @@
 		}
 		areParamsOpen = false;
 		paramsSnapshot = undefined;
-		pendingParams = undefined;
 	}
 
 	function loadSavedParams(): ContentParams | undefined {

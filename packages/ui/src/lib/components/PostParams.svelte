@@ -6,7 +6,7 @@
 	interface Props {
 		params: ContentParams;
 		onParamsChange: (p: ContentParams) => void;
-		onSave: () => void;
+		onSave: (p: ContentParams) => void;
 		onCancel: () => void;
 	}
 
@@ -53,7 +53,7 @@
 				</button>
 			{/each}
 		</div>
-		<button class="action-icon save-icon" onclick={onSave} aria-label="Save changes">
+		<button class="action-icon save-icon" onclick={() => onSave(params)} aria-label="Save changes">
 			<Icon type="circle-check" size="sm" />
 		</button>
 	</div>
