@@ -76,12 +76,12 @@
 		align-items: center;
 		padding: 0 0.5rem 0.5rem;
 		gap: 0.5rem;
-		overflow-y: clip;
 	}
 
 	.param-tabs {
 		display: flex;
 		overflow-x: auto;
+		overflow-y: clip;
 		gap: 0.375rem;
 		flex: 1;
 		min-width: 0;
@@ -150,7 +150,7 @@
 	}
 
 	.save-icon {
-		color: var(--color-text-strong);
+		color: var(--color-surface-secondary);
 		background: var(--color-surface-active-strong);
 	}
 
