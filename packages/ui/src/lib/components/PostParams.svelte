@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { type ContentParam, type ContentParams, ParamType } from '$lib/content-params/index.js';
 	import ParamInput from '$lib/components/content-params/ParamInput.svelte';
+	import Icon from '$lib/components/icons/Icon.svelte';
 
 	interface Props {
 		params: ContentParams;
@@ -34,20 +35,28 @@
 	<div class="param-control">
 		<ParamInput param={activeParam} onChange={onParamChange} />
 	</div>
-	<div class="param-tabs">
-		{#each params as param, i}
-			<button class="param-tab" class:active={i === activeIndex} onclick={() => (activeIndex = i)}>
-				{param.name}
-				{#if i === activeIndex}
-					<span class="param-value">{formatValue(param)}</span>
-				{/if}
-			</button>
-		{/each}
+	<div class="param-row">
+		<button class="action-icon cancel-icon" onclick={onCancel} aria-label="Cancel changes">
+			<Icon type="circle-x" size="sm" />
+		</button>
+		<div class="param-tabs">
+			{#each params as param, i}
+				<button
+					class="param-tab"
+					class:active={i === activeIndex}
+					onclick={() => (activeIndex = i)}
+				>
+					{param.name}
+					{#if i === activeIndex}
+						<span class="param-value">{formatValue(param)}</span>
+					{/if}
+				</button>
+			{/each}
+		</div>
+		<button class="action-icon save-icon" onclick={onSave} aria-label="Save changes">
+			<Icon type="circle-check" size="sm" />
+		</button>
 	</div>
-</div>
-<div class="action-bar">
-	<button class="action-btn cancel-btn" onclick={onCancel}>Cancel</button>
-	<button class="action-btn save-btn" onclick={onSave}>Save</button>
 </div>
 
 <style>
@@ -62,11 +71,19 @@
 		padding: 0.5rem 0.75rem;
 	}
 
+	.param-row {
+		display: flex;
+		align-items: center;
+		padding: 0 0.375rem 0.5rem;
+		gap: 0.25rem;
+	}
+
 	.param-tabs {
 		display: flex;
 		overflow-x: auto;
 		gap: 0.375rem;
-		padding: 0 0.75rem 0.5rem;
+		flex: 1;
+		min-width: 0;
 		-webkit-overflow-scrolling: touch;
 		scrollbar-width: none;
 	}
@@ -108,41 +125,34 @@
 		opacity: 0.6;
 	}
 
-	.action-bar {
+	.action-icon {
+		flex-shrink: 0;
 		display: flex;
-		justify-content: space-between;
 		align-items: center;
-		height: 3rem;
-		padding: 0 0.75rem;
-		background-color: var(--color-surface);
-	}
-
-	.action-btn {
-		padding: 0.375rem 1.25rem;
-		border-radius: 9999px;
-		font-size: 0.875rem;
-		font-weight: 500;
+		justify-content: center;
+		width: 2.25rem;
+		height: 2.25rem;
+		border-radius: 50%;
+		border: none;
 		cursor: pointer;
 		transition: all 0.15s;
-		border: none;
 	}
 
-	.cancel-btn {
-		color: var(--color-text-secondary);
-		background: transparent;
+	.cancel-icon {
+		color: var(--color-accent-danger);
+		background: color-mix(in srgb, var(--color-accent-danger) 10%, transparent);
 	}
 
-	.cancel-btn:hover {
-		color: var(--color-text);
+	.cancel-icon:hover {
+		background: color-mix(in srgb, var(--color-accent-danger) 20%, transparent);
 	}
 
-	.save-btn {
-		color: var(--color-text-strong);
-		background: var(--color-surface-active);
-		border: 1px solid var(--color-border);
+	.save-icon {
+		color: var(--color-accent-success);
+		background: color-mix(in srgb, var(--color-accent-success) 10%, transparent);
 	}
 
-	.save-btn:hover {
-		background: var(--color-border);
+	.save-icon:hover {
+		background: color-mix(in srgb, var(--color-accent-success) 20%, transparent);
 	}
 </style>
