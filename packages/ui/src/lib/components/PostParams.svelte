@@ -37,7 +37,7 @@
 	</div>
 	<div class="param-row">
 		<button class="action-icon cancel-icon" onclick={onCancel} aria-label="Cancel changes">
-			<Icon type="circle-x" size="sm" />
+			<Icon type="circle-x" size="sm" className="!text-inherit hover:!text-inherit" />
 		</button>
 		<div class="param-tabs">
 			{#each params as param, i}
@@ -54,7 +54,7 @@
 			{/each}
 		</div>
 		<button class="action-icon save-icon" onclick={() => onSave(params)} aria-label="Save changes">
-			<Icon type="circle-check" size="sm" />
+			<Icon type="circle-check" size="sm" className="!text-inherit hover:!text-inherit" />
 		</button>
 	</div>
 </div>
