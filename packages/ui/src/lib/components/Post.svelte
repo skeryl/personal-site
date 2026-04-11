@@ -194,10 +194,12 @@
 
 	<div
 		bind:this={container}
-		class={`flex flex-1 relative ${requiresCanvas ? 'min-h-0 overflow-hidden' : 'min-h-[80vh]'}`}
+		class={`flex flex-1 relative ${requiresCanvas ? 'min-h-0' : 'min-h-[80vh]'}`}
 	>
 		{#if requiresCanvas}
-			<canvas bind:this={cnv}>your browser does not support HTML canvas :(</canvas>
+			<canvas class="absolute inset-0 w-full h-full" bind:this={cnv}
+				>your browser does not support HTML canvas :(</canvas
+			>
 		{/if}
 
 		{#if post}

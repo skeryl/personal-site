@@ -3,7 +3,7 @@
 
 	import { type Post, type PostContent, type StageContent } from '@sc/model';
 	import { Stage } from 'grraf';
-	import { getContext } from 'svelte';
+	import { getContext, onMount } from 'svelte';
 	import { PlayState, PlayStateChangedEvent, PostControlContext } from '$lib/state/post-control';
 
 	interface Props {
@@ -15,6 +15,7 @@
 	let { post = undefined, container = undefined, cnv = undefined }: Props = $props();
 
 	let content = $derived(post?.content() as StageContent | undefined);
+	let stage: Stage | undefined;
 
 	const ctx = getContext('post-control') as PostControlContext;
 
@@ -40,9 +41,25 @@
 		}
 	});
 
+	function handleResize() {
+		if (stage && container) {
+			stage.canvas.height = container.clientHeight;
+			stage.canvas.width = container.clientWidth;
+		}
+	}
+
+	onMount(() => {
+		let observer: ResizeObserver | undefined;
+		if (container) {
+			observer = new ResizeObserver(handleResize);
+			observer.observe(container);
+		}
+		return () => observer?.disconnect();
+	});
+
 	run(() => {
 		if (cnv) {
-			const stage: Stage | undefined = new Stage(cnv!);
+			stage = new Stage(cnv!);
 
 			stage.canvas.height = container!.clientHeight;
 			stage.canvas.width = container!.clientWidth;
