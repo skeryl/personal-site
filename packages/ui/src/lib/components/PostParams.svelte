@@ -74,8 +74,9 @@
 	.param-row {
 		display: flex;
 		align-items: center;
-		padding: 0 0.375rem 0.5rem;
-		gap: 0.25rem;
+		padding: 0 0.5rem 0.5rem;
+		gap: 0.5rem;
+		overflow-y: clip;
 	}
 
 	.param-tabs {
@@ -130,8 +131,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 2.25rem;
-		height: 2.25rem;
+		width: 2.5rem;
+		height: 2.5rem;
 		border-radius: 50%;
 		border: none;
 		cursor: pointer;
@@ -139,20 +140,21 @@
 	}
 
 	.cancel-icon {
-		color: var(--color-accent-danger);
-		background: color-mix(in srgb, var(--color-accent-danger) 10%, transparent);
+		color: var(--color-text-muted);
+		background: var(--color-surface-active);
 	}
 
 	.cancel-icon:hover {
-		background: color-mix(in srgb, var(--color-accent-danger) 20%, transparent);
+		color: var(--color-text-secondary);
+		background: var(--color-border);
 	}
 
 	.save-icon {
-		color: var(--color-accent-success);
-		background: color-mix(in srgb, var(--color-accent-success) 10%, transparent);
+		color: var(--color-text-strong);
+		background: var(--color-surface-active-strong);
 	}
 
 	.save-icon:hover {
-		background: color-mix(in srgb, var(--color-accent-success) 20%, transparent);
+		background: var(--color-text-heading);
 	}
 </style>

@@ -133,8 +133,11 @@
 		}
 	}
 
+	let hasLoadedSavedParams = false;
+
 	run(() => {
-		if (post?.params) {
+		if (post?.params && !hasLoadedSavedParams) {
+			hasLoadedSavedParams = true;
 			const saved = loadSavedParams();
 			if (saved) {
 				post = { ...post, params: saved };
