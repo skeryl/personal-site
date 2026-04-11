@@ -12,6 +12,13 @@
 	let activeIndex = $state(0);
 	let activeParam = $derived(params[activeIndex]);
 
+	function formatValue(param: ContentParam<ParamType>): string {
+		if (param.type === ParamType.number && typeof param.value === 'number') {
+			return param.value % 1 === 0 ? param.value.toString() : param.value.toFixed(3);
+		}
+		return String(param.value ?? '');
+	}
+
 	function onParamChange(changedParam: ContentParam<ParamType>) {
 		if (params && onParamsChange) {
 			const newParams = params.map((p) => (p.id === changedParam.id ? changedParam : p));
@@ -29,6 +36,9 @@
 		{#each params as param, i}
 			<button class="param-tab" class:active={i === activeIndex} onclick={() => (activeIndex = i)}>
 				{param.name}
+				{#if i === activeIndex}
+					<span class="param-value">{formatValue(param)}</span>
+				{/if}
 			</button>
 		{/each}
 	</div>
@@ -43,14 +53,14 @@
 	}
 
 	.param-control {
-		padding: 0.5rem 0.75rem 0;
+		padding: 0.5rem 0.75rem;
 	}
 
 	.param-tabs {
 		display: flex;
 		overflow-x: auto;
 		gap: 0.375rem;
-		padding: 0.5rem 0.75rem;
+		padding: 0 0.75rem 0.5rem;
 		-webkit-overflow-scrolling: touch;
 		scrollbar-width: none;
 	}
@@ -69,7 +79,9 @@
 		background: transparent;
 		border: 1px solid transparent;
 		cursor: pointer;
-		transition: all 0.15s;
+		transition:
+			all 0.2s ease,
+			transform 0.2s ease;
 		white-space: nowrap;
 	}
 
@@ -81,5 +93,12 @@
 		color: var(--color-text-heading);
 		background: var(--color-surface-active);
 		border-color: var(--color-border);
+		transform: scale(1.08);
+	}
+
+	.param-value {
+		margin-left: 0.25rem;
+		font-variant-numeric: tabular-nums;
+		opacity: 0.6;
 	}
 </style>

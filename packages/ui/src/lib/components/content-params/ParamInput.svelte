@@ -34,10 +34,6 @@
 <div class="flex flex-col w-full">
 	{#if param.type === ParamType.number}
 		{#if numberRange}
-			<div class="flex items-center justify-between mb-1">
-				<span class="text-xs font-bold">{param.name}</span>
-				<span class="text-xs text-neutral-500 tabular-nums">{param.value}</span>
-			</div>
 			<Input
 				wrapperClass="w-full"
 				class="w-full"
