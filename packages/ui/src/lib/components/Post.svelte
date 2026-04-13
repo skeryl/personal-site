@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { run } from 'svelte/legacy';
 
-	import { onMount, setContext } from 'svelte';
+	import { onMount, onDestroy, setContext } from 'svelte';
 	import { type Post, PostType } from '@sc/model';
 	import ContentRendererStage from '$lib/components/ContentRendererStage.svelte';
 	import ContentRendererThree from '$lib/components/ContentRendererThree.svelte';
@@ -47,13 +47,12 @@
 		setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
 	});
 
-	$effect(() => {
-		compactNav.set(!!requiresCanvas);
-		fullbleed.set(!!requiresCanvas);
-		return () => {
-			compactNav.set(false);
-			fullbleed.set(false);
-		};
+	// Set synchronously so the layout is correct before the canvas initialises
+	compactNav.set(!!requiresCanvas);
+	fullbleed.set(!!requiresCanvas);
+	onDestroy(() => {
+		compactNav.set(false);
+		fullbleed.set(false);
 	});
 
 	let container: HTMLDivElement | undefined = $state(undefined);
