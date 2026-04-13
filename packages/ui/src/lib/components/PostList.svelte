@@ -16,9 +16,11 @@
 		return -1 * Math.sign(a.timestamp.getTime() - b.timestamp.getTime());
 	}
 
+	const ALLOWED_POSTS = new Set(['lava-territories', 'blob-convergence', 'blob-grid']);
+
 	const allPostSummaries: PostSummary[] = Object.values(allPosts)
 		.map((p) => p.summary)
-		.filter((post) => !post.isHidden)
+		.filter((post) => !post.isHidden && ALLOWED_POSTS.has(post.id))
 		.sort(sortPosts)
 		.filter((_, ix) => !(limit != undefined && ix >= limit));
 
