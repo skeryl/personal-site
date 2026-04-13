@@ -50,6 +50,8 @@ export interface StageContent {
   unpause?: () => void;
 
   stop(): void;
+
+  setParams?: (params: ContentParams) => void;
 }
 
 export interface RendererParams {

@@ -5,6 +5,7 @@
 	import Tags from '$lib/components/Tags.svelte';
 	import allPosts from '$lib/entries';
 	import PostVideoPreview from '$lib/components/PostVideoPreview.svelte';
+	import MobileCardCarousel from '$lib/components/MobileCardCarousel.svelte';
 
 	interface Props {
 		limit?: number | undefined;
@@ -75,19 +76,22 @@
 	let isAnyHovered = $derived(hoveredPost !== undefined);
 </script>
 
-<PostVideoPreview selectedPost={hoveredPost} />
+<!-- Desktop: fullscreen background video preview (hidden on mobile) -->
+<div class="hidden sm:block">
+	<PostVideoPreview selectedPost={hoveredPost} />
+</div>
 
 <!-- Filter bar -->
-<div class="mb-6">
-	<div class="flex flex-wrap items-center gap-2 mb-3">
+<div class="mb-6 max-sm:mb-2">
+	<div class="flex flex-wrap items-center gap-2 max-sm:gap-1.5 mb-3 max-sm:mb-1.5">
 		{#each allTypes as type}
 			<button
-				class="px-3 py-1 text-sm font-medium rounded-md transition-colors no-underline"
-				class:bg-neutral-800={activeType === type}
-				class:text-white={activeType === type}
-				class:bg-neutral-100={activeType !== type}
-				class:text-neutral-600={activeType !== type}
-				class:hover:bg-neutral-200={activeType !== type}
+				class="px-3 py-1 max-sm:px-2 max-sm:py-0.5 text-sm max-sm:text-xs font-medium rounded-md transition-colors no-underline"
+				class:bg-theme-filter-active-bg={activeType === type}
+				class:text-theme-filter-active-text={activeType === type}
+				class:bg-theme-filter-bg={activeType !== type}
+				class:text-theme-filter-text={activeType !== type}
+				class:hover:bg-theme-filter-hover-bg={activeType !== type}
 				onclick={() => toggleType(type)}
 			>
 				{typeLabels[type] || type}
@@ -96,19 +100,24 @@
 
 		{#if hasFilters}
 			<button
-				class="px-3 py-1 text-sm text-neutral-400 hover:text-neutral-600 transition-colors no-underline"
+				class="px-3 py-1 max-sm:px-2 max-sm:py-0.5 text-sm max-sm:text-xs text-theme-text-muted hover:text-theme-text-secondary transition-colors no-underline"
 				onclick={clearFilters}
 			>
 				Clear filters
 			</button>
 		{/if}
+
+		<!-- Post count (inline on mobile) -->
+		<span class="text-xs text-theme-text-muted sm:hidden ml-auto">
+			{filteredPosts.length}/{allPostSummaries.length}
+		</span>
 	</div>
 
 	{#if hasFilters && activeTags.size > 0}
-		<div class="flex flex-wrap gap-1.5 mb-2">
+		<div class="flex flex-wrap gap-1.5 mb-2 max-sm:mb-1">
 			{#each [...activeTags] as tag}
 				<button
-					class="rounded-full py-0.5 px-2.5 text-xs bg-neutral-700 text-white border border-neutral-700 transition-colors no-underline"
+					class="rounded-full py-0.5 px-2.5 text-xs bg-theme-tag-active-bg text-theme-tag-active-text border border-theme-tag-active-border transition-colors no-underline"
 					onclick={() => toggleTag(tag)}
 				>
 					{tag} &times;
@@ -118,14 +127,19 @@
 	{/if}
 </div>
 
-<!-- Post count -->
-<div class="text-xs text-neutral-400 mb-6">
+<!-- Post count (desktop only) -->
+<div class="text-xs text-theme-text-muted mb-6 max-sm:hidden">
 	{filteredPosts.length} of {allPostSummaries.length} entries
 </div>
 
-<!-- Card grid -->
+<!-- Mobile: swipeable card carousel with inline preview -->
+<div class="sm:hidden flex-1 flex flex-col min-h-0">
+	<MobileCardCarousel posts={filteredPosts} />
+</div>
+
+<!-- Desktop: card grid (hidden on mobile) -->
 <div
-	class="card-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
+	class="card-grid hidden sm:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
 	class:has-hover={isAnyHovered}
 	onmouseleave={() => (hoveredPost = undefined)}
 >
@@ -133,17 +147,17 @@
 		<a
 			href={`/journal/${post.id}`}
 			class="card group flex flex-col p-5 rounded-2xl no-underline transition-all duration-[600ms] ease-in-out"
-			class:is-active={hoveredPost === post}
-			class:is-dimmed={isAnyHovered && hoveredPost !== post}
+			class:is-active={hoveredPost?.id === post.id}
+			class:is-dimmed={isAnyHovered && hoveredPost?.id !== post.id}
 			onmouseenter={() => (hoveredPost = post)}
 		>
 			<div class="flex items-start justify-between gap-2 mb-3">
 				<h3
-					class="text-base font-semibold text-neutral-800 group-hover:text-neutral-950 no-underline"
+					class="text-base font-semibold text-theme-text-heading group-hover:text-theme-text-strong no-underline"
 				>
 					{post.title}
 				</h3>
-				<span class="text-xs text-neutral-400 whitespace-nowrap pt-0.5">
+				<span class="text-xs text-theme-text-muted whitespace-nowrap pt-0.5">
 					{new Date(post.timestamp).toLocaleDateString('en-US', {
 						month: 'short',
 						year: 'numeric'
@@ -154,7 +168,7 @@
 			{#if post.collaborators?.length}
 				<div class="mb-2">
 					{#each post.collaborators as collab}
-						<span class="text-xs text-neutral-500 italic">
+						<span class="text-xs text-theme-text-secondary italic">
 							{collab.role}:
 							{#if collab.url}
 								<span
@@ -188,23 +202,21 @@
 		color: inherit;
 	}
 	.collab-link:hover {
-		color: rgb(23, 23, 23);
+		color: var(--collab-link-hover);
 	}
 
 	.card {
-		background: rgba(255, 255, 255, 0.7);
+		background: var(--card-bg);
 		backdrop-filter: blur(12px);
 		-webkit-backdrop-filter: blur(12px);
-		border: 1px solid rgba(0, 0, 0, 0.06);
-		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+		border: 1px solid var(--card-border);
+		box-shadow: var(--card-shadow);
 	}
 
 	.card:hover {
-		background: rgba(255, 255, 255, 0.9);
-		border-color: rgba(0, 0, 0, 0.1);
-		box-shadow:
-			0 4px 16px rgba(0, 0, 0, 0.08),
-			0 1px 3px rgba(0, 0, 0, 0.06);
+		background: var(--card-bg-hover);
+		border-color: var(--card-border-hover);
+		box-shadow: var(--card-shadow-hover);
 		transform: translateY(-2px);
 	}
 
@@ -214,11 +226,10 @@
 	}
 
 	.card.is-active {
-		background: rgba(255, 255, 255, 0.92);
-		border-color: rgba(0, 0, 0, 0.12);
-		box-shadow:
-			0 8px 24px rgba(0, 0, 0, 0.1),
-			0 2px 6px rgba(0, 0, 0, 0.06);
+		opacity: 1;
+		background: var(--card-bg-active);
+		border-color: var(--card-border-active);
+		box-shadow: var(--card-shadow-active);
 		transform: translateY(-3px);
 	}
 </style>

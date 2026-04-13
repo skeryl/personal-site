@@ -7,9 +7,17 @@
 	import ContentRendererThree from '$lib/components/ContentRendererThree.svelte';
 	import ContentRendererExploration from '$lib/components/ContentRendererExploration.svelte';
 	import PostControlBar from '$lib/components/PostControlBar.svelte';
-	import { PlayState, PostControlContext, IgFormatChangedEvent, IG_FORMATS, type IgFormat } from '$lib/state/post-control';
+	import {
+		PlayState,
+		PostControlContext,
+		IgFormatChangedEvent,
+		IG_FORMATS,
+		type IgFormat
+	} from '$lib/state/post-control';
 	import type { ContentParams } from '$lib/content-params';
 	import PostParams from '$lib/components/PostParams.svelte';
+	import Icon from '$lib/components/icons/Icon.svelte';
+	import { compactNav } from '$lib/state/layout';
 
 	const postControlContext = new PostControlContext({
 		playState: PlayState.playing,
@@ -39,14 +47,20 @@
 		setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
 	});
 
+	$effect(() => {
+		compactNav.set(!!requiresCanvas);
+		return () => compactNav.set(false);
+	});
+
 	let container: HTMLDivElement | undefined = $state(undefined);
 	let cnv: HTMLCanvasElement | undefined = $state(undefined);
 	let controlArea: HTMLDivElement | undefined = $state(undefined);
 	let areParamsOpen = $state(false);
+	let paramsSnapshot: ContentParams | undefined = $state(undefined);
 
 	function onDocumentClick(e: MouseEvent) {
 		if (areParamsOpen && controlArea && !controlArea.contains(e.target as Node)) {
-			areParamsOpen = false;
+			cancelParams();
 		}
 	}
 
@@ -74,15 +88,23 @@
 	}
 
 	function toggleParams() {
-		areParamsOpen = !areParamsOpen;
+		if (!areParamsOpen && post?.params) {
+			paramsSnapshot = post.params.map((p) => ({ ...p }));
+			areParamsOpen = true;
+		} else {
+			cancelParams();
+		}
 	}
 
 	function getParamsStorageKey(): string | undefined {
 		return post?.summary?.id ? `post-params:${post.summary.id}` : undefined;
 	}
 
-	function onParamsChange(params: ContentParams) {
+	function onParamsPreview(params: ContentParams) {
 		postControlContext.setParams(params);
+	}
+
+	function saveParams(params: ContentParams) {
 		const key = getParamsStorageKey();
 		if (key) {
 			try {
@@ -92,6 +114,16 @@
 				/* storage full or unavailable */
 			}
 		}
+		areParamsOpen = false;
+		paramsSnapshot = undefined;
+	}
+
+	function cancelParams() {
+		if (paramsSnapshot) {
+			postControlContext.setParams(paramsSnapshot);
+		}
+		areParamsOpen = false;
+		paramsSnapshot = undefined;
 	}
 
 	function loadSavedParams(): ContentParams | undefined {
@@ -110,8 +142,11 @@
 		}
 	}
 
+	let hasLoadedSavedParams = false;
+
 	run(() => {
-		if (post?.params) {
+		if (post?.params && !hasLoadedSavedParams) {
+			hasLoadedSavedParams = true;
 			const saved = loadSavedParams();
 			if (saved) {
 				post = { ...post, params: saved };
@@ -121,48 +156,66 @@
 	});
 </script>
 
-<div class="flex flex-1 flex-col h-full">
+<div class="flex flex-1 flex-col h-full" class:experiment-layout={requiresCanvas}>
 	{#if !hideHeader}
-		<a
-			href="/"
-			class="text-sm text-neutral-400 hover:text-neutral-600 no-underline transition-colors"
-			>← journal</a
-		>
-		<div class="flex flex-row items-baseline mt-2">
-			<h1 class="flex-1">{title}</h1>
-			<div>
-				{date?.toLocaleDateString()}
+		<!-- Full header: desktop always, mobile for non-experiments -->
+		<div class="post-header" class:experiment-header-full={requiresCanvas}>
+			<a
+				href="/"
+				class="text-sm text-theme-text-muted hover:text-theme-text-secondary no-underline transition-colors"
+				>← journal</a
+			>
+			<div class="flex flex-row items-baseline mt-2">
+				<h1 class="flex-1">{title}</h1>
+				<div>
+					{date?.toLocaleDateString()}
+				</div>
 			</div>
+			{#if post?.summary.collaborators?.length}
+				<div class="flex flex-wrap gap-x-4 gap-y-1 mb-3 -mt-1">
+					{#each post.summary.collaborators as collab}
+						<span class="text-sm text-theme-text-secondary">
+							{collab.role}:
+							{#if collab.url}
+								<a
+									href={collab.url}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="underline underline-offset-2 hover:text-theme-text-heading transition-colors"
+									>{collab.name}</a
+								>
+							{:else}
+								{collab.name}
+							{/if}
+						</span>
+					{/each}
+				</div>
+			{/if}
 		</div>
-		{#if post?.summary.collaborators?.length}
-			<div class="flex flex-wrap gap-x-4 gap-y-1 mb-3 -mt-1">
-				{#each post.summary.collaborators as collab}
-					<span class="text-sm text-neutral-500">
-						{collab.role}:
-						{#if collab.url}
-							<a
-								href={collab.url}
-								target="_blank"
-								rel="noopener noreferrer"
-								class="underline underline-offset-2 hover:text-neutral-800 transition-colors"
-								>{collab.name}</a
-							>
-						{:else}
-							{collab.name}
-						{/if}
-					</span>
-				{/each}
+
+		<!-- Compact header: mobile experiments only -->
+		{#if requiresCanvas}
+			<div class="experiment-header-compact flex-shrink-0">
+				<a href="/" class="flex items-center justify-center no-underline shrink-0 back-btn"
+					><Icon type="chevron-left" size="sm" className="!text-inherit hover:!text-inherit" /></a
+				>
+				<span class="text-sm font-semibold truncate flex-1">{title}</span>
+				<span class="text-xs text-theme-text-muted shrink-0">{date?.toLocaleDateString()}</span>
 			</div>
 		{/if}
 	{/if}
 
 	<div
 		bind:this={container}
-		class="relative {igRatio ? 'mx-auto' : 'flex flex-1 min-h-[80vh]'}"
+		class={igRatio
+			? 'relative mx-auto'
+			: `flex flex-1 relative ${requiresCanvas ? 'min-h-0' : 'min-h-[80vh]'}`}
 		style={igRatio ? `aspect-ratio: ${igRatio}; height: 80vh;` : ''}
 	>
 		{#if requiresCanvas}
-			<canvas bind:this={cnv}>your browser does not support HTML canvas :(</canvas>
+			<canvas class="absolute inset-0 w-full h-full" bind:this={cnv}
+				>your browser does not support HTML canvas :(</canvas
+			>
 		{/if}
 
 		{#if post}
@@ -177,16 +230,68 @@
 	</div>
 
 	{#if requiresCanvas}
-		<div class="relative mt-4" bind:this={controlArea}>
+		<div class="flex-shrink-0 flex flex-col control-area" bind:this={controlArea}>
 			{#if areParamsOpen && post && post.params}
-				<PostParams params={post.params} {onParamsChange} />
+				<PostParams
+					params={post.params}
+					onParamsChange={onParamsPreview}
+					onSave={saveParams}
+					onCancel={cancelParams}
+				/>
+			{:else}
+				<PostControlBar
+					{toggleFullScreen}
+					postId={post?.summary.id}
+					hasParams={Boolean(post?.params)}
+					{toggleParams}
+				/>
 			{/if}
-			<PostControlBar
-				{toggleFullScreen}
-				postId={post?.summary.id}
-				hasParams={Boolean(post?.params)}
-				{toggleParams}
-			/>
 		</div>
 	{/if}
 </div>
+
+<style>
+	.experiment-layout {
+		flex: none;
+		height: calc(100dvh - 6.25rem);
+	}
+
+	.experiment-header-compact {
+		display: none;
+	}
+
+	@media (max-width: 639px) {
+		.experiment-layout {
+			height: calc(100dvh - 0.75rem);
+		}
+
+		.experiment-header-full {
+			display: none;
+		}
+
+		.experiment-header-compact {
+			display: flex;
+			align-items: center;
+			gap: 0.25rem;
+			height: 2.75rem;
+			margin: 0 -0.75rem;
+			padding: 0 0.75rem;
+		}
+
+		.experiment-header-compact .back-btn {
+			width: 2.75rem;
+			height: 2.75rem;
+			margin-left: -0.75rem;
+			color: var(--color-text-secondary);
+			transition: color 0.15s;
+		}
+
+		.experiment-header-compact .back-btn:hover {
+			color: var(--color-text-heading);
+		}
+
+		.control-area {
+			margin: 0 -0.75rem -0.5rem;
+		}
+	}
+</style>
