@@ -17,7 +17,7 @@
 	import type { ContentParams } from '$lib/content-params';
 	import PostParams from '$lib/components/PostParams.svelte';
 	import Icon from '$lib/components/icons/Icon.svelte';
-	import { compactNav } from '$lib/state/layout';
+	import { compactNav, fullbleed } from '$lib/state/layout';
 
 	const postControlContext = new PostControlContext({
 		playState: PlayState.playing,
@@ -49,7 +49,11 @@
 
 	$effect(() => {
 		compactNav.set(!!requiresCanvas);
-		return () => compactNav.set(false);
+		fullbleed.set(!!requiresCanvas);
+		return () => {
+			compactNav.set(false);
+			fullbleed.set(false);
+		};
 	});
 
 	let container: HTMLDivElement | undefined = $state(undefined);
@@ -156,7 +160,7 @@
 	});
 </script>
 
-<div class="flex flex-1 flex-col h-full" class:experiment-layout={requiresCanvas}>
+<div class:experiment-layout={requiresCanvas && !$fullbleed} class:fullbleed-layout={$fullbleed}>
 	{#if !hideHeader}
 		<!-- Full header: desktop always, mobile for non-experiments -->
 		<div class="post-header" class:experiment-header-full={requiresCanvas}>
@@ -207,10 +211,12 @@
 
 	<div
 		bind:this={container}
-		class={igRatio
-			? 'relative mx-auto'
-			: `flex flex-1 relative ${requiresCanvas ? 'min-h-0' : 'min-h-[80vh]'}`}
-		style={igRatio ? `aspect-ratio: ${igRatio}; height: 80vh;` : ''}
+		class={$fullbleed
+			? 'absolute inset-0'
+			: igRatio
+				? 'relative mx-auto'
+				: `flex flex-1 relative ${requiresCanvas ? 'min-h-0' : 'min-h-[80vh]'}`}
+		style={!$fullbleed && igRatio ? `aspect-ratio: ${igRatio}; height: 80vh;` : ''}
 	>
 		{#if requiresCanvas}
 			<canvas class="absolute inset-0 w-full h-full" bind:this={cnv}
@@ -230,7 +236,11 @@
 	</div>
 
 	{#if requiresCanvas}
-		<div class="flex-shrink-0 flex flex-col control-area" bind:this={controlArea}>
+		<div
+			class="flex-shrink-0 flex flex-col control-area"
+			class:control-area-overlay={$fullbleed}
+			bind:this={controlArea}
+		>
 			{#if areParamsOpen && post && post.params}
 				<PostParams
 					params={post.params}
@@ -254,6 +264,20 @@
 	.experiment-layout {
 		flex: none;
 		height: calc(100dvh - 6.25rem);
+	}
+
+	.fullbleed-layout {
+		position: fixed;
+		inset: 0;
+		z-index: 10;
+	}
+
+	.control-area-overlay {
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		z-index: 20;
 	}
 
 	.experiment-header-compact {

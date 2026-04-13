@@ -3,6 +3,7 @@
 	import '../app.css';
 	import Nav from '$lib/components/nav/Nav.svelte';
 	import { computePosition, autoUpdate, offset, shift, flip, arrow } from '@floating-ui/dom';
+	import { fullbleed } from '$lib/state/layout';
 
 	import { storePopup } from '@skeletonlabs/skeleton';
 	storePopup.set({ computePosition, autoUpdate, offset, shift, flip, arrow });
@@ -10,16 +11,21 @@
 
 <Nav />
 
-<div
-	class="pt-3 pb-8 px-6 max-sm:px-3 max-sm:pt-1 max-sm:pb-2 max-sm:flex max-sm:flex-col layout-content"
->
+<div class="layout-content" class:layout-padded={!$fullbleed}>
 	<slot />
 </div>
 
 <style>
+	.layout-padded {
+		padding: 0.75rem 1.5rem 2rem;
+	}
+
 	@media (max-width: 639px) {
-		.layout-content {
+		.layout-padded {
+			padding: 0.25rem 0.75rem 0.5rem;
 			min-height: calc(100dvh - 3.5rem);
+			display: flex;
+			flex-direction: column;
 		}
 	}
 </style>
