@@ -271,6 +271,15 @@
 		z-index: 10;
 	}
 
+	/* Override any inline styles set by the entry's start() method */
+	.fullbleed-layout > div {
+		aspect-ratio: unset !important;
+		max-height: unset !important;
+		width: 100% !important;
+		height: 100% !important;
+		margin: 0 !important;
+	}
+
 	.control-area-overlay {
 		position: absolute;
 		bottom: 0;
