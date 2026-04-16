@@ -9,12 +9,7 @@ import {
 	type ContentParam
 } from '$lib/content-params';
 
-const COLS = 3;
-const ROWS = 5;
-const PHYS_W = 1080;
-const PHYS_H = 1920;
-const CELL_W = PHYS_W / COLS;
-const CELL_H = PHYS_H / ROWS;
+const TARGET_BLOBS = 15;
 const MARGIN_Y = 80;
 const BG_COLOR = '#f5f0ea';
 const GRID_COLOR = '#3a3a3a';
@@ -83,6 +78,10 @@ class BlobGridContent implements StageContent {
 	private animationId: number | undefined;
 	private isPlaying = false;
 	private blobs: SoftBlob[] = [];
+	private cols = 3;
+	private rows = 5;
+	private scale = 1;
+	private cellSize = 240;
 
 	private speed = 0.65;
 	private springK = 0.02;
@@ -136,20 +135,26 @@ class BlobGridContent implements StageContent {
 		if (!this.isPlaying || !this.ctx || !this.stage) return;
 
 		const canvas = this.stage.canvas;
-		const totalH = PHYS_H + MARGIN_Y * 2;
-		const scale = Math.min(canvas.width / PHYS_W, canvas.height / totalH);
-		const offsetX = (canvas.width - PHYS_W * scale) / 2;
-		const offsetY = (canvas.height - totalH * scale) / 2 + MARGIN_Y * scale;
+
+		// Cell size derived from canvas area so blob count stays near TARGET_BLOBS
+		const cellSize = Math.sqrt((canvas.width * canvas.height) / TARGET_BLOBS);
+		const cols = Math.max(1, Math.ceil(canvas.width / cellSize));
+		const scale = canvas.width / (cols * cellSize);
+		const rows = Math.max(1, Math.ceil(canvas.height / (cellSize * scale)));
+		this.scale = scale;
+		if (cols !== this.cols || rows !== this.rows || Math.abs(cellSize - this.cellSize) > 1) {
+			this.cols = cols;
+			this.rows = rows;
+			this.cellSize = cellSize;
+			this.blobs = this.createBlobs();
+		}
 
 		// Clear full canvas
 		this.ctx.setTransform(1, 0, 0, 1, 0, 0);
 		this.ctx.fillStyle = BG_COLOR;
 		this.ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-		// Uniform scale, centered with margin
-		this.ctx.setTransform(scale, 0, 0, scale, offsetX, offsetY);
-		this.ctx.fillStyle = BG_COLOR;
-		this.ctx.fillRect(0, 0, PHYS_W, PHYS_H);
+		this.ctx.setTransform(scale, 0, 0, scale, 0, 0);
 
 		for (const blob of this.blobs) this.updateBlob(blob);
 
@@ -158,53 +163,55 @@ class BlobGridContent implements StageContent {
 			if (this.showMesh) this.drawMesh(blob);
 		}
 
+		// Reset transform before grid so line widths are consistent
+		this.ctx.setTransform(1, 0, 0, 1, 0, 0);
 		this.drawGrid();
 
-		this.ctx.setTransform(1, 0, 0, 1, 0, 0);
 		this.animationId = requestAnimationFrame(this.animate);
 	};
 
 	private drawGrid(): void {
 		const ctx = this.ctx!;
+		const canvas = this.stage!.canvas;
 		ctx.strokeStyle = GRID_COLOR;
 		ctx.lineWidth = GRID_LINE_W;
 
-		// Vertical lines
-		for (let c = 1; c < COLS; c++) {
-			const x = c * CELL_W;
+		// Vertical lines at physics cell boundaries
+		for (let c = 1; c < this.cols; c++) {
+			const x = c * this.cellSize * this.scale;
 			ctx.beginPath();
 			ctx.moveTo(x, 0);
-			ctx.lineTo(x, PHYS_H);
+			ctx.lineTo(x, canvas.height);
 			ctx.stroke();
 		}
 
-		// Horizontal lines
-		for (let r = 1; r < ROWS; r++) {
-			const y = r * CELL_H;
+		// Horizontal lines at physics cell boundaries
+		for (let r = 1; r < this.rows; r++) {
+			const y = r * this.cellSize * this.scale;
 			ctx.beginPath();
 			ctx.moveTo(0, y);
-			ctx.lineTo(PHYS_W, y);
+			ctx.lineTo(canvas.width, y);
 			ctx.stroke();
 		}
 
 		// Outer border
-		ctx.strokeRect(0, 0, PHYS_W, PHYS_H);
+		ctx.strokeRect(0, 0, canvas.width, canvas.height);
 	}
 
 	private createBlobs(): SoftBlob[] {
 		const N = this.numRing;
-		const count = COLS * ROWS;
-		const baseRadius = Math.min(CELL_W, CELL_H) * 0.35;
+		const count = this.cols * this.rows;
+		const baseRadius = this.cellSize * 0.35;
 
 		const blobs: SoftBlob[] = [];
 		for (let idx = 0; idx < count; idx++) {
-			const col = idx % COLS;
-			const row = Math.floor(idx / COLS);
+			const col = idx % this.cols;
+			const row = Math.floor(idx / this.cols);
 
-			const cellLeft = col * CELL_W + WALL_MARGIN;
-			const cellRight = (col + 1) * CELL_W - WALL_MARGIN;
-			const cellTop = row * CELL_H + WALL_MARGIN;
-			const cellBottom = (row + 1) * CELL_H - WALL_MARGIN;
+			const cellLeft = col * this.cellSize + WALL_MARGIN;
+			const cellRight = (col + 1) * this.cellSize - WALL_MARGIN;
+			const cellTop = row * this.cellSize + WALL_MARGIN;
+			const cellBottom = (row + 1) * this.cellSize - WALL_MARGIN;
 
 			const cx = (cellLeft + cellRight) / 2 + (Math.random() - 0.5) * 20;
 			const cy = (cellTop + cellBottom) / 2 + (Math.random() - 0.5) * 20;
@@ -486,12 +493,12 @@ class BlobGridContent implements StageContent {
 }
 
 const params = [
-	numberParam('Speed', 0.65, { min: 0.05, max: 5, step: 0.05 }),
-	numberParam('Spring K', 0.02, { min: 0.01, max: 1, step: 0.01 }),
-	numberParam('Pressure', 300, { min: 50, max: 10000, step: 50 }),
-	numberParam('Damping', 0.986, { min: 0.95, max: 1, step: 0.001 }),
-	numberParam('Ring Nodes', 28, { min: 12, max: 48, step: 1 }),
-	selectParam('Show Mesh', ['Off', 'On'], 'Off')
+	{ ...numberParam('Speed', 0.65, { min: 0.05, max: 5, step: 0.05 }), group: 'Motion' },
+	{ ...numberParam('Damping', 0.986, { min: 0.95, max: 1, step: 0.001 }), group: 'Motion' },
+	{ ...numberParam('Ring Nodes', 28, { min: 12, max: 48, step: 1 }), group: 'Structure' },
+	{ ...numberParam('Spring K', 0.02, { min: 0.01, max: 1, step: 0.01 }), group: 'Structure' },
+	{ ...numberParam('Pressure', 300, { min: 50, max: 10000, step: 50 }), group: 'Structure' },
+	{ ...selectParam('Show Mesh', ['Off', 'On'], 'Off'), group: 'Debug' }
 ];
 
 const post: Post = {

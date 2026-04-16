@@ -50,9 +50,9 @@ export class RecordingCompleteEvent extends Event {
 export type IgFormat = 'reel' | 'portrait' | 'square' | null;
 
 export const IG_FORMATS: Record<NonNullable<IgFormat>, { label: string; ratio: string }> = {
-	reel: { label: '9:16 - Stories & Reels', ratio: '9 / 16' },
-	portrait: { label: '4:5 - Portrait Posts', ratio: '4 / 5' },
-	square: { label: '1:1 - Square Posts', ratio: '1 / 1' }
+	reel: { label: '9:16', ratio: '9 / 16' },
+	portrait: { label: '4:5', ratio: '4 / 5' },
+	square: { label: '1:1', ratio: '1 / 1' }
 };
 
 export class IgFormatChangedEvent extends Event {

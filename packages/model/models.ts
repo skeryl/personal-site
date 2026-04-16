@@ -29,6 +29,7 @@ export interface PostSummary extends Unique {
   path?: string;
   collaborators?: Collaborator[];
   preferredFormat?: string;
+  preferredMobileFormat?: string;
 }
 
 export type PostContent =

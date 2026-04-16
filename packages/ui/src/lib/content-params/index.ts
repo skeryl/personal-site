@@ -2,7 +2,8 @@ export enum ParamType {
 	number = 'number',
 	string = 'string',
 	vec2 = 'vec2',
-	color = 'color'
+	color = 'color',
+	boolean = 'boolean'
 }
 
 interface Range {
@@ -16,7 +17,9 @@ export type ParamValue<T extends ParamType> = T extends ParamType.number
 	? number
 	: T extends ParamType.vec2
 		? Vec2
-		: string;
+		: T extends ParamType.boolean
+			? boolean
+			: string;
 
 export type ParamRange<T extends ParamType> = T extends ParamType.number
 	? Range
@@ -32,6 +35,8 @@ export interface ContentParam<T extends ParamType> {
 	value: ParamValue<T>;
 	range?: ParamRange<T>;
 	options?: T extends ParamType.string ? string[] : never;
+	group?: string;
+	rangeLabels?: [string, string];
 }
 
 export function numberParam(
@@ -64,6 +69,20 @@ export function createParam<T extends ParamType>(
 		name,
 		id,
 		range
+	};
+}
+
+export function booleanParam(
+	name: string,
+	defaultValue: boolean,
+	id: string = name.replace(/\s/g, '-').toLowerCase()
+): ContentParam<ParamType.boolean> {
+	return {
+		value: defaultValue,
+		defaultValue,
+		type: ParamType.boolean,
+		name,
+		id
 	};
 }
 

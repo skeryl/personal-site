@@ -17,7 +17,7 @@
 	import type { ContentParams } from '$lib/content-params';
 	import PostParams from '$lib/components/PostParams.svelte';
 	import Icon from '$lib/components/icons/Icon.svelte';
-	import { compactNav, fullbleed } from '$lib/state/layout';
+	import { compactNav, fullbleed, navTitle, paramsOpen } from '$lib/state/layout';
 
 	const postControlContext = new PostControlContext({
 		playState: PlayState.playing,
@@ -39,8 +39,18 @@
 		post?.summary?.type === PostType.experiment || post?.summary?.type === PostType.experiment3d
 	);
 
-	let igFormat: IgFormat = $state((post?.summary.preferredFormat as IgFormat) ?? null);
+	const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+	let igFormat: IgFormat = $state(
+		((isMobile && post?.summary.preferredMobileFormat
+			? post.summary.preferredMobileFormat
+			: post?.summary.preferredFormat) as IgFormat) ?? null
+	);
 	let igRatio = $derived(igFormat ? IG_FORMATS[igFormat].ratio : null);
+	let igContainerStyle = $derived.by(() => {
+		if (!igRatio) return '';
+		const [w, h] = igRatio.split('/').map((s) => s.trim());
+		return `aspect-ratio: ${igRatio}; width: min(100%, calc((100dvh - 12rem) * ${w} / ${h})); height: auto;`;
+	});
 
 	postControlContext.addEventListener('post-ig-format-changed', (ev) => {
 		igFormat = (ev as IgFormatChangedEvent).format;
@@ -50,20 +60,22 @@
 	// Set synchronously so the layout is correct before the canvas initialises
 	compactNav.set(!!requiresCanvas);
 	fullbleed.set(!!requiresCanvas);
+	navTitle.set(post?.summary?.title ?? null);
 	onDestroy(() => {
 		compactNav.set(false);
 		fullbleed.set(false);
+		navTitle.set(null);
+		paramsOpen.set(false);
 	});
 
 	let container: HTMLDivElement | undefined = $state(undefined);
 	let cnv: HTMLCanvasElement | undefined = $state(undefined);
 	let controlArea: HTMLDivElement | undefined = $state(undefined);
 	let areParamsOpen = $state(false);
-	let paramsSnapshot: ContentParams | undefined = $state(undefined);
 
 	function onDocumentClick(e: MouseEvent) {
 		if (areParamsOpen && controlArea && !controlArea.contains(e.target as Node)) {
-			cancelParams();
+			closeParams();
 		}
 	}
 
@@ -74,6 +86,18 @@
 
 	function isFullscreen(): boolean {
 		return Boolean(document.fullscreenElement);
+	}
+
+	function takeScreenshot() {
+		if (!cnv) return;
+		const dataURL = cnv.toDataURL('image/png');
+		const a = document.createElement('a');
+		a.href = dataURL;
+		a.download = `${post?.summary?.id ?? 'screenshot'}.png`;
+		a.style.cssText = 'position:absolute;visibility:hidden';
+		document.body.appendChild(a);
+		a.click();
+		setTimeout(() => document.body.removeChild(a), 100);
 	}
 
 	function toggleFullScreen() {
@@ -91,23 +115,24 @@
 	}
 
 	function toggleParams() {
-		if (!areParamsOpen && post?.params) {
-			paramsSnapshot = post.params.map((p) => ({ ...p }));
-			areParamsOpen = true;
-		} else {
-			cancelParams();
-		}
+		areParamsOpen = !areParamsOpen;
+		paramsOpen.set(areParamsOpen);
+	}
+
+	function closeParams() {
+		areParamsOpen = false;
+		paramsOpen.set(false);
 	}
 
 	function getParamsStorageKey(): string | undefined {
 		return post?.summary?.id ? `post-params:${post.summary.id}` : undefined;
 	}
 
-	function onParamsPreview(params: ContentParams) {
+	function onParamChange(params: ContentParams) {
 		postControlContext.setParams(params);
-	}
-
-	function saveParams(params: ContentParams) {
+		if (post) {
+			post = { ...post, params };
+		}
 		const key = getParamsStorageKey();
 		if (key) {
 			try {
@@ -117,16 +142,6 @@
 				/* storage full or unavailable */
 			}
 		}
-		areParamsOpen = false;
-		paramsSnapshot = undefined;
-	}
-
-	function cancelParams() {
-		if (paramsSnapshot) {
-			postControlContext.setParams(paramsSnapshot);
-		}
-		areParamsOpen = false;
-		paramsSnapshot = undefined;
 	}
 
 	function loadSavedParams(): ContentParams | undefined {
@@ -159,7 +174,11 @@
 	});
 </script>
 
-<div class:experiment-layout={requiresCanvas && !$fullbleed} class:fullbleed-layout={$fullbleed}>
+<div
+	class:experiment-layout={requiresCanvas && (!$fullbleed || igRatio)}
+	class:fullbleed-layout={$fullbleed && !igRatio}
+	class:ratio-centering={!!igRatio}
+>
 	{#if !hideHeader}
 		<!-- Full header: desktop always, mobile for non-experiments -->
 		<div class="post-header" class:experiment-header-full={requiresCanvas}>
@@ -210,12 +229,12 @@
 
 	<div
 		bind:this={container}
-		class={$fullbleed
+		class={$fullbleed && !igRatio
 			? 'absolute inset-0'
 			: igRatio
 				? 'relative mx-auto'
 				: `flex flex-1 relative ${requiresCanvas ? 'min-h-0' : 'min-h-[80vh]'}`}
-		style={!$fullbleed && igRatio ? `aspect-ratio: ${igRatio}; height: 80vh;` : ''}
+		style={igContainerStyle}
 	>
 		{#if requiresCanvas}
 			<canvas class="absolute inset-0 w-full h-full" bind:this={cnv}
@@ -235,44 +254,52 @@
 	</div>
 
 	{#if requiresCanvas}
-		<div
-			class="flex-shrink-0 flex flex-col control-area"
-			class:control-area-overlay={$fullbleed}
-			bind:this={controlArea}
-		>
-			{#if areParamsOpen && post && post.params}
-				<PostParams
-					params={post.params}
-					onParamsChange={onParamsPreview}
-					onSave={saveParams}
-					onCancel={cancelParams}
-				/>
-			{:else}
-				<PostControlBar
-					{toggleFullScreen}
-					postId={post?.summary.id}
-					hasParams={Boolean(post?.params)}
-					{toggleParams}
-				/>
-			{/if}
+		<!-- Control bar: always at the bottom, never moves -->
+		<div class="flex-shrink-0 control-area control-area-overlay">
+			<PostControlBar
+				{toggleFullScreen}
+				{takeScreenshot}
+				postId={post?.summary.id}
+				hasParams={Boolean(post?.params)}
+				{toggleParams}
+				paramsOpen={areParamsOpen}
+				initialIgFormat={igFormat}
+			/>
 		</div>
 	{/if}
 </div>
 
+<!-- Params panel: rendered outside fullbleed-layout so it can exceed its stacking context -->
+{#if requiresCanvas && areParamsOpen && post && post.params}
+	<div class="params-panel" bind:this={controlArea}>
+		<PostParams params={post.params} onParamsChange={onParamChange} onClose={closeParams} />
+	</div>
+{/if}
+
 <style>
 	.experiment-layout {
 		flex: none;
-		height: calc(100dvh - 6.25rem);
+		height: calc(100dvh - 6rem);
+	}
+
+	.ratio-centering {
+		position: fixed;
+		inset: 0;
+		height: 100dvh; /* override experiment-layout's height */
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 
 	.fullbleed-layout {
 		position: fixed;
 		inset: 0;
 		z-index: 10;
+		background: #000;
 	}
 
 	/* Override any inline styles set by the entry's start() method */
-	.fullbleed-layout > div {
+	.fullbleed-layout > div:not(.control-area):not(.params-panel) {
 		aspect-ratio: unset !important;
 		max-height: unset !important;
 		width: 100% !important;
@@ -286,6 +313,33 @@
 		left: 0;
 		right: 0;
 		z-index: 20;
+	}
+
+	/* Params panel: full-height right sidebar, above nav */
+	.params-panel {
+		position: fixed;
+		right: 0;
+		top: 0;
+		bottom: 0;
+		width: 240px;
+		z-index: 60;
+		overflow: hidden;
+	}
+
+	@media (min-width: 640px) {
+		.params-panel {
+			width: 260px;
+		}
+	}
+
+	@media (max-width: 639px) {
+		.params-panel {
+			top: auto;
+			left: 0;
+			right: 0;
+			width: 100%;
+			height: auto;
+		}
 	}
 
 	.experiment-header-compact {
@@ -320,10 +374,6 @@
 
 		.experiment-header-compact .back-btn:hover {
 			color: var(--color-text-heading);
-		}
-
-		.control-area {
-			margin: 0 -0.75rem -0.5rem;
 		}
 	}
 </style>

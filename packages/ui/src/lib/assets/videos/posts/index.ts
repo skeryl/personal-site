@@ -4,6 +4,7 @@ import blobGrid from "$lib/assets/videos/posts/blob-grid.mp4";
 import cubePegTorusHole from "$lib/assets/videos/posts/cube-peg-torus-hole.webm";
 import follow from "$lib/assets/videos/posts/follow.webm";
 import gravitySwell from "$lib/assets/videos/posts/gravity-swell.webm";
+import lavaTerritories from "$lib/assets/videos/posts/lava-territories.mp4";
 import mathJourney from "$lib/assets/videos/posts/math-journey.webm";
 import mirrors from "$lib/assets/videos/posts/mirrors.webm";
 import notePlayground from "$lib/assets/videos/posts/note-playground.mp4";
@@ -23,6 +24,7 @@ const videos: Record<string, string> = {
     ["cube-peg-torus-hole"]: cubePegTorusHole,
     ["follow"]: follow,
     ["gravity-swell"]: gravitySwell,
+    ["lava-territories"]: lavaTerritories,
     ["math-journey"]: mathJourney,
     ["mirrors"]: mirrors,
     ["note-playground"]: notePlayground,

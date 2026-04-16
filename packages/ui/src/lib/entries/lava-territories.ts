@@ -1,6 +1,12 @@
 import { BookOfShadersContent } from '$lib/book-of-shaders';
 import { PostType, type Post } from '@sc/model';
-import { colorParam, numberParam, paramsById, type ContentParams } from '$lib/content-params';
+import {
+	booleanParam,
+	colorParam,
+	numberParam,
+	paramsById,
+	type ContentParams
+} from '$lib/content-params';
 import type { IUniform } from '$lib/three';
 import { Vector3, Vector4 } from 'three';
 
@@ -15,24 +21,57 @@ function hexToVec3(hex: string): Vector3 {
 const defaultFlowSpeed = 1.0;
 const defaultBoundaryWidth = 0.03;
 const defaultDripIntensity = 2.4;
+const defaultBoundaryColor = '#c898a2';
 
 // Default zone colors as hex strings
-const defaultColors = ['#338c4d', '#d97f99', '#80a5d9', '#994d80'];
-const defaultSizes = [0.25, 0.25, 0.25, 0.25];
+const defaultColors = ['#ea85ad', '#5cb0f0', '#4e7358', '#ff3366'];
+const defaultSizes = [0.44, 0.2, 0.16, 0.37];
 
 const params = [
-	numberParam('Flow Speed',       defaultFlowSpeed,      { min: 0.1, max: 3.0, step: 0.1 }),
-	numberParam('Boundary Width',   defaultBoundaryWidth,  { min: 0.005, max: 0.1, step: 0.005 }),
-	numberParam('Drip Intensity',   defaultDripIntensity,  { min: 0.3, max: 6.0, step: 0.1 }),
-	colorParam('Zone 1 Color',  defaultColors[0]),
-	colorParam('Zone 2 Color',  defaultColors[1]),
-	colorParam('Zone 3 Color',  defaultColors[2]),
-	colorParam('Zone 4 Color',  defaultColors[3]),
-	colorParam('Boundary Color', '#f5cc38'),
-	numberParam('Zone 1 Size',  defaultSizes[0], { min: 0.05, max: 0.7, step: 0.01 }),
-	numberParam('Zone 2 Size',  defaultSizes[1], { min: 0.05, max: 0.7, step: 0.01 }),
-	numberParam('Zone 3 Size',  defaultSizes[2], { min: 0.05, max: 0.7, step: 0.01 }),
-	numberParam('Zone 4 Size',  defaultSizes[3], { min: 0.05, max: 0.7, step: 0.01 }),
+	{
+		...numberParam('Flow Speed', defaultFlowSpeed, { min: 0.1, max: 3.0, step: 0.1 }),
+		group: 'General',
+		rangeLabels: ['slower', 'faster'] as [string, string]
+	},
+	{
+		...numberParam('Drip Intensity', defaultDripIntensity, { min: 0.3, max: 6.0, step: 0.1 }),
+		group: 'General',
+		rangeLabels: ['less', 'more'] as [string, string]
+	},
+	{ ...colorParam('Boundary Color', defaultBoundaryColor), group: 'Boundary' },
+	{
+		...numberParam('Boundary Width', defaultBoundaryWidth, { min: 0.005, max: 0.1, step: 0.005 }),
+		group: 'Boundary',
+		rangeLabels: ['smaller', 'bigger'] as [string, string]
+	},
+	{ ...booleanParam('Zone 1 Visible', true), group: 'Zone 1' },
+	{ ...colorParam('Zone 1 Color', defaultColors[0]), group: 'Zone 1' },
+	{
+		...numberParam('Zone 1 Size', defaultSizes[0], { min: 0.05, max: 0.7, step: 0.01 }),
+		group: 'Zone 1',
+		rangeLabels: ['smaller', 'bigger'] as [string, string]
+	},
+	{ ...booleanParam('Zone 2 Visible', true), group: 'Zone 2' },
+	{ ...colorParam('Zone 2 Color', defaultColors[1]), group: 'Zone 2' },
+	{
+		...numberParam('Zone 2 Size', defaultSizes[1], { min: 0.05, max: 0.7, step: 0.01 }),
+		group: 'Zone 2',
+		rangeLabels: ['smaller', 'bigger'] as [string, string]
+	},
+	{ ...booleanParam('Zone 3 Visible', true), group: 'Zone 3' },
+	{ ...colorParam('Zone 3 Color', defaultColors[2]), group: 'Zone 3' },
+	{
+		...numberParam('Zone 3 Size', defaultSizes[2], { min: 0.05, max: 0.7, step: 0.01 }),
+		group: 'Zone 3',
+		rangeLabels: ['smaller', 'bigger'] as [string, string]
+	},
+	{ ...booleanParam('Zone 4 Visible', true), group: 'Zone 4' },
+	{ ...colorParam('Zone 4 Color', defaultColors[3]), group: 'Zone 4' },
+	{
+		...numberParam('Zone 4 Size', defaultSizes[3], { min: 0.05, max: 0.7, step: 0.01 }),
+		group: 'Zone 4',
+		rangeLabels: ['smaller', 'bigger'] as [string, string]
+	}
 ];
 
 function computeBreaks(s0: number, s1: number, s2: number, s3: number): Vector4 {
@@ -172,15 +211,19 @@ void main() {
 class LavaTerritories extends BookOfShadersContent {
 	constructor() {
 		super();
-		this.uniforms['u_flowSpeed']      = { value: defaultFlowSpeed }      as unknown as IUniform;
-		this.uniforms['u_boundaryWidth']  = { value: defaultBoundaryWidth }  as unknown as IUniform;
-		this.uniforms['u_dripIntensity']  = { value: defaultDripIntensity }  as unknown as IUniform;
-		this.uniforms['u_color0']         = { value: hexToVec3(defaultColors[0]) } as unknown as IUniform;
-		this.uniforms['u_color1']         = { value: hexToVec3(defaultColors[1]) } as unknown as IUniform;
-		this.uniforms['u_color2']         = { value: hexToVec3(defaultColors[2]) } as unknown as IUniform;
-		this.uniforms['u_color3']         = { value: hexToVec3(defaultColors[3]) } as unknown as IUniform;
-		this.uniforms['u_boundaryColor']  = { value: hexToVec3('#f5cc38') }        as unknown as IUniform;
-		this.uniforms['u_breaks']         = { value: computeBreaks(...defaultSizes as [number,number,number,number]) } as unknown as IUniform;
+		this.uniforms['u_flowSpeed'] = { value: defaultFlowSpeed } as unknown as IUniform;
+		this.uniforms['u_boundaryWidth'] = { value: defaultBoundaryWidth } as unknown as IUniform;
+		this.uniforms['u_dripIntensity'] = { value: defaultDripIntensity } as unknown as IUniform;
+		this.uniforms['u_color0'] = { value: hexToVec3(defaultColors[0]) } as unknown as IUniform;
+		this.uniforms['u_color1'] = { value: hexToVec3(defaultColors[1]) } as unknown as IUniform;
+		this.uniforms['u_color2'] = { value: hexToVec3(defaultColors[2]) } as unknown as IUniform;
+		this.uniforms['u_color3'] = { value: hexToVec3(defaultColors[3]) } as unknown as IUniform;
+		this.uniforms['u_boundaryColor'] = {
+			value: hexToVec3(defaultBoundaryColor)
+		} as unknown as IUniform;
+		this.uniforms['u_breaks'] = {
+			value: computeBreaks(...(defaultSizes as [number, number, number, number]))
+		} as unknown as IUniform;
 	}
 
 	getFragmentShader = () => fragmentShader;
@@ -189,18 +232,18 @@ class LavaTerritories extends BookOfShadersContent {
 	setParams = (values: ContentParams) => {
 		const p = paramsById(values);
 
-		const speed  = p['flow-speed']?.value      as number | undefined;
-		const width  = p['boundary-width']?.value  as number | undefined;
-		const drip   = p['drip-intensity']?.value  as number | undefined;
-		if (speed !== undefined) this.uniforms['u_flowSpeed'].value     = speed;
+		const speed = p['flow-speed']?.value as number | undefined;
+		const width = p['boundary-width']?.value as number | undefined;
+		const drip = p['drip-intensity']?.value as number | undefined;
+		if (speed !== undefined) this.uniforms['u_flowSpeed'].value = speed;
 		if (width !== undefined) this.uniforms['u_boundaryWidth'].value = width;
-		if (drip  !== undefined) this.uniforms['u_dripIntensity'].value = drip;
+		if (drip !== undefined) this.uniforms['u_dripIntensity'].value = drip;
 
-		const c0 = p['zone-1-color']?.value    as string | undefined;
-		const c1 = p['zone-2-color']?.value    as string | undefined;
-		const c2 = p['zone-3-color']?.value    as string | undefined;
-		const c3 = p['zone-4-color']?.value    as string | undefined;
-		const bc = p['boundary-color']?.value  as string | undefined;
+		const c0 = p['zone-1-color']?.value as string | undefined;
+		const c1 = p['zone-2-color']?.value as string | undefined;
+		const c2 = p['zone-3-color']?.value as string | undefined;
+		const c3 = p['zone-4-color']?.value as string | undefined;
+		const bc = p['boundary-color']?.value as string | undefined;
 		if (c0) this.uniforms['u_color0'].value = hexToVec3(c0);
 		if (c1) this.uniforms['u_color1'].value = hexToVec3(c1);
 		if (c2) this.uniforms['u_color2'].value = hexToVec3(c2);
@@ -211,15 +254,17 @@ class LavaTerritories extends BookOfShadersContent {
 		const s1 = p['zone-2-size']?.value as number | undefined;
 		const s2 = p['zone-3-size']?.value as number | undefined;
 		const s3 = p['zone-4-size']?.value as number | undefined;
-		if (s0 !== undefined || s1 !== undefined || s2 !== undefined || s3 !== undefined) {
-			const breaks = computeBreaks(
-				s0 ?? defaultSizes[0],
-				s1 ?? defaultSizes[1],
-				s2 ?? defaultSizes[2],
-				s3 ?? defaultSizes[3]
-			);
-			(this.uniforms['u_breaks'].value as Vector4).copy(breaks);
-		}
+		const v0 = p['zone-1-visible']?.value !== false;
+		const v1 = p['zone-2-visible']?.value !== false;
+		const v2 = p['zone-3-visible']?.value !== false;
+		const v3 = p['zone-4-visible']?.value !== false;
+		const breaks = computeBreaks(
+			v0 ? (s0 ?? defaultSizes[0]) : 0,
+			v1 ? (s1 ?? defaultSizes[1]) : 0,
+			v2 ? (s2 ?? defaultSizes[2]) : 0,
+			v3 ? (s3 ?? defaultSizes[3]) : 0
+		);
+		(this.uniforms['u_breaks'].value as Vector4).copy(breaks);
 	};
 }
 

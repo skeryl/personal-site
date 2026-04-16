@@ -23,7 +23,7 @@ import cactusUrl from '$lib/assets/images/desert life/src files/desert life-cact
 // Fullscreen-quad vertex shader: positions the geometry directly in NDC
 // (normalized device coordinates), bypassing the camera entirely.
 // This makes the plane always fill the screen regardless of camera position.
-const BG_VERT = /* glsl */`
+const BG_VERT = /* glsl */ `
 varying vec2 vUv;
 void main() {
   vUv = uv;
@@ -33,7 +33,7 @@ void main() {
 
 // Dithered background layer (sky, ground): applies a checkerboard lightening
 // pattern in screen space, so block size stays consistent regardless of depth.
-const DITHER_FRAG = /* glsl */`
+const DITHER_FRAG = /* glsl */ `
 uniform sampler2D u_texture;
 uniform float u_pixelSize;
 varying vec2 vUv;
@@ -53,7 +53,7 @@ void main() {
 `;
 
 // Sprite layer (clouds, cactus shadow, cactus): no dithering, just alpha
-const SPRITE_FRAG = /* glsl */`
+const SPRITE_FRAG = /* glsl */ `
 uniform sampler2D u_texture;
 varying vec2 vUv;
 
@@ -65,7 +65,7 @@ void main() {
 `;
 
 // Standard 3D vertex shader — used for ground plane and 3D billboards
-const MESH_VERT = /* glsl */`
+const MESH_VERT = /* glsl */ `
 varying vec2 vUv;
 void main() {
   vUv = uv;
@@ -74,7 +74,7 @@ void main() {
 `;
 
 // Solid color + screen-space dither — for the ground plane (no texture needed)
-const GROUND_FRAG = /* glsl */`
+const GROUND_FRAG = /* glsl */ `
 uniform vec3 u_color;
 uniform float u_pixelSize;
 
@@ -136,13 +136,13 @@ function makeBillboardMat(url: string): ShaderMaterial {
 // ─── Snake constants ──────────────────────────────────────────────────────────
 
 const NUM_SEGS = 72;
-const SEG_SPACING = 0.20;    // world units between segments along Z
-const APPROACH_SPEED = 1.6;  // world units / sec (how fast it comes toward you)
-const WAVE_AMP = 1.2;        // world units of lateral swing (narrower for portrait)
-const WAVE_FREQ = 1.5;       // spatial frequency (curves per world unit)
-const WAVE_SPEED = 1.8;      // rad / sec (body undulation)
-const Z_START = -8;          // where the snake emerges (near the horizon)
-const Z_END = 5.5;           // where it exits (past the camera)
+const SEG_SPACING = 0.2; // world units between segments along Z
+const APPROACH_SPEED = 1.6; // world units / sec (how fast it comes toward you)
+const WAVE_AMP = 1.2; // world units of lateral swing (narrower for portrait)
+const WAVE_FREQ = 1.5; // spatial frequency (curves per world unit)
+const WAVE_SPEED = 1.8; // rad / sec (body undulation)
+const Z_START = -8; // where the snake emerges (near the horizon)
+const Z_END = 5.5; // where it exits (past the camera)
 
 const COLOR_HEAD = 0x7a1a30;
 const COLOR_BODY = 0xd44f6e;
@@ -185,7 +185,7 @@ class DesertLife implements ExperimentContent3D {
 
 		// Sky + clouds remain as fullscreen NDC quads (no spatial relationship needed)
 		const bgLayers: [ShaderMaterial, number][] = [
-			[skyMat,                   0],
+			[skyMat, 0],
 			[makeSpriteMat(cloudsUrl), 2]
 		];
 
@@ -282,10 +282,12 @@ class DesertLife implements ExperimentContent3D {
 
 	setParams = (values: ContentParams) => {
 		const p = paramsById(values);
-		const newSize = p['pixel-size']?.value as number ?? defaultPixelSize;
+		const newSize = (p['pixel-size']?.value as number) ?? defaultPixelSize;
 		if (newSize !== this.pixelSize) {
 			this.pixelSize = newSize;
-			this.ditherMats.forEach((m) => { m.uniforms.u_pixelSize.value = newSize; });
+			this.ditherMats.forEach((m) => {
+				m.uniforms.u_pixelSize.value = newSize;
+			});
 		}
 	};
 
@@ -325,7 +327,10 @@ class DesertLife implements ExperimentContent3D {
 			const a = this.snakeMeshes[i];
 			const b = this.snakeMeshes[i + 1];
 
-			if (!a.visible || !b.visible) { conn.visible = false; continue; }
+			if (!a.visible || !b.visible) {
+				conn.visible = false;
+				continue;
+			}
 
 			conn.position.set(
 				(a.position.x + b.position.x) * 0.5,

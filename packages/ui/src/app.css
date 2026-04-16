@@ -1,5 +1,19 @@
 @import './theme.css';
 
+@font-face {
+	font-family: 'Apple Garamond';
+	src: url('/AppleGaramond-Light.ttf') format('truetype');
+	font-weight: 300;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: 'Apple Garamond';
+	src: url('/AppleGaramond-LightItalic.ttf') format('truetype');
+	font-weight: 300;
+	font-style: italic;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
