@@ -3,3 +3,7 @@
 /**/node_modules/
 packages/personal-site-ui/public/scripts/
 packages/ui/src/routes/journal/**/*
+
+# Playwright MCP debugging artifacts (screenshots, console logs, snapshots)
+/.playwright-mcp/
+/*.png
