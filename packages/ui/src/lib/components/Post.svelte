@@ -66,6 +66,11 @@
 		fullbleed.set(false);
 		navTitle.set(null);
 		paramsOpen.set(false);
+		// Flush any pending param save before tearing down
+		if (saveParamsTimer) {
+			clearTimeout(saveParamsTimer);
+			if (post?.params) persistParams(post.params);
+		}
 	});
 
 	let container: HTMLDivElement | undefined = $state(undefined);
@@ -128,20 +133,27 @@
 		return post?.summary?.id ? `post-params:${post.summary.id}` : undefined;
 	}
 
+	let saveParamsTimer: ReturnType<typeof setTimeout> | undefined;
+	function persistParams(params: ContentParams) {
+		const key = getParamsStorageKey();
+		if (!key) return;
+		try {
+			const data = params.map((p) => ({ id: p.id, value: p.value }));
+			localStorage.setItem(key, JSON.stringify(data));
+		} catch {
+			/* storage full or unavailable */
+		}
+	}
+
 	function onParamChange(params: ContentParams) {
 		postControlContext.setParams(params);
 		if (post) {
 			post = { ...post, params };
 		}
-		const key = getParamsStorageKey();
-		if (key) {
-			try {
-				const data = params.map((p) => ({ id: p.id, value: p.value }));
-				localStorage.setItem(key, JSON.stringify(data));
-			} catch {
-				/* storage full or unavailable */
-			}
-		}
+		// Debounce localStorage writes — synchronous writes during a slider
+		// drag block the main thread and starve the animation loop on mobile.
+		if (saveParamsTimer) clearTimeout(saveParamsTimer);
+		saveParamsTimer = setTimeout(() => persistParams(params), 250);
 	}
 
 	function loadSavedParams(): ContentParams | undefined {

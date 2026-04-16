@@ -117,9 +117,23 @@ class BlobGridContent implements StageContent {
 		const byId = paramsById(params);
 		const num = (id: string) => (byId[id] as ContentParam<ParamType.number>).value;
 
+		const newSpringK = num('spring-k');
+		const newPressureK = num('pressure');
+
+		// If a stiffness/pressure param changes meaningfully, bleed off
+		// stored Verlet energy so the simulation can respond to the change.
+		// Without this, energy from a high value persists when you lower it.
+		const springChange = Math.abs(newSpringK - this.springK) / Math.max(this.springK, 0.001);
+		const pressureChange = Math.abs(newPressureK - this.pressureK) / Math.max(this.pressureK, 1);
+		if (this.blobs && (springChange > 0.1 || pressureChange > 0.1)) {
+			// Kill ~85% of stored velocity. Aggressive enough that going
+			// from a max-spring-K chaos state back to default actually calms.
+			this.dampenVelocities(0.15);
+		}
+
 		this.speed = num('speed');
-		this.springK = num('spring-k');
-		this.pressureK = num('pressure');
+		this.springK = newSpringK;
+		this.pressureK = newPressureK;
 		this.damping = num('damping');
 
 		const newRing = num('ring-nodes');
@@ -128,6 +142,17 @@ class BlobGridContent implements StageContent {
 		if (newRing !== this.numRing) {
 			this.numRing = newRing;
 			this.blobs = this.createBlobs();
+		}
+	}
+
+	private dampenVelocities(factor: number): void {
+		// Verlet velocity is encoded as (current - previous). Reducing the
+		// gap between p.px and p.x kills proportional kinetic energy.
+		for (const blob of this.blobs) {
+			for (const p of blob.ring) {
+				p.px = p.x - (p.x - p.px) * factor;
+				p.py = p.y - (p.y - p.py) * factor;
+			}
 		}
 	}
 
@@ -496,8 +521,8 @@ const params = [
 	{ ...numberParam('Speed', 0.65, { min: 0.05, max: 5, step: 0.05 }), group: 'Motion' },
 	{ ...numberParam('Damping', 0.986, { min: 0.95, max: 1, step: 0.001 }), group: 'Motion' },
 	{ ...numberParam('Ring Nodes', 28, { min: 12, max: 48, step: 1 }), group: 'Structure' },
-	{ ...numberParam('Spring K', 0.02, { min: 0.01, max: 1, step: 0.01 }), group: 'Structure' },
-	{ ...numberParam('Pressure', 300, { min: 50, max: 10000, step: 50 }), group: 'Structure' },
+	{ ...numberParam('Spring K', 0.02, { min: 0.01, max: 0.15, step: 0.005 }), group: 'Structure' },
+	{ ...numberParam('Pressure', 300, { min: 50, max: 2000, step: 25 }), group: 'Structure' },
 	{ ...selectParam('Show Mesh', ['Off', 'On'], 'Off'), group: 'Debug' }
 ];
 
