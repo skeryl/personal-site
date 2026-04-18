@@ -30,6 +30,8 @@
 	let boardApi: Api | undefined = $state();
 	let stats = $state({ linesCompleted: 0, correctMoves: 0, mistakes: 0 });
 	let hintShown = $state(false);
+	let whyShown = $state(false);
+	let aboutOpen = $state(false);
 
 	// Reading trail.version subscribes derivations to chess.js mutations.
 	const fen = $derived((trail.version, trail.chess.fen()));
@@ -59,6 +61,7 @@
 		trail = newTrail(selected);
 		status = { kind: 'awaiting-user' };
 		hintShown = false;
+		whyShown = false;
 		setTimeout(maybePlayOpponent, 200);
 	}
 
@@ -99,6 +102,7 @@
 			stats.correctMoves += 1;
 			status = { kind: 'correct', node: result.node! };
 			hintShown = false;
+			whyShown = false;
 			setTimeout(() => {
 				if (isLineComplete(trail, selected)) {
 					status = { kind: 'line-complete' };
@@ -156,6 +160,11 @@
 		const last = trail.nodes[trail.nodes.length - 1];
 		return last?.comment;
 	});
+
+	const upcomingComment = $derived(children[0]?.comment);
+	const hasAbout = $derived(
+		Boolean(selected.historicalContext || selected.strategicConcepts?.length)
+	);
 </script>
 
 <div class="trainer">
@@ -172,9 +181,29 @@
 		</div>
 		<p class="description">{selected.description ?? ''}</p>
 		<div class="side-tag">
+			{#if selected.ecoCode}<span class="eco">{selected.ecoCode}</span>{/if}
 			You play <strong>{selected.color}</strong>
 		</div>
 	</header>
+
+	{#if hasAbout}
+		<details class="about" bind:open={aboutOpen}>
+			<summary>About this opening</summary>
+			{#if selected.historicalContext}
+				<p class="about-history">{selected.historicalContext}</p>
+			{/if}
+			{#if selected.strategicConcepts?.length}
+				<ul class="concepts">
+					{#each selected.strategicConcepts as c}
+						<li>
+							<span class="concept-name">{c.concept}</span>
+							<span class="concept-explain">{c.explanation}</span>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</details>
+	{/if}
 
 	<div class="board-container">
 		<Board
@@ -206,10 +235,26 @@
 			{#if currentComment}
 				<div class="comment">{currentComment}</div>
 			{/if}
+			{#if whyShown && upcomingComment}
+				<div class="why-hint">
+					<span class="why-label">Why:</span>
+					{upcomingComment}
+				</div>
+			{/if}
 		{:else if status.kind === 'correct'}
 			<div class="prompt">Good move: <strong>{status.node.san}</strong></div>
 			{#if status.node.comment}
 				<div class="comment">{status.node.comment}</div>
+			{/if}
+			{#if status.node.sourceQuote || status.node.source}
+				<blockquote class="source-quote">
+					{#if status.node.sourceQuote}
+						<p>“{status.node.sourceQuote}”</p>
+					{/if}
+					{#if status.node.source}
+						<cite>— {status.node.source}</cite>
+					{/if}
+				</blockquote>
 			{/if}
 		{:else if status.kind === 'wrong'}
 			<div class="prompt">
@@ -228,6 +273,9 @@
 	<div class="controls">
 		<button onclick={resetLine} class="secondary">Reset line</button>
 		{#if status.kind !== 'line-complete' && usersTurn}
+			{#if upcomingComment && !whyShown}
+				<button onclick={() => (whyShown = true)} class="secondary">Why?</button>
+			{/if}
 			{#if !hintShown}
 				<button onclick={showAnswer} class="secondary">Show answer</button>
 			{:else}
@@ -311,6 +359,68 @@
 		text-transform: capitalize;
 	}
 
+	.eco {
+		display: inline-block;
+		padding: 1px 6px;
+		margin-right: 8px;
+		border-radius: 3px;
+		background: rgba(0, 0, 0, 0.08);
+		color: #1a1a1a;
+		font-weight: 600;
+		letter-spacing: 0.04em;
+	}
+
+	.about {
+		background: rgba(0, 0, 0, 0.03);
+		border-radius: 10px;
+		padding: 8px 14px;
+		font-size: 14px;
+	}
+	.about[open] {
+		padding-bottom: 14px;
+	}
+	.about summary {
+		cursor: pointer;
+		padding: 6px 0;
+		font-weight: 600;
+		color: #1a1a1a;
+		font-size: 14px;
+		user-select: none;
+	}
+	.about summary:hover {
+		color: #1677ff;
+	}
+	.about-history {
+		margin: 6px 0 12px;
+		line-height: 1.6;
+		color: rgba(0, 0, 0, 0.7);
+	}
+	.concepts {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
+	.concepts li {
+		padding-left: 10px;
+		border-left: 2px solid rgba(0, 0, 0, 0.12);
+	}
+	.concept-name {
+		display: block;
+		font-weight: 600;
+		color: #1a1a1a;
+		font-size: 13px;
+		margin-bottom: 2px;
+	}
+	.concept-explain {
+		display: block;
+		color: rgba(0, 0, 0, 0.6);
+		font-size: 13px;
+		line-height: 1.5;
+	}
+
 	.board-container {
 		display: flex;
 		justify-content: center;
@@ -351,6 +461,41 @@
 		font-size: 13px;
 		color: rgba(0, 0, 0, 0.6);
 		line-height: 1.5;
+	}
+
+	.why-hint {
+		font-size: 13px;
+		color: rgba(0, 0, 0, 0.7);
+		line-height: 1.5;
+		padding: 8px 10px;
+		background: rgba(255, 204, 10, 0.12);
+		border-left: 2px solid #fccc0a;
+		border-radius: 4px;
+	}
+	.why-label {
+		font-weight: 600;
+		margin-right: 4px;
+		color: #8a6d00;
+	}
+
+	.source-quote {
+		margin: 4px 0 0;
+		padding: 8px 12px;
+		border-left: 3px solid rgba(0, 0, 0, 0.2);
+		background: rgba(0, 0, 0, 0.02);
+		border-radius: 0 4px 4px 0;
+	}
+	.source-quote p {
+		margin: 0 0 4px;
+		font-size: 13px;
+		font-style: italic;
+		color: rgba(0, 0, 0, 0.7);
+		line-height: 1.5;
+	}
+	.source-quote cite {
+		font-size: 11px;
+		color: rgba(0, 0, 0, 0.5);
+		font-style: normal;
 	}
 
 	.muted {
