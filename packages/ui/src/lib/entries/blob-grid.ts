@@ -14,7 +14,7 @@ import {
 const CELL_W = 360;
 const CELL_H = 384;
 const BG_COLOR = '#f5f0ea';
-const GRID_COLOR = '#3a3a3a';
+const GRID_COLOR = '#000000';
 const GRID_LINE_W = 2;
 const WALL_MARGIN = 0;
 const SUBSTEPS = 6;

@@ -378,7 +378,7 @@
 		display: block;
 		font-size: 0.6rem;
 		line-height: 1.3;
-		color: #999;
+		color: #000;
 		letter-spacing: 0.02em;
 		margin-top: -0.35rem;
 		margin-bottom: 0.7rem;
@@ -390,7 +390,7 @@
 		padding: 0;
 		cursor: pointer;
 		font-size: 0.75rem;
-		color: #bbb;
+		color: #000;
 		line-height: 1;
 		transition: color 0.15s;
 	}
@@ -477,7 +477,7 @@
 		display: flex;
 		justify-content: space-between;
 		font-size: 0.625rem;
-		color: #999;
+		color: #000;
 		margin-top: 0.2rem;
 		text-transform: lowercase;
 	}
@@ -519,7 +519,7 @@
 		cursor: pointer;
 		font-family: 'DM Sans', sans-serif;
 		font-size: 0.75rem;
-		color: #999;
+		color: #000;
 		padding: 0;
 		white-space: nowrap;
 		align-self: center;
@@ -557,7 +557,7 @@
 		font-size: 0.875rem;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
-		color: #bbb;
+		color: #000;
 		cursor: pointer;
 		white-space: nowrap;
 		transition: color 0.15s;
@@ -650,7 +650,7 @@
 		font-size: 0.875rem;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
-		color: #bbb;
+		color: #000;
 		padding: 0.5rem 0.75rem;
 		white-space: nowrap;
 		transition: color 0.15s;
