@@ -218,6 +218,7 @@
 			right: 0;
 			padding: 0 1rem;
 			justify-content: center;
+			font-size: 0.98rem;
 		}
 
 		.nav-bar {

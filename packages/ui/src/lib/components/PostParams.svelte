@@ -114,6 +114,9 @@
 									<button class="reset-btn" onclick={() => onParamChange({ ...param, value: param.defaultValue })} title="Reset to default">↩</button>
 								{/if}
 							</div>
+							{#if param.description}
+								<span class="param-description">{param.description}</span>
+							{/if}
 							<button
 								class="color-swatch"
 								style="background: {hex}"
@@ -136,6 +139,9 @@
 									<button class="reset-btn" onclick={() => onParamChange({ ...param, value: param.defaultValue })} title="Reset to default">↩</button>
 								{/if}
 							</div>
+							{#if param.description}
+								<span class="param-description">{param.description}</span>
+							{/if}
 							{#if range}
 								<input
 									type="range"
@@ -172,6 +178,7 @@
 					class="strip-param-tab"
 					class:active={i === activeParamIndex}
 					onclick={() => setActiveParam(i)}
+					style="font-size: 0.7rem"
 				>
 					{#if param.type === ParamType.color}
 						{param.name}
@@ -195,6 +202,9 @@
 				/>
 			{:else if activeParam?.type === ParamType.number}
 				{@const range = activeParam.range as { min: number; max: number; step?: number | 'any' } | undefined}
+				{#if activeParam.description}
+					<span class="param-description">{activeParam.description}</span>
+				{/if}
 				{#if range}
 					<input
 						type="range"
@@ -364,6 +374,16 @@
 		color: #000;
 	}
 
+	.param-description {
+		display: block;
+		font-size: 0.6rem;
+		line-height: 1.3;
+		color: #999;
+		letter-spacing: 0.02em;
+		margin-top: -0.35rem;
+		margin-bottom: 0.7rem;
+	}
+
 	.reset-btn {
 		background: none;
 		border: none;
@@ -412,8 +432,8 @@
 	.slider::-webkit-slider-thumb {
 		-webkit-appearance: none;
 		appearance: none;
-		width: 17px;
-		height: 17px;
+		width: 30px;
+		height: 30px;
 		border-radius: 50%;
 		background: #c0c0c0;
 		cursor: pointer;
@@ -426,8 +446,8 @@
 	}
 
 	.slider::-moz-range-thumb {
-		width: 17px;
-		height: 17px;
+		width: 30px;
+		height: 30px;
 		border-radius: 50%;
 		background: #c0c0c0;
 		border: none;
@@ -460,6 +480,26 @@
 		color: #999;
 		margin-top: 0.2rem;
 		text-transform: lowercase;
+	}
+
+	.mobile-layout .param-description {
+		font-size: 0.8rem;
+		text-align: center;
+		margin-top: 0.3rem;
+		margin-bottom: 0.75rem;
+	}
+
+	@media (max-width: 639px) {
+		.strip-param-tab {
+			font-size: 0.7rem;
+			padding: 0.4rem 1rem;
+		}
+		.strip-tab {
+			font-size: 0.7rem;
+		}
+		.strip-tab.active {
+			font-size: 0.84rem;
+		}
 	}
 
 	/* ── Mobile panel ────────────────────────────────────────────── */

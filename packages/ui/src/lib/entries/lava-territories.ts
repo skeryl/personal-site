@@ -31,46 +31,73 @@ const params = [
 	{
 		...numberParam('Flow Speed', defaultFlowSpeed, { min: 0.1, max: 3.0, step: 0.1 }),
 		group: 'General',
-		rangeLabels: ['slower', 'faster'] as [string, string]
+		rangeLabels: ['slower', 'faster'] as [string, string],
+		description: 'How fast the lava flows and shifts across the surface'
 	},
 	{
 		...numberParam('Drip Intensity', defaultDripIntensity, { min: 0.3, max: 6.0, step: 0.1 }),
 		group: 'General',
-		rangeLabels: ['less', 'more'] as [string, string]
+		rangeLabels: ['less', 'more'] as [string, string],
+		description: 'Strength of the dripping/melting distortion effect'
 	},
-	{ ...colorParam('Boundary Color', defaultBoundaryColor), group: 'Boundary' },
+	{
+		...colorParam('Boundary Color', defaultBoundaryColor),
+		group: 'Boundary',
+		description: 'Color of the lines between zones'
+	},
 	{
 		...numberParam('Boundary Width', defaultBoundaryWidth, { min: 0.005, max: 0.1, step: 0.005 }),
 		group: 'Boundary',
-		rangeLabels: ['smaller', 'bigger'] as [string, string]
+		rangeLabels: ['smaller', 'bigger'] as [string, string],
+		description: 'Thickness of the lines separating each zone'
 	},
 	{ ...booleanParam('Zone 1 Visible', true), group: 'Zone 1' },
-	{ ...colorParam('Zone 1 Color', defaultColors[0]), group: 'Zone 1' },
+	{
+		...colorParam('Zone 1 Color', defaultColors[0]),
+		group: 'Zone 1',
+		description: 'Fill color for this zone'
+	},
 	{
 		...numberParam('Zone 1 Size', defaultSizes[0], { min: 0.05, max: 0.7, step: 0.01 }),
 		group: 'Zone 1',
-		rangeLabels: ['smaller', 'bigger'] as [string, string]
+		rangeLabels: ['smaller', 'bigger'] as [string, string],
+		description: 'How much of the surface this zone occupies'
 	},
 	{ ...booleanParam('Zone 2 Visible', true), group: 'Zone 2' },
-	{ ...colorParam('Zone 2 Color', defaultColors[1]), group: 'Zone 2' },
+	{
+		...colorParam('Zone 2 Color', defaultColors[1]),
+		group: 'Zone 2',
+		description: 'Fill color for this zone'
+	},
 	{
 		...numberParam('Zone 2 Size', defaultSizes[1], { min: 0.05, max: 0.7, step: 0.01 }),
 		group: 'Zone 2',
-		rangeLabels: ['smaller', 'bigger'] as [string, string]
+		rangeLabels: ['smaller', 'bigger'] as [string, string],
+		description: 'How much of the surface this zone occupies'
 	},
 	{ ...booleanParam('Zone 3 Visible', true), group: 'Zone 3' },
-	{ ...colorParam('Zone 3 Color', defaultColors[2]), group: 'Zone 3' },
+	{
+		...colorParam('Zone 3 Color', defaultColors[2]),
+		group: 'Zone 3',
+		description: 'Fill color for this zone'
+	},
 	{
 		...numberParam('Zone 3 Size', defaultSizes[2], { min: 0.05, max: 0.7, step: 0.01 }),
 		group: 'Zone 3',
-		rangeLabels: ['smaller', 'bigger'] as [string, string]
+		rangeLabels: ['smaller', 'bigger'] as [string, string],
+		description: 'How much of the surface this zone occupies'
 	},
 	{ ...booleanParam('Zone 4 Visible', true), group: 'Zone 4' },
-	{ ...colorParam('Zone 4 Color', defaultColors[3]), group: 'Zone 4' },
+	{
+		...colorParam('Zone 4 Color', defaultColors[3]),
+		group: 'Zone 4',
+		description: 'Fill color for this zone'
+	},
 	{
 		...numberParam('Zone 4 Size', defaultSizes[3], { min: 0.05, max: 0.7, step: 0.01 }),
 		group: 'Zone 4',
-		rangeLabels: ['smaller', 'bigger'] as [string, string]
+		rangeLabels: ['smaller', 'bigger'] as [string, string],
+		description: 'How much of the surface this zone occupies'
 	}
 ];
 

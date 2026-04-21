@@ -37,6 +37,7 @@ export interface ContentParam<T extends ParamType> {
 	options?: T extends ParamType.string ? string[] : never;
 	group?: string;
 	rangeLabels?: [string, string];
+	description?: string;
 }
 
 export function numberParam(

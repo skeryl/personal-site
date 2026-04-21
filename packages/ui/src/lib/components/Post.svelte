@@ -146,10 +146,10 @@
 	}
 
 	function onParamChange(params: ContentParams) {
+		// Dispatch to the simulation via event system — do NOT update
+		// `post` here, as that would trigger ContentRendererStage's run()
+		// effect, which calls content.start() and recreates all blobs.
 		postControlContext.setParams(params);
-		if (post) {
-			post = { ...post, params };
-		}
 		// Debounce localStorage writes — synchronous writes during a slider
 		// drag block the main thread and starve the animation loop on mobile.
 		if (saveParamsTimer) clearTimeout(saveParamsTimer);
@@ -161,12 +161,13 @@
 		if (!key || !post?.params) return undefined;
 		try {
 			const raw = localStorage.getItem(key);
-			if (!raw) return undefined;
-			const saved: { id: string; value: unknown }[] = JSON.parse(raw);
-			const lookup = new Map(saved.map((s) => [s.id, s.value]));
-			return post.params.map((p) =>
-				lookup.has(p.id) ? { ...p, value: lookup.get(p.id) as typeof p.value } : p
-			);
+			// DEBUG: log what's saved and skip loading it
+			if (raw) {
+				console.log('[DEBUG] Saved params for', key, ':', raw);
+				console.log('[DEBUG] Ignoring saved params — using defaults');
+				localStorage.removeItem(key); // clear stale data
+			}
+			return undefined;
 		} catch {
 			return undefined;
 		}

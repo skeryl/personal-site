@@ -9,8 +9,10 @@ import {
 	type ContentParam
 } from '$lib/content-params';
 
-const TARGET_BLOBS = 15;
-const MARGIN_Y = 80;
+// Cell dimensions from Shane's calibrated 1080×1920 / 3×5 grid.
+// Physics constants are tuned for these exact sizes.
+const CELL_W = 360;
+const CELL_H = 384;
 const BG_COLOR = '#f5f0ea';
 const GRID_COLOR = '#3a3a3a';
 const GRID_LINE_W = 2;
@@ -78,10 +80,8 @@ class BlobGridContent implements StageContent {
 	private animationId: number | undefined;
 	private isPlaying = false;
 	private blobs: SoftBlob[] = [];
-	private cols = 3;
-	private rows = 5;
-	private scale = 1;
-	private cellSize = 240;
+	private cols = 0;
+	private rows = 0;
 
 	private speed = 0.65;
 	private springK = 0.02;
@@ -93,7 +93,6 @@ class BlobGridContent implements StageContent {
 	start(stage: Stage): void {
 		this.stage = stage;
 		this.ctx = stage.canvas.getContext('2d')!;
-		this.blobs = this.createBlobs();
 		this.isPlaying = true;
 		this.animate();
 	}
@@ -117,23 +116,9 @@ class BlobGridContent implements StageContent {
 		const byId = paramsById(params);
 		const num = (id: string) => (byId[id] as ContentParam<ParamType.number>).value;
 
-		const newSpringK = num('spring-k');
-		const newPressureK = num('pressure');
-
-		// If a stiffness/pressure param changes meaningfully, bleed off
-		// stored Verlet energy so the simulation can respond to the change.
-		// Without this, energy from a high value persists when you lower it.
-		const springChange = Math.abs(newSpringK - this.springK) / Math.max(this.springK, 0.001);
-		const pressureChange = Math.abs(newPressureK - this.pressureK) / Math.max(this.pressureK, 1);
-		if (this.blobs && (springChange > 0.1 || pressureChange > 0.1)) {
-			// Kill ~85% of stored velocity. Aggressive enough that going
-			// from a max-spring-K chaos state back to default actually calms.
-			this.dampenVelocities(0.15);
-		}
-
 		this.speed = num('speed');
-		this.springK = newSpringK;
-		this.pressureK = newPressureK;
+		this.springK = num('spring-k');
+		this.pressureK = num('pressure');
 		this.damping = num('damping');
 
 		const newRing = num('ring-nodes');
@@ -145,41 +130,39 @@ class BlobGridContent implements StageContent {
 		}
 	}
 
-	private dampenVelocities(factor: number): void {
-		// Verlet velocity is encoded as (current - previous). Reducing the
-		// gap between p.px and p.x kills proportional kinetic energy.
-		for (const blob of this.blobs) {
-			for (const p of blob.ring) {
-				p.px = p.x - (p.x - p.px) * factor;
-				p.py = p.y - (p.y - p.py) * factor;
-			}
-		}
-	}
-
 	private animate = (): void => {
 		if (!this.isPlaying || !this.ctx || !this.stage) return;
 
 		const canvas = this.stage.canvas;
 
-		// Cell size derived from canvas area so blob count stays near TARGET_BLOBS
-		const cellSize = Math.sqrt((canvas.width * canvas.height) / TARGET_BLOBS);
-		const cols = Math.max(1, Math.ceil(canvas.width / cellSize));
-		const scale = canvas.width / (cols * cellSize);
-		const rows = Math.max(1, Math.ceil(canvas.height / (cellSize * scale)));
-		this.scale = scale;
-		if (cols !== this.cols || rows !== this.rows || Math.abs(cellSize - this.cellSize) > 1) {
+		// Match Shane's visual cell size: the original 1080×1920 grid was
+		// scaled to fit the canvas. Use that same scale to determine how
+		// big each cell appears, then tile enough cells to fill the screen.
+		const refScale = Math.min(canvas.width / 1080, canvas.height / 2080);
+		const visualCellW = CELL_W * refScale;
+		const visualCellH = CELL_H * refScale;
+		const cols = Math.max(1, Math.ceil(canvas.width / visualCellW));
+		const rows = Math.max(1, Math.ceil(canvas.height / visualCellH));
+		if (cols !== this.cols || rows !== this.rows) {
 			this.cols = cols;
 			this.rows = rows;
-			this.cellSize = cellSize;
 			this.blobs = this.createBlobs();
 		}
+
+		const physW = cols * CELL_W;
+		const physH = rows * CELL_H;
+		// Scale so the grid covers the full canvas (slight overflow clipped)
+		const scale = Math.max(canvas.width / physW, canvas.height / physH);
+		const offsetX = (canvas.width - physW * scale) / 2;
+		const offsetY = (canvas.height - physH * scale) / 2;
 
 		// Clear full canvas
 		this.ctx.setTransform(1, 0, 0, 1, 0, 0);
 		this.ctx.fillStyle = BG_COLOR;
 		this.ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-		this.ctx.setTransform(scale, 0, 0, scale, 0, 0);
+		// Uniform scale, centered
+		this.ctx.setTransform(scale, 0, 0, scale, offsetX, offsetY);
 
 		for (const blob of this.blobs) this.updateBlob(blob);
 
@@ -188,55 +171,52 @@ class BlobGridContent implements StageContent {
 			if (this.showMesh) this.drawMesh(blob);
 		}
 
-		// Reset transform before grid so line widths are consistent
-		this.ctx.setTransform(1, 0, 0, 1, 0, 0);
 		this.drawGrid();
 
+		this.ctx.setTransform(1, 0, 0, 1, 0, 0);
 		this.animationId = requestAnimationFrame(this.animate);
 	};
 
 	private drawGrid(): void {
 		const ctx = this.ctx!;
-		const canvas = this.stage!.canvas;
+		const physW = this.cols * CELL_W;
+		const physH = this.rows * CELL_H;
 		ctx.strokeStyle = GRID_COLOR;
 		ctx.lineWidth = GRID_LINE_W;
 
-		// Vertical lines at physics cell boundaries
 		for (let c = 1; c < this.cols; c++) {
-			const x = c * this.cellSize * this.scale;
+			const x = c * CELL_W;
 			ctx.beginPath();
 			ctx.moveTo(x, 0);
-			ctx.lineTo(x, canvas.height);
+			ctx.lineTo(x, physH);
 			ctx.stroke();
 		}
 
-		// Horizontal lines at physics cell boundaries
 		for (let r = 1; r < this.rows; r++) {
-			const y = r * this.cellSize * this.scale;
+			const y = r * CELL_H;
 			ctx.beginPath();
 			ctx.moveTo(0, y);
-			ctx.lineTo(canvas.width, y);
+			ctx.lineTo(physW, y);
 			ctx.stroke();
 		}
 
-		// Outer border
-		ctx.strokeRect(0, 0, canvas.width, canvas.height);
+		ctx.strokeRect(0, 0, physW, physH);
 	}
 
 	private createBlobs(): SoftBlob[] {
 		const N = this.numRing;
 		const count = this.cols * this.rows;
-		const baseRadius = this.cellSize * 0.35;
+		const baseRadius = Math.min(CELL_W, CELL_H) * 0.35;
 
 		const blobs: SoftBlob[] = [];
 		for (let idx = 0; idx < count; idx++) {
 			const col = idx % this.cols;
 			const row = Math.floor(idx / this.cols);
 
-			const cellLeft = col * this.cellSize + WALL_MARGIN;
-			const cellRight = (col + 1) * this.cellSize - WALL_MARGIN;
-			const cellTop = row * this.cellSize + WALL_MARGIN;
-			const cellBottom = (row + 1) * this.cellSize - WALL_MARGIN;
+			const cellLeft = col * CELL_W + WALL_MARGIN;
+			const cellRight = (col + 1) * CELL_W - WALL_MARGIN;
+			const cellTop = row * CELL_H + WALL_MARGIN;
+			const cellBottom = (row + 1) * CELL_H - WALL_MARGIN;
 
 			const cx = (cellLeft + cellRight) / 2 + (Math.random() - 0.5) * 20;
 			const cy = (cellTop + cellBottom) / 2 + (Math.random() - 0.5) * 20;
@@ -518,11 +498,31 @@ class BlobGridContent implements StageContent {
 }
 
 const params = [
-	{ ...numberParam('Speed', 0.65, { min: 0.05, max: 5, step: 0.05 }), group: 'Motion' },
-	{ ...numberParam('Damping', 0.986, { min: 0.95, max: 1, step: 0.001 }), group: 'Motion' },
-	{ ...numberParam('Ring Nodes', 28, { min: 12, max: 48, step: 1 }), group: 'Structure' },
-	{ ...numberParam('Spring K', 0.02, { min: 0.01, max: 0.15, step: 0.005 }), group: 'Structure' },
-	{ ...numberParam('Pressure', 300, { min: 50, max: 2000, step: 25 }), group: 'Structure' },
+	{
+		...numberParam('Speed', 0.65, { min: 0.05, max: 1.5, step: 0.05 }),
+		group: 'Motion',
+		description: 'How fast each blob drifts within its cell'
+	},
+	{
+		...numberParam('Damping', 0.986, { min: 0.95, max: 1, step: 0.001 }),
+		group: 'Motion',
+		description: 'How quickly motion fades — lower values add more friction'
+	},
+	{
+		...numberParam('Ring Nodes', 28, { min: 12, max: 48, step: 1 }),
+		group: 'Structure',
+		description: "Smoothness of each blob's outline — more nodes, rounder shape"
+	},
+	{
+		...numberParam('Spring K', 0.02, { min: 0.01, max: 0.15, step: 0.005 }),
+		group: 'Structure',
+		description: 'How stiff each blob is — higher values resist deformation'
+	},
+	{
+		...numberParam('Pressure', 300, { min: 50, max: 2000, step: 25 }),
+		group: 'Structure',
+		description: 'Internal pressure pushing each blob outward — controls firmness'
+	},
 	{ ...selectParam('Show Mesh', ['Off', 'On'], 'Off'), group: 'Debug' }
 ];
 
