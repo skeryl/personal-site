@@ -12,6 +12,8 @@ import gravitySwell from "$lib/entries/gravity-swell";
 import lavaTerritories from "$lib/entries/lava-territories";
 import mathJourney from "$lib/entries/math-journey";
 import mirrors from "$lib/entries/mirrors";
+import moireGapData from "$lib/entries/moire-gap-data";
+import moirePattern from "$lib/entries/moire-pattern";
 import notePlayground from "$lib/entries/note-playground";
 import notePoints from "$lib/entries/note-points";
 import noteShader2 from "$lib/entries/note-shader-2";
@@ -40,6 +42,8 @@ const posts = {
     [lavaTerritories.summary.id]: lavaTerritories,
     [mathJourney.summary.id]: mathJourney,
     [mirrors.summary.id]: mirrors,
+    [moireGapData.summary.id]: moireGapData,
+    [moirePattern.summary.id]: moirePattern,
     [notePlayground.summary.id]: notePlayground,
     [notePoints.summary.id]: notePoints,
     [noteShader2.summary.id]: noteShader2,

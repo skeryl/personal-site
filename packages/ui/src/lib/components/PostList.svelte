@@ -3,7 +3,7 @@
 	import allPosts from '$lib/entries';
 	import videos from '$lib/assets/videos/posts/index.js';
 
-	const ALLOWED_POSTS = new Set(['lava-territories', 'blob-convergence', 'blob-grid']);
+	const ALLOWED_POSTS = new Set(['lava-territories', 'blob-convergence', 'blob-grid', 'moire-pattern']);
 
 	function sortPosts(a: PostSummary, b: PostSummary): number {
 		return -1 * Math.sign(a.timestamp.getTime() - b.timestamp.getTime());

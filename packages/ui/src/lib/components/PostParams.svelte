@@ -22,14 +22,26 @@
 		return Array.from(map.entries())
 			.map(([label, items]) => ({ label, items }))
 			.filter((s) =>
-				s.items.some((p) => p.type === ParamType.color || p.type === ParamType.number)
+				s.items.some(
+				(p) =>
+					p.type === ParamType.color ||
+					p.type === ParamType.number ||
+					(p.type === ParamType.string && p.options)
+			)
 			);
 	});
 
 	// Mobile: group-based navigation
 	let activeGroupIndex = $state(0);
 	let activeGroup = $derived(sections[activeGroupIndex]);
-	let visibleParams = $derived(activeGroup?.items.filter((p) => p.type !== ParamType.boolean) ?? []);
+	let visibleParams = $derived(
+		activeGroup?.items.filter(
+			(p) =>
+				p.type === ParamType.color ||
+				p.type === ParamType.number ||
+				(p.type === ParamType.string && p.options)
+		) ?? []
+	);
 	// Per-group memory: remember which param tab the user last selected for each group
 	let groupActiveParamIndex = $state<Record<number, number>>({});
 	let activeParamIndex = $derived(groupActiveParamIndex[activeGroupIndex] ?? 0);
@@ -160,6 +172,24 @@
 								{/if}
 							{/if}
 						</div>
+					{:else if param.type === ParamType.string && param.options}
+						<div class="select-param">
+							<div class="param-label-row">
+								<span class="param-label">{param.name}</span>
+							</div>
+							{#if param.description}
+								<span class="param-description">{param.description}</span>
+							{/if}
+							<select
+								class="param-select"
+								value={param.value}
+								onchange={(e) => onParamChange({ ...param, value: (e.target as HTMLSelectElement).value })}
+							>
+								{#each param.options as opt}
+									<option value={opt}>{opt}</option>
+								{/each}
+							</select>
+						</div>
 					{/if}
 				</div>
 				{/if}
@@ -221,6 +251,19 @@
 							<span>{activeParam.rangeLabels[1]}</span>
 						</div>
 					{/if}
+				{:else if activeParam?.type === ParamType.string && activeParam?.options}
+				{#if activeParam.description}
+					<span class="param-description">{activeParam.description}</span>
+				{/if}
+				<select
+					class="param-select"
+					value={activeParam.value}
+					onchange={(e) => onParamChange({ ...activeParam, value: (e.target as HTMLSelectElement).value })}
+				>
+					{#each activeParam.options as opt}
+						<option value={opt}>{opt}</option>
+					{/each}
+				</select>
 				{/if}
 			{/if}
 			<button class="revert-btn" onclick={revertGroup}>
@@ -382,6 +425,19 @@
 		letter-spacing: 0.02em;
 		margin-top: -0.35rem;
 		margin-bottom: 0.7rem;
+	}
+
+	.param-select {
+		width: 100%;
+		padding: 0.4rem 0.5rem;
+		font-family: 'DM Sans', sans-serif;
+		font-size: 0.75rem;
+		letter-spacing: 0.04em;
+		border: 1px solid #e5e5e5;
+		border-radius: 0;
+		background: white;
+		color: #000;
+		cursor: pointer;
 	}
 
 	.reset-btn {
