@@ -10,7 +10,7 @@ import {
 	type ContentParam
 } from '$lib/content-params';
 
-import gapRects from './moire-gap-data';
+import gapRects from '$lib/data/moire-gap-data';
 
 const DEFAULT_FG = '#ffffff';
 const DEFAULT_BG = '#000000';
