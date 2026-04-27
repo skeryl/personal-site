@@ -26,7 +26,7 @@
 				(p) =>
 					p.type === ParamType.color ||
 					p.type === ParamType.number ||
-					(p.type === ParamType.string && p.options)
+					p.type === ParamType.string
 			)
 			);
 	});
@@ -39,7 +39,7 @@
 			(p) =>
 				p.type === ParamType.color ||
 				p.type === ParamType.number ||
-				(p.type === ParamType.string && p.options)
+				p.type === ParamType.string
 		) ?? []
 	);
 	// Per-group memory: remember which param tab the user last selected for each group
@@ -189,6 +189,21 @@
 									<option value={opt}>{opt}</option>
 								{/each}
 							</select>
+						</div>
+					{:else if param.type === ParamType.string && !param.options}
+						<div class="text-param">
+							<div class="param-label-row">
+								<span class="param-label">{param.name}</span>
+							</div>
+							{#if param.description}
+								<span class="param-description">{param.description}</span>
+							{/if}
+							<input
+								type="text"
+								class="param-text-input"
+								value={param.value}
+								oninput={(e) => onParamChange({ ...param, value: (e.target as HTMLInputElement).value })}
+							/>
 						</div>
 					{/if}
 				</div>
@@ -425,6 +440,18 @@
 		letter-spacing: 0.02em;
 		margin-top: -0.35rem;
 		margin-bottom: 0.7rem;
+	}
+
+	.param-text-input {
+		width: 100%;
+		padding: 0.4rem 0.5rem;
+		font-family: 'DM Sans', sans-serif;
+		font-size: 0.75rem;
+		letter-spacing: 0.04em;
+		border: 1px solid #e5e5e5;
+		border-radius: 0;
+		background: white;
+		color: #000;
 	}
 
 	.param-select {

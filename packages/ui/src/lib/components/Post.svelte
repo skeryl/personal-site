@@ -161,13 +161,19 @@
 		if (!key || !post?.params) return undefined;
 		try {
 			const raw = localStorage.getItem(key);
-			// DEBUG: log what's saved and skip loading it
-			if (raw) {
-				console.log('[DEBUG] Saved params for', key, ':', raw);
-				console.log('[DEBUG] Ignoring saved params — using defaults');
-				localStorage.removeItem(key); // clear stale data
-			}
-			return undefined;
+			if (!raw) return undefined;
+			const saved: { id: string; value: unknown }[] = JSON.parse(raw);
+			const lookup = new Map(saved.map((s) => [s.id, s.value]));
+			return post.params.map((p) => {
+				if (!lookup.has(p.id)) return p;
+				let val = lookup.get(p.id) as typeof p.value;
+				// Clamp saved numbers to the param's current range
+				if (p.type === 'number' && typeof val === 'number' && p.range) {
+					const r = p.range as { min: number; max: number };
+					val = Math.min(r.max, Math.max(r.min, val)) as typeof p.value;
+				}
+				return { ...p, value: val };
+			});
 		} catch {
 			return undefined;
 		}

@@ -117,6 +117,20 @@ export function selectParam(
 	};
 }
 
+export function textParam(
+	name: string,
+	defaultValue: string = '',
+	id: string = name.replace(/\s/g, '-').toLowerCase()
+): ContentParam<ParamType.string> {
+	return {
+		value: defaultValue,
+		defaultValue,
+		type: ParamType.string,
+		name,
+		id
+	};
+}
+
 export type ContentParams = ContentParam<ParamType>[];
 
 export function paramsById(params: ContentParams): Record<string, ContentParam<ParamType>> {

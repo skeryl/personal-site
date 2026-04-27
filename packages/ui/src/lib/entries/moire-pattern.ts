@@ -5,6 +5,7 @@ import {
 	numberParam,
 	colorParam,
 	selectParam,
+	textParam,
 	paramsById,
 	ParamType,
 	type ContentParam
@@ -28,7 +29,7 @@ class MoirePatternContent implements StageContent {
 	private targetMouseY = 0.5;
 
 	// Params
-	private version = 'V7 — Matrix';
+	private version = 'V3 — Facade';
 	// V7 Matrix params
 	private cellW = 50;
 	private cellH = 50;
@@ -40,6 +41,20 @@ class MoirePatternContent implements StageContent {
 	private yExp = 2;
 	private rotRange = 45;
 	private colorShift = 180;
+	// V8 Text params
+	private textContent = 'RUST & RECKONING';
+	private textScale = 1.0;
+	private midColor = '#888888';
+	private hoverRadius = 0.3;
+	private minHeightRatio = 0.4;
+	private maxHeightRatio = 1.6;
+	private waveFreqX = 0.3;
+	private waveFreqY = 0.2;
+	private waveAmplitude = 0.8;
+	// Offscreen canvas for text sampling
+	private textCanvas: HTMLCanvasElement | undefined;
+	private textCtx: CanvasRenderingContext2D | undefined;
+	private textDirty = true;
 	private polyOffset = 0.5;
 	private minSize = 0.8;
 	private varyWidth = 1;
@@ -117,6 +132,25 @@ class MoirePatternContent implements StageContent {
 		if (num('panel-height') !== undefined) this.cellH = num('panel-height');
 		if (num('panel-rotation') !== undefined) this.rotRange = num('panel-rotation');
 		if (num('panel-margin') !== undefined) this.cellMargin = num('panel-margin');
+		// V8 params
+		if (str('display-text') && str('display-text') !== this.textContent) {
+			this.textContent = str('display-text')!;
+			this.textDirty = true;
+		}
+		if (num('text-scale') !== undefined) {
+			const newScale = num('text-scale');
+			if (newScale !== this.textScale) {
+				this.textScale = newScale;
+				this.textDirty = true;
+			}
+		}
+		if (col('mid-color')) this.midColor = col('mid-color');
+		if (num('hover-radius') !== undefined) this.hoverRadius = num('hover-radius');
+		if (num('min-height-ratio') !== undefined) this.minHeightRatio = num('min-height-ratio');
+		if (num('max-height-ratio') !== undefined) this.maxHeightRatio = num('max-height-ratio');
+		if (num('wave-freq-x') !== undefined) this.waveFreqX = num('wave-freq-x');
+		if (num('wave-freq-y') !== undefined) this.waveFreqY = num('wave-freq-y');
+		if (num('wave-amplitude') !== undefined) this.waveAmplitude = num('wave-amplitude');
 	}
 
 	private animate = (): void => {
@@ -135,16 +169,20 @@ class MoirePatternContent implements StageContent {
 
 		const viewAngle = (this.mouseX - 0.5) * 2; // -1 to 1
 
-		if (this.version === 'V7 — Matrix') {
+		if (this.version === 'V9 — Text Facade') {
+			this.drawTextFacade(ctx, w, h);
+		} else if (this.version === 'V8 — Text') {
+			this.drawTextMatrix(ctx, w, h);
+		} else if (this.version === 'V7 — Matrix') {
 			this.drawMatrix(ctx, w, h);
 		} else if (this.version === 'V3 — Facade') {
 			ctx.fillStyle = this.skyColor;
 			ctx.fillRect(0, 0, w, h);
 			this.drawFacadeLayer(ctx, w, h, viewAngle, 1.0, 0);
-		} else if (this.version === 'V4 — Gaps') {
-			ctx.fillStyle = this.panelColor;
+		} else if (this.version === 'V4 — Wave') {
+			ctx.fillStyle = this.skyColor;
 			ctx.fillRect(0, 0, w, h);
-			this.drawGaps(ctx, w, h, viewAngle);
+			this.drawFacadeLayer(ctx, w, h, viewAngle, 1.0, 0);
 		} else if (this.version === 'V6 — Parallelograms') {
 			ctx.fillStyle = '#ffffff';
 			ctx.fillRect(0, 0, w, h);
@@ -302,11 +340,13 @@ class MoirePatternContent implements StageContent {
 		// - Lattice depth varies 18" to 5' across the facade
 		// - Panel spacing is intentionally non-uniform
 
-		const cols = Math.round(this.finCount);
-		const colW = w / cols;
-		const panelMaxW = colW * 0.82;
-		const baseUnitH = colW * 0.9; // base unit for panel height calculation
-		const gapH = colW * 0.06; // horizontal gap (glass band)
+		const panelW = this.cellW;
+		const panelH = this.cellH;
+		const margin = this.cellMargin;
+		const colW = panelW + margin;
+		const cols = Math.ceil(w / colW) + 2;
+		const panelMaxW = panelW;
+		const baseUnitH = panelH;
 
 		// Arc span: how much of the cylinder is visible
 		const arcSpan = Math.PI * 0.6;
@@ -341,36 +381,36 @@ class MoirePatternContent implements StageContent {
 			const edgeFactor = Math.abs(c / cols - 0.5) * 2; // 0 at center, 1 at edges
 			const localDepth = 1 + edgeFactor * 0.5;
 
-			let y = -baseUnitH;
-			let panelIdx = 0;
+			// Pre-compute row positions with varying heights
+			// (only need to do this once per frame, but doing per-column
+			// is fine since the row layout is the same for all columns)
+			let y = -panelH;
+			let r = -1;
+			while (y < h + panelH) {
+				// Vary height per row between min and max ratios
+				const rowHeightVar =
+					this.minHeightRatio +
+					this.hash(r + 1000, 77) * (this.maxHeightRatio - this.minHeightRatio);
+				const rowH = panelH * rowHeightVar;
 
-			while (y < h + baseUnitH) {
-				// Panel height: 2–8x the base unit, deterministic per position
-				const hRand = this.hash(c + depthOffset * 100, panelIdx);
-				const heightMultiplier = 2 + hRand * 6; // 2x to 8x
-				const panelH = baseUnitH * heightMultiplier;
+				const staggeredX = screenX;
 
-				// Gap between panels varies (non-uniform, like the real building)
-				const gapRand = this.hash(c + depthOffset * 100, panelIdx + 1000);
-				const gapV = baseUnitH * (0.08 + gapRand * 0.15);
+				// Wave: shift each panel's Y position per column,
+				// creating curved gaps between rows
+				const waveOffset =
+					Math.sin(c * this.waveFreqX + r * this.waveFreqY) * panelH * this.waveAmplitude;
+				const wavedY = y + waveOffset;
 
-				const yCenter = y + panelH / 2;
+				// Shade based on viewing angle
+				const shade = Math.max(0.25, cosA);
 
-				// Subtle fixed wave offset for organic feel
-				const waveOff =
-					Math.sin((yCenter / h) * Math.PI * 3 + c * 0.5) * this.waveAmount * colW * 0.2;
-
-				// Shade based on viewing angle + variation per panel
-				const panelShadeVar = 0.9 + this.hash(c, panelIdx + 500) * 0.2;
-				const shade = Math.max(0.25, cosA * panelShadeVar);
-
-				if (y + panelH > 0 && y < h) {
+				if (wavedY + rowH > 0 && wavedY < h) {
 					ctx.fillStyle = `rgb(${Math.round(pr * shade)}, ${Math.round(pg * shade)}, ${Math.round(pb * shade)})`;
-					ctx.fillRect(screenX - apparentW / 2 + waveOff, y, apparentW, panelH);
+					ctx.fillRect(staggeredX - apparentW / 2, wavedY, apparentW, rowH);
 				}
 
-				y += panelH + gapV;
-				panelIdx++;
+				y += rowH + margin;
+				r++;
 			}
 		}
 
@@ -514,6 +554,218 @@ class MoirePatternContent implements StageContent {
 		}
 	}
 
+	private lastGridCols = 0;
+	private lastGridRows = 0;
+
+	private renderTextToCanvas(canvasW: number, canvasH: number): void {
+		if (!this.textCanvas) {
+			this.textCanvas = document.createElement('canvas');
+			this.textCtx = this.textCanvas.getContext('2d')!;
+		}
+		this.textCanvas.width = canvasW;
+		this.textCanvas.height = canvasH;
+
+		const tc = this.textCtx!;
+		tc.clearRect(0, 0, canvasW, canvasH);
+
+		// Scale font to fit within the canvas
+		const maxW = canvasW * 0.85;
+		const maxH = canvasH * 0.7;
+		let fontSize = maxH * this.textScale;
+		tc.font = `900 ${fontSize}px "Sora", "DM Sans", sans-serif`;
+
+		const measured = tc.measureText(this.textContent);
+		if (measured.width > maxW) {
+			fontSize *= maxW / measured.width;
+			tc.font = `900 ${fontSize}px "Sora", "DM Sans", sans-serif`;
+		}
+
+		tc.textAlign = 'center';
+		tc.textBaseline = 'middle';
+		tc.fillStyle = '#ffffff';
+		tc.fillText(this.textContent, canvasW / 2, canvasH / 2);
+
+		this.textDirty = false;
+	}
+
+	private drawTextFacade(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+		// Combines V8's text-through-gaps with V3's curved facade.
+		// Text is behind curved panels; mouse shifts the viewing angle.
+
+		// Render text
+		if (
+			this.textDirty ||
+			!this.textCanvas ||
+			this.textCanvas.width !== w ||
+			this.textCanvas.height !== h
+		) {
+			this.renderTextToCanvas(w, h);
+		}
+		const tc = this.textCtx!;
+		const textData = tc.getImageData(0, 0, w, h);
+
+		const mc = this.midColor;
+		const mr = parseInt(mc.slice(1, 3), 16);
+		const mg = parseInt(mc.slice(3, 5), 16);
+		const mb = parseInt(mc.slice(5, 7), 16);
+
+		// V3 facade params
+		const cols = Math.round(this.finCount || 40);
+		const colW = w / cols;
+		const panelMaxW = colW * 0.82;
+		const baseUnitH = this.cellH;
+		const margin = this.cellMargin;
+
+		const arcSpan = Math.PI * 0.6;
+		const viewAngle = (this.mouseX - 0.5) * 2;
+		const viewer = viewAngle * arcSpan * 0.4;
+
+		const pr = parseInt(this.skyColor.slice(1, 3), 16);
+		const pg = parseInt(this.skyColor.slice(3, 5), 16);
+		const pb = parseInt(this.skyColor.slice(5, 7), 16);
+
+		// Layer 1: Background
+		ctx.fillStyle = this.panelColor;
+		ctx.fillRect(0, 0, w, h);
+
+		// Layer 2: Text gradient strips behind each bar column
+		for (let c = 0; c < cols; c++) {
+			const panelAngle = ((c + 0.5) / cols - 0.5) * arcSpan;
+			const relAngle = panelAngle - viewer;
+			const cosA = Math.cos(relAngle);
+			if (cosA <= 0.02) continue;
+
+			const apparentW = panelMaxW * cosA;
+			const halfArc = Math.sin(arcSpan / 2);
+			const screenX = w / 2 + (Math.sin(panelAngle) / halfArc) * (w / 2);
+
+			const stripW = apparentW + margin * 2;
+			const stripLeft = screenX - stripW / 2;
+
+			for (let y = 0; y < h; y++) {
+				const sx = Math.floor(screenX);
+				if (sx < 0 || sx >= w) continue;
+				const idx = (y * w + sx) * 4;
+				const textAlpha = textData.data[idx + 3] / 255;
+				if (textAlpha < 0.05) continue;
+
+				const a = textAlpha;
+				const grad = ctx.createLinearGradient(stripLeft, 0, stripLeft + stripW, 0);
+				grad.addColorStop(0, `rgba(${mr},${mg},${mb},0)`);
+				grad.addColorStop(0.25, `rgba(${mr},${mg},${mb},${a})`);
+				grad.addColorStop(0.75, `rgba(${mr},${mg},${mb},${a})`);
+				grad.addColorStop(1, `rgba(${mr},${mg},${mb},0)`);
+
+				ctx.fillStyle = grad;
+				ctx.fillRect(stripLeft, y, stripW, 1);
+			}
+		}
+
+		// Layer 3: V3 facade panels on top
+		for (let c = 0; c < cols; c++) {
+			const panelAngle = ((c + 0.5) / cols - 0.5) * arcSpan;
+			const relAngle = panelAngle - viewer;
+			const cosA = Math.cos(relAngle);
+			if (cosA <= 0.02) continue;
+
+			const apparentW = panelMaxW * cosA;
+			const halfArc = Math.sin(arcSpan / 2);
+			const screenX = w / 2 + (Math.sin(panelAngle) / halfArc) * (w / 2);
+
+			const shade = Math.max(0.3, cosA);
+			ctx.fillStyle = `rgb(${Math.round(pr * shade)}, ${Math.round(pg * shade)}, ${Math.round(pb * shade)})`;
+
+			// Draw panels in this column
+			const stepY = baseUnitH + margin;
+			const rows = Math.ceil(h / stepY) + 2;
+			for (let r = -1; r < rows; r++) {
+				const y = r * stepY;
+				ctx.fillRect(screenX - apparentW / 2, y, apparentW, baseUnitH);
+			}
+		}
+	}
+
+	private drawTextMatrix(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+		const panelW = this.cellW;
+		const panelH = this.cellH;
+		const margin = this.cellMargin;
+		const stepX = panelW + margin;
+		const stepY = panelH + margin;
+
+		const cols = Math.ceil(w / stepX) + 2;
+		const rows = Math.ceil(h / stepY) + 2;
+
+		const rotation = this.rotRange * (Math.PI / 180);
+
+		// Render text to offscreen canvas for masking
+		if (
+			this.textDirty ||
+			!this.textCanvas ||
+			this.textCanvas.width !== w ||
+			this.textCanvas.height !== h
+		) {
+			this.renderTextToCanvas(w, h);
+		}
+		const tc = this.textCtx!;
+
+		// Layer 1: Black background
+		ctx.fillStyle = this.panelColor;
+		ctx.fillRect(0, 0, w, h);
+
+		// Layer 2: Text visible through column gaps, like fluted glass.
+		// Each column gap gets its own vertical strip of text with
+		// gradient edges that fade to black at the boundaries.
+
+		const mc = this.midColor;
+		const mr = parseInt(mc.slice(1, 3), 16);
+		const mg = parseInt(mc.slice(3, 5), 16);
+		const mb = parseInt(mc.slice(5, 7), 16);
+
+		// Get text image data once for efficient sampling
+		const textData = tc.getImageData(0, 0, w, h);
+
+		// For each column, draw a gradient-faded strip DIRECTLY BEHIND
+		// the front bar. The strip is wider than the bar, so the
+		// gradient edges peek out on both sides.
+		for (let c = -1; c < cols + 1; c++) {
+			// Centered on the bar, not the gap
+			const barCenterX = c * stepX + panelW / 2;
+			const stripW = panelW + margin * 2;
+			const stripLeft = barCenterX - stripW / 2;
+
+			// Scan vertically
+			for (let y = 0; y < h; y++) {
+				const sx = Math.floor(barCenterX);
+				if (sx < 0 || sx >= w) continue;
+				const idx = (y * w + sx) * 4;
+				const textAlpha = textData.data[idx + 3] / 255;
+				if (textAlpha < 0.05) continue;
+
+				const grad = ctx.createLinearGradient(stripLeft, 0, stripLeft + stripW, 0);
+				const a = textAlpha;
+				grad.addColorStop(0, `rgba(${mr},${mg},${mb},0)`);
+				grad.addColorStop(0.25, `rgba(${mr},${mg},${mb},${a})`);
+				grad.addColorStop(0.75, `rgba(${mr},${mg},${mb},${a})`);
+				grad.addColorStop(1, `rgba(${mr},${mg},${mb},0)`);
+
+				ctx.fillStyle = grad;
+				ctx.fillRect(stripLeft, y, stripW, 1);
+			}
+		}
+
+		// Layer 3: Foreground panels — vertical columns with thin horizontal gaps
+		// to restore the "panel" feel while keeping text legible
+		const rowGap = Math.max(1, margin * 0.3); // thin horizontal gap between panels
+		ctx.fillStyle = this.skyColor;
+		for (let c = -1; c < cols + 1; c++) {
+			const x = c * stepX;
+			for (let r = -1; r < rows; r++) {
+				const y = r * stepY;
+				ctx.fillRect(x, y, panelW, panelH);
+			}
+		}
+	}
+
 	private drawMatrix(ctx: CanvasRenderingContext2D, w: number, h: number): void {
 		const panelW = this.cellW;
 		const panelH = this.cellH;
@@ -534,9 +786,6 @@ class MoirePatternContent implements StageContent {
 		// Mouse position in pixels
 		const mousePixelX = this.mouseX * w;
 		const mousePixelY = this.mouseY * h;
-		// Opposite point
-		const oppX = w - mousePixelX;
-		const oppY = h - mousePixelY;
 		// Max distance (corner to corner) for normalization
 		const maxDist = Math.sqrt(w * w + h * h);
 
@@ -571,16 +820,8 @@ const params = [
 	{
 		...selectParam(
 			'Version',
-			[
-				'V1 — Waves',
-				'V2 — Panels',
-				'V3 — Facade',
-				'V4 — Gaps',
-				'V5 — Traced',
-				'V6 — Parallelograms',
-				'V7 — Matrix'
-			],
-			'V7 — Matrix'
+			['V3 — Facade', 'V4 — Wave', 'V7 — Matrix', 'V8 — Text'],
+			'V3 — Facade'
 		),
 		group: 'Version',
 		description: 'Switch between rendering approaches'
@@ -595,24 +836,9 @@ const params = [
 		group: 'Color',
 		description: 'Background color (V7) / panel color (V1–V6)'
 	},
+	// V7/V8 — Panel params
 	{
-		...numberParam('Wave Amount', 0.35, { min: 0, max: 1, step: 0.01 }),
-		group: 'Pattern',
-		description: 'How much the panels undulate — higher values create more dramatic curves'
-	},
-	{
-		...numberParam('Fin Count', 40, { min: 10, max: 80, step: 1 }),
-		group: 'Pattern',
-		description: 'Number of vertical panels across the screen'
-	},
-	{
-		...numberParam('Layer Gap', 0.5, { min: 0.1, max: 1.5, step: 0.05 }),
-		group: 'Pattern',
-		description: 'Depth between front and back layers — controls moiré intensity'
-	},
-	// V7 — Panel params
-	{
-		...numberParam('Panel Width', 50, { min: 5, max: 200, step: 1 }),
+		...numberParam('Panel Width', 50, { min: 1, max: 200, step: 1 }),
 		group: 'Panels',
 		description: 'Width of each panel'
 	},
@@ -630,6 +856,53 @@ const params = [
 		...numberParam('Panel Margin', 2, { min: 0, max: 50, step: 1 }),
 		group: 'Panels',
 		description: 'Gap between panels on all sides'
+	},
+	{
+		...numberParam('Hover Radius', 0.3, { min: 0.05, max: 1, step: 0.05 }),
+		group: 'Panels',
+		description: 'Size of the mouse hover effect area — smaller = tighter focus'
+	},
+	{
+		...numberParam('Min Height Ratio', 0.4, { min: 0.1, max: 2, step: 0.1 }),
+		group: 'Panels',
+		description: 'Shortest panel row as a fraction of Panel Height'
+	},
+	{
+		...numberParam('Max Height Ratio', 1.6, { min: 0.5, max: 5, step: 0.1 }),
+		group: 'Panels',
+		description: 'Tallest panel row as a fraction of Panel Height'
+	},
+	{
+		...numberParam('Wave Freq X', 0.3, { min: 0, max: 2, step: 0.05 }),
+		group: 'Wave',
+		description: 'Horizontal frequency of the width wave pattern'
+	},
+	{
+		...numberParam('Wave Freq Y', 0.2, { min: 0, max: 2, step: 0.05 }),
+		group: 'Wave',
+		description: 'Vertical frequency of the width wave pattern'
+	},
+	{
+		...numberParam('Wave Amplitude', 0.8, { min: 0, max: 1, step: 0.05 }),
+		group: 'Wave',
+		description: 'How much the wave affects panel width — 0 = none, 1 = full'
+	},
+	// V8 — Text params
+	{
+		...textParam('Display Text', 'RUST & RECKONING'),
+		group: 'Text',
+		description: 'Text to render through the panel grid'
+	},
+	{
+		...numberParam('Text Scale', 1.0, { min: 0.2, max: 3, step: 0.1 }),
+		group: 'Text',
+		description: 'Size of the text relative to the canvas'
+	},
+	{
+		...colorParam('Mid Color', '#888888'),
+		group: 'Text',
+		description:
+			'Color for anti-aliased edges — creates the abstraction between text and background'
 	}
 ];
 

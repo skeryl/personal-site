@@ -128,6 +128,37 @@
 		}
 	}
 
+	// ── Hex editing ───────────────────────────────────────────────────────────
+
+	let hexEditing = $state(false);
+	let hexEditValue = $state('');
+
+	function startHexEdit() {
+		hexEditing = true;
+		hexEditValue = hexDisplay.toUpperCase();
+	}
+
+	function commitHexEdit() {
+		hexEditing = false;
+		let cleaned = hexEditValue.trim().replace(/^#/, '');
+		// Expand 3-char shorthand: "F0A" → "FF00AA"
+		if (/^[0-9a-fA-F]{3}$/.test(cleaned)) {
+			cleaned = cleaned[0] + cleaned[0] + cleaned[1] + cleaned[1] + cleaned[2] + cleaned[2];
+		}
+		const hex = '#' + cleaned;
+		if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
+			const [nh, ns, nv] = hexToHsv(hex);
+			hState = nh;
+			sState = ns;
+			vState = nv;
+			commit();
+		}
+	}
+
+	function cancelHexEdit() {
+		hexEditing = false;
+	}
+
 	// ── Copy ───────────────────────────────────────────────────────────────────
 
 	let toastVisible = $state(false);
@@ -197,13 +228,28 @@
 	<div class="color-values">
 		<div class="color-value-line">
 			<span class="color-value-label">HEX:</span>
-			<button
-				class="color-value-pill"
-onclick={() => copyValue(hexDisplay)}
-				title="Copy hex"
-			>
-				{hexDisplay.toUpperCase()}
-			</button>
+			{#if hexEditing}
+				<input
+					class="hex-edit-input"
+					type="text"
+					value={hexEditValue}
+					oninput={(e) => { hexEditValue = (e.target as HTMLInputElement).value; }}
+					onkeydown={(e) => {
+						if (e.key === 'Enter') { e.preventDefault(); commitHexEdit(); }
+						if (e.key === 'Escape') cancelHexEdit();
+					}}
+					onblur={commitHexEdit}
+					autofocus
+				/>
+			{:else}
+				<button
+					class="color-value-pill"
+					onclick={startHexEdit}
+					title="Click to edit"
+				>
+					{hexDisplay.toUpperCase()}
+				</button>
+			{/if}
 		</div>
 		<div class="color-values-divider"></div>
 		<div class="color-value-line">
@@ -360,6 +406,19 @@ onclick={() => copyValue(String(rgbDisplay[2]))}
 
 	.color-value-pill:hover {
 		color: #000;
+	}
+
+	.hex-edit-input {
+		font: inherit;
+		font-family: 'DM Mono', monospace;
+		font-size: 0.858rem;
+		padding: 0.1rem 0.35rem;
+		border: 1px solid #000;
+		border-radius: 0;
+		background: #fff;
+		color: #000;
+		width: 5.5em;
+		outline: none;
 	}
 
 	.color-value-pill:active {

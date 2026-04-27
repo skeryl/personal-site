@@ -63,8 +63,11 @@
 		};
 	});
 
+	let hasInitialized = false;
+
 	run(() => {
-		if (cnv) {
+		if (cnv && !hasInitialized) {
+			hasInitialized = true;
 			if (!content) {
 				content = post?.content() as StageContent | undefined;
 			}
