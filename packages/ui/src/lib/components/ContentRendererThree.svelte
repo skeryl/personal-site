@@ -3,6 +3,7 @@
 
 	import { type Post, type RendererParams, type ExperimentContent3D } from '@sc/model';
 	import { PerspectiveCamera, Scene, Vector2, WebGLRenderer } from 'three';
+	import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 	import { getContext, onMount } from 'svelte';
 	import {
 		FullScreenChangeEvent,
@@ -19,8 +20,12 @@
 	let { post = undefined, cnv = undefined }: Props = $props();
 
 	let renderParams: RendererParams | undefined = $state();
+	let controls: OrbitControls | undefined;
 
-	let content = $derived(post?.content() as ExperimentContent3D);
+	// Stable reference — only created once per mount, not re-created when post.params changes.
+	// Re-deriving content whenever `post` changes (e.g. when saved params are applied) would
+	// create a new instance with default uniforms, losing any params already applied.
+	let content: ExperimentContent3D | undefined = $state(undefined);
 
 	const res = new Vector2();
 	let isMouseActive = false;
@@ -49,8 +54,9 @@
 	function animate() {
 		const params = renderParams;
 		if (isRunning && params) {
+			controls?.update();
 			params.renderer.render(params.scene, params.camera);
-			if (content.onRender) {
+			if (content?.onRender) {
 				content.onRender();
 			}
 			window.requestAnimationFrame(animate);
@@ -102,6 +108,7 @@
 
 		return () => {
 			document.removeEventListener('fullscreenchange', onFullscreenChange);
+			controls?.dispose();
 			observer?.disconnect();
 			content?.stop();
 		};
@@ -110,11 +117,18 @@
 	run(() => {
 		if (cnv) {
 			if (!isRunning) {
+				// Create content once — stable across param changes
+				if (!content) {
+					content = post?.content() as ExperimentContent3D | undefined;
+				}
+				if (!content) return;
+
 				const canvas = cnv!;
 				const renderer = new WebGLRenderer({
 					canvas: canvas,
 					alpha: true,
-					antialias: true
+					antialias: true,
+					preserveDrawingBuffer: true
 				});
 				renderer.shadowMap.enabled = true;
 
@@ -128,8 +142,15 @@
 					container: cnv.parentElement as HTMLElement
 				};
 
+				controls = new OrbitControls(camera, canvas);
+				controls.enableDamping = true;
 				handleResize();
 				content.start(renderParams);
+				// Apply current params immediately after start — catches the case where
+				// saved params were already loaded into post.params before the renderer initialised.
+				if (post?.params) {
+					content.setParams?.(post.params);
+				}
 				isRunning = true;
 				animate();
 				setTimeout(() => handleResize(), 10);

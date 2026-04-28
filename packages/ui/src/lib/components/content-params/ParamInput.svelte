@@ -20,6 +20,31 @@
 		onChange({ ...param, value });
 	}
 
+	let hexDraft = $state(param.value as string);
+
+	function hexToRgb(hex: string): string {
+		if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return '';
+		const r = parseInt(hex.slice(1, 3), 16);
+		const g = parseInt(hex.slice(3, 5), 16);
+		const b = parseInt(hex.slice(5, 7), 16);
+		return `${r}, ${g}, ${b}`;
+	}
+
+	let rgbDisplay = $derived(hexToRgb(hexDraft));
+
+	function onColorChanged(e: Event) {
+		const value = (e.target as HTMLInputElement).value;
+		hexDraft = value;
+		onChange({ ...param, value });
+	}
+
+	function onHexTextInput(e: Event) {
+		hexDraft = (e.target as HTMLInputElement).value;
+		if (/^#[0-9a-fA-F]{6}$/.test(hexDraft)) {
+			onChange({ ...param, value: hexDraft });
+		}
+	}
+
 	function onVec2ValueChanged(vec2: Vec2) {
 		onChange({ ...param, value: vec2 });
 	}
@@ -74,6 +99,32 @@
 					<option value={option}>{option}</option>
 				{/each}
 			</select>
+		</div>
+	{:else if param.type === ParamType.color}
+		<div class="flex flex-col gap-1">
+			<label for={inputId} class="text-xs font-bold">{param.name}</label>
+			<div class="flex items-center gap-2">
+				<input
+					id={inputId}
+					type="color"
+					value={param.value}
+					oninput={onColorChanged}
+					class="h-8 w-10 cursor-pointer rounded border-0 p-0.5"
+				/>
+				<div class="flex flex-col gap-0.5">
+					<input
+						type="text"
+						value={hexDraft}
+						oninput={onHexTextInput}
+						maxlength={7}
+						class="w-24 rounded border border-neutral-300 bg-transparent px-2 py-1 font-mono text-xs"
+						placeholder="#000000"
+					/>
+					{#if rgbDisplay}
+						<span class="font-mono text-xs opacity-50">{rgbDisplay}</span>
+					{/if}
+				</div>
+			</div>
 		</div>
 	{:else}
 		<input id={inputId} type="text" />

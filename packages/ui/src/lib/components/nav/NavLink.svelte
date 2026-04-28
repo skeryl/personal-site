@@ -12,6 +12,9 @@
 	let isActiveRoute = $derived($page.url.pathname === href);
 </script>
 
-<a {href} class={`${isActiveRoute ? 'underline underline-offset-4' : 'no-underline'} ${className}`}
-	>{text}</a
+<a
+	{href}
+	class={`${isActiveRoute ? 'underline underline-offset-4' : 'no-underline'} ${className}`}
+	target={href.startsWith('http') ? '_blank' : undefined}
+	rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}>{text}</a
 >

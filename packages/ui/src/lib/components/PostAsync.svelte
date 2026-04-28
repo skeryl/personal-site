@@ -12,7 +12,7 @@
 {#await post}
 	<p>post is loading</p>
 {:then postContent}
-	<PostComponent post={postContent.default} />
+	<PostComponent post={postContent.default} hideHeader={true} />
 {:catch error}
 	<p>Error! {error.message}</p>
 {/await}

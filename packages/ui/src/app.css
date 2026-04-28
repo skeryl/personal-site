@@ -1,5 +1,19 @@
 @import './theme.css';
 
+@font-face {
+	font-family: 'Apple Garamond';
+	src: url('/AppleGaramond-Light.ttf') format('truetype');
+	font-weight: 300;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: 'Apple Garamond';
+	src: url('/AppleGaramond-LightItalic.ttf') format('truetype');
+	font-weight: 300;
+	font-style: italic;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -71,15 +85,15 @@
 	input[type='range']::-webkit-slider-thumb {
 		-webkit-appearance: none;
 		appearance: none;
-		width: 22px;
-		height: 22px;
+		width: 30px;
+		height: 30px;
 		border-radius: 50%;
 		background: var(--range-thumb);
 		cursor: pointer;
 	}
 	input[type='range']::-moz-range-thumb {
-		width: 22px;
-		height: 22px;
+		width: 30px;
+		height: 30px;
 		border-radius: 50%;
 		background: var(--range-thumb);
 		cursor: pointer;
@@ -100,12 +114,12 @@
 			background-clip: content-box;
 		}
 		input[type='range']::-webkit-slider-thumb {
-			width: 28px;
-			height: 28px;
+			width: 30px;
+			height: 30px;
 		}
 		input[type='range']::-moz-range-thumb {
-			width: 28px;
-			height: 28px;
+			width: 30px;
+			height: 30px;
 		}
 		input[type='range']::-moz-range-track {
 			height: 8px;
@@ -116,5 +130,25 @@
 			min-height: 44px;
 			font-size: 16px;
 		}
+	}
+}
+
+/* Thumb sizing — !important needed to override Skeleton UI */
+input[type='range']::-webkit-slider-thumb {
+	width: 20px !important;
+	height: 20px !important;
+}
+input[type='range']::-moz-range-thumb {
+	width: 20px !important;
+	height: 20px !important;
+}
+@media (pointer: coarse) {
+	input[type='range']::-webkit-slider-thumb {
+		width: 28px !important;
+		height: 28px !important;
+	}
+	input[type='range']::-moz-range-thumb {
+		width: 28px !important;
+		height: 28px !important;
 	}
 }

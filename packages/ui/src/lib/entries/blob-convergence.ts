@@ -87,14 +87,42 @@ function polyArea(ring: VPoint[]): number {
 /* ── params ─────────────────────────────────────────────────── */
 
 const defaultParams: ContentParams = [
-	numberParam('Blobs', 33, { min: 1, max: 100, step: 1 }),
-	numberParam('Speed', 2.7, { min: 0.05, max: 5, step: 0.05 }),
-	numberParam('Spring K', 0.106, { min: 0.001, max: 0.5, step: 0.001 }),
-	numberParam('Pressure', 2920, { min: 10, max: 5000, step: 10 }),
-	numberParam('Damping', 0.979, { min: 0.95, max: 1, step: 0.001 }),
-	numberParam('Ring Nodes', 17, { min: 12, max: 48, step: 1 }),
-	numberParam('Color Bleed', 1.4, { min: 1, max: 5, step: 0.1 }),
-	selectParam('Show Mesh', ['Off', 'On'], 'Off')
+	{
+		...numberParam('Speed', 2.7, { min: 0.05, max: 5, step: 0.05 }),
+		group: 'Motion',
+		description: 'How fast the blobs drift around the scene'
+	},
+	{
+		...numberParam('Damping', 0.979, { min: 0.95, max: 1, step: 0.001 }),
+		group: 'Motion',
+		description: 'How quickly motion fades — higher values glide longer'
+	},
+	{
+		...numberParam('Blobs', 33, { min: 1, max: 100, step: 1 }),
+		group: 'Structure',
+		description: 'Number of blobs in the scene'
+	},
+	{
+		...numberParam('Ring Nodes', 17, { min: 12, max: 48, step: 1 }),
+		group: 'Structure',
+		description: 'Smoothness of each blob — more nodes, rounder edges'
+	},
+	{
+		...numberParam('Spring K', 0.106, { min: 0.001, max: 0.5, step: 0.001 }),
+		group: 'Structure',
+		description: 'Outline stiffness — high values hold shape, low values wobble'
+	},
+	{
+		...numberParam('Pressure', 2920, { min: 10, max: 5000, step: 10 }),
+		group: 'Structure',
+		description: 'Internal pressure pushing outward — controls size and firmness'
+	},
+	{
+		...numberParam('Merge Strength', 1.4, { min: 1, max: 5, step: 0.1 }),
+		group: 'Blob Merging',
+		description: 'How much blobs visually fuse and bleed color on contact'
+	},
+	{ ...selectParam('Show Mesh', ['Off', 'On'], 'Off'), group: 'Debug' }
 ];
 
 /* ── content class ─────────────────────────────────────────── */
@@ -529,7 +557,7 @@ class BlobConvergenceContent extends BookOfShadersContent {
 		this.numBlobs = newCount;
 		this.numRing = newRing;
 		this.uniforms.u_showMesh.value = byId['show-mesh']?.value === 'On' ? 1.0 : 0.0;
-		this.uniforms.u_colorBleed.value = val('color-bleed') || 2.2;
+		this.uniforms.u_colorBleed.value = val('merge-strength') || 2.2;
 
 		if (needsRebuild) this.initBlobs();
 	};

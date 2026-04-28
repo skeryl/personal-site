@@ -5,6 +5,7 @@
 	import { Stage } from 'grraf';
 	import { getContext, onMount } from 'svelte';
 	import { PlayState, PlayStateChangedEvent, PostControlContext } from '$lib/state/post-control';
+	import type { ContentParams } from '$lib/content-params';
 
 	interface Props {
 		post?: Post<PostContent> | undefined;
@@ -14,7 +15,8 @@
 
 	let { post = undefined, container = undefined, cnv = undefined }: Props = $props();
 
-	let content = $derived(post?.content() as StageContent | undefined);
+	// Stable reference — only created once per mount, not re-created when post.params changes.
+	let content: StageContent | undefined = $state(undefined);
 	let stage: Stage | undefined;
 
 	const ctx = getContext('post-control') as PostControlContext;
@@ -54,16 +56,29 @@
 			observer = new ResizeObserver(handleResize);
 			observer.observe(container);
 		}
-		return () => observer?.disconnect();
+		window.addEventListener('resize', handleResize);
+		return () => {
+			observer?.disconnect();
+			window.removeEventListener('resize', handleResize);
+		};
 	});
 
+	let hasInitialized = false;
+
 	run(() => {
-		if (cnv) {
+		if (cnv && !hasInitialized) {
+			hasInitialized = true;
+			if (!content) {
+				content = post?.content() as StageContent | undefined;
+			}
 			stage = new Stage(cnv!);
 
 			stage.canvas.height = container!.clientHeight;
 			stage.canvas.width = container!.clientWidth;
 			content?.start(stage);
+			if (post?.params) {
+				content?.setParams?.(post.params);
+			}
 		}
 	});
 </script>

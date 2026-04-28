@@ -1,15 +1,19 @@
 /** This file was generated automatically by a script. Do not modify this file manually. */
 import antFarm from "$lib/entries/ant-farm";
+import barclaysPanel from "$lib/entries/barclays-panel";
 import blobConvergence from "$lib/entries/blob-convergence";
 import blobGrid from "$lib/entries/blob-grid";
 import cell from "$lib/entries/cell";
 import chrysanthemum from "$lib/entries/chrysanthemum";
 import cubePegTorusHole from "$lib/entries/cube-peg-torus-hole";
+import desertLife from "$lib/entries/desert-life";
 import downSouth from "$lib/entries/down-south";
 import follow from "$lib/entries/follow";
 import gravitySwell from "$lib/entries/gravity-swell";
+import lavaTerritories from "$lib/entries/lava-territories";
 import mathJourney from "$lib/entries/math-journey";
 import mirrors from "$lib/entries/mirrors";
+import moirePattern from "$lib/entries/moire-pattern";
 import notePlayground from "$lib/entries/note-playground";
 import notePoints from "$lib/entries/note-points";
 import noteShader2 from "$lib/entries/note-shader-2";
@@ -26,16 +30,20 @@ import squiggles from "$lib/entries/squiggles";
 
 const posts = {
     [antFarm.summary.id]: antFarm,
+    [barclaysPanel.summary.id]: barclaysPanel,
     [blobConvergence.summary.id]: blobConvergence,
     [blobGrid.summary.id]: blobGrid,
     [cell.summary.id]: cell,
     [chrysanthemum.summary.id]: chrysanthemum,
     [cubePegTorusHole.summary.id]: cubePegTorusHole,
+    [desertLife.summary.id]: desertLife,
     [downSouth.summary.id]: downSouth,
     [follow.summary.id]: follow,
     [gravitySwell.summary.id]: gravitySwell,
+    [lavaTerritories.summary.id]: lavaTerritories,
     [mathJourney.summary.id]: mathJourney,
     [mirrors.summary.id]: mirrors,
+    [moirePattern.summary.id]: moirePattern,
     [notePlayground.summary.id]: notePlayground,
     [notePoints.summary.id]: notePoints,
     [noteShader2.summary.id]: noteShader2,
