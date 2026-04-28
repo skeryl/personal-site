@@ -145,11 +145,18 @@
 		}
 	}
 
+	// Track the latest param values separately from post.params so that
+	// PostParams always sees current values without triggering a `post`
+	// reassignment (which would re-init ContentRenderer).
+	let currentParams: ContentParams | undefined = $state(undefined);
+	let resolvedParams = $derived(currentParams ?? post?.params);
+
 	function onParamChange(params: ContentParams) {
-		// Dispatch to the simulation via event system — do NOT update
-		// `post` here, as that would trigger ContentRendererStage's run()
-		// effect, which calls content.start() and recreates all blobs.
+		// Dispatch to the simulation via event system.
 		postControlContext.setParams(params);
+		// Update our local params state — this flows into PostParams
+		// without touching `post` itself.
+		currentParams = params;
 		// Debounce localStorage writes — synchronous writes during a slider
 		// drag block the main thread and starve the animation loop on mobile.
 		if (saveParamsTimer) clearTimeout(saveParamsTimer);
@@ -186,6 +193,7 @@
 			hasLoadedSavedParams = true;
 			const saved = loadSavedParams();
 			if (saved) {
+				currentParams = saved;
 				post = { ...post, params: saved };
 				postControlContext.setParams(saved);
 			}
@@ -289,9 +297,9 @@
 </div>
 
 <!-- Params panel: rendered outside fullbleed-layout so it can exceed its stacking context -->
-{#if requiresCanvas && areParamsOpen && post && post.params}
+{#if requiresCanvas && areParamsOpen && post && resolvedParams}
 	<div class="params-panel" bind:this={controlArea}>
-		<PostParams params={post.params} onParamsChange={onParamChange} onClose={closeParams} />
+		<PostParams params={resolvedParams} onParamsChange={onParamChange} onClose={closeParams} />
 	</div>
 {/if}
 
