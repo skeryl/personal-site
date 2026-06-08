@@ -8,7 +8,7 @@
     "@types/uuid": "^9.0.8",
     "xsd2ts": "^0.9.17",
     "ts-node": "^10.9.2",
-    "vitest": "^3.0.2"
+    "vitest": "^3.2.6"
   },
   "scripts": {
     "generate-music-xml-types": "ts-node ./musicxml/generate-types.ts ./musicxml/schema/musicxml.xsd",
