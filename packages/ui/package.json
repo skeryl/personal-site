@@ -22,7 +22,7 @@
 		"iconify-icon": "^2.0.0",
 		"leaflet": "^1.9.4",
 		"musicxml-interfaces": "^0.0.21",
-		"opensheetmusicdisplay": "^1.8.9",
+		"opensheetmusicdisplay": "^1.9.9",
 		"svelte-dnd-action": "^0.9.51",
 		"svelte-headlessui": "^0.0.42",
 		"svelte-transition": "^0.0.17",
