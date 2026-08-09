@@ -38,7 +38,7 @@ export const FABRICS: Fabric[] = [
 	{ id: 'orchid', name: 'Orchid', hex: '#e0a9e0', count: 18 },
 	{ id: 'cream', name: 'Cream', hex: '#e9e7cb', count: 8 },
 	{ id: 'tan', name: 'Tan', hex: '#d9d3c1', count: 21 },
-	{ id: 'white', name: 'White', hex: '#ffffff', count: 8 }
+	{ id: 'white', name: 'White', hex: '#ffffff', count: 1 }
 ];
 
 export const FABRIC_BY_ID: Record<string, Fabric> = Object.fromEntries(
