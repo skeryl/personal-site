@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { COLS, FABRIC_BY_ID, FABRICS, ROWS, SQUARE_INCHES, inchesToFeet } from './data';
 	import {
 		LAYOUTS,
@@ -28,6 +29,103 @@
 	const isEmpty = (cell: Cell) => cell.slots.every((s) => s === null);
 
 	let cells = $state<Cell[]>(Array.from({ length: CELL_COUNT }, emptyCell));
+
+	/* ── Persistence ───────────────────────────────────────────────────
+	 * Named patterns plus the working state live in localStorage. Saved
+	 * cells are sanitized on the way in, so a stale save (or a future
+	 * change to the grid or fabrics) degrades to empty cells instead of
+	 * breaking the page.
+	 */
+	const PATTERNS_KEY = 'quilt-builder:patterns';
+	const CURRENT_KEY = 'quilt-builder:current';
+
+	interface SavedPattern {
+		cells: Cell[];
+		savedAt: number;
+	}
+
+	function sanitizeCells(raw: unknown): Cell[] {
+		const list = Array.isArray(raw) ? raw : [];
+		return Array.from({ length: CELL_COUNT }, (_, i) => {
+			const c = list[i] as Partial<Cell> | undefined;
+			const layout = c && typeof c.layout === 'string' && c.layout in LAYOUTS ? c.layout : null;
+			if (!layout || !Array.isArray(c!.slots)) return emptyCell();
+			const slotCount = LAYOUTS[layout].slots.length;
+			if (c!.slots.length !== slotCount) return emptyCell();
+			return {
+				layout,
+				rotation: typeof c!.rotation === 'number' ? ((c!.rotation % 4) + 4) % 4 : 0,
+				slots: c!.slots.map((s) => (typeof s === 'string' && s in FABRIC_BY_ID ? s : null))
+			};
+		});
+	}
+
+	function readJson(key: string): unknown {
+		try {
+			const raw = localStorage.getItem(key);
+			return raw ? JSON.parse(raw) : null;
+		} catch {
+			return null;
+		}
+	}
+
+	function sanitizePatterns(raw: unknown): Record<string, SavedPattern> {
+		if (typeof raw !== 'object' || raw === null) return {};
+		const out: Record<string, SavedPattern> = {};
+		for (const [name, p] of Object.entries(raw as Record<string, Partial<SavedPattern>>)) {
+			if (typeof p !== 'object' || p === null) continue;
+			out[name] = {
+				cells: sanitizeCells(p.cells),
+				savedAt: typeof p.savedAt === 'number' ? p.savedAt : 0
+			};
+		}
+		return out;
+	}
+
+	let patterns = $state<Record<string, SavedPattern>>(
+		browser ? sanitizePatterns(readJson(PATTERNS_KEY)) : {}
+	);
+	let patternName = $state('');
+
+	if (browser) {
+		const current = readJson(CURRENT_KEY);
+		if (current) cells = sanitizeCells(current);
+	}
+
+	$effect(() => {
+		localStorage.setItem(CURRENT_KEY, JSON.stringify(cells));
+	});
+
+	const patternList = $derived(
+		Object.entries(patterns)
+			.map(([name, p]) => ({ name, ...p }))
+			.sort((a, b) => b.savedAt - a.savedAt)
+	);
+
+	function savePattern(e: SubmitEvent) {
+		e.preventDefault();
+		const name = patternName.trim();
+		if (!name) return;
+		patterns = { ...patterns, [name]: { cells: snapshot(), savedAt: Date.now() } };
+		localStorage.setItem(PATTERNS_KEY, JSON.stringify(patterns));
+	}
+
+	function loadPattern(name: string) {
+		const p = patterns[name];
+		if (!p) return;
+		pushHistory();
+		cells = sanitizeCells(p.cells);
+		selected = null;
+		patternName = name;
+	}
+
+	function deletePattern(name: string) {
+		if (!confirm(`Delete pattern "${name}"?`)) return;
+		const next = { ...patterns };
+		delete next[name];
+		patterns = next;
+		localStorage.setItem(PATTERNS_KEY, JSON.stringify(patterns));
+	}
 
 	type Tool = 'select' | 'place' | 'erase';
 	let tool = $state<Tool>('place');
@@ -119,19 +217,73 @@
 		cells = copy;
 	}
 
-	/** Drop the pending piece into the cell at the given local point. */
-	function placeAt(index: number, point: Point, fabricId: string) {
+	/** Per-fabric square-equivalents consumed by one cell. */
+	function cellUsage(c: Cell): Record<string, number> {
+		const totals: Record<string, number> = {};
+		const defs = LAYOUTS[c.layout].slots;
+		c.slots.forEach((id, i) => {
+			if (id) totals[id] = (totals[id] ?? 0) + SHAPE_AREA[defs[i].kind];
+		});
+		return totals;
+	}
+
+	/*
+	 * Re-cut a cell's current fabric into a new layout: each new slot takes
+	 * the color under its centroid. Placing a triangle over a solid square
+	 * keeps the square's color everywhere the triangle doesn't cover.
+	 */
+	function inheritedSlots(cell: Cell, layout: LayoutId, rot: number): (string | null)[] {
+		return rotatedSlots(layout, rot).map((slot) => {
+			const cx = slot.points.reduce((sum, p) => sum + p[0], 0) / slot.points.length;
+			const cy = slot.points.reduce((sum, p) => sum + p[1], 0) / slot.points.length;
+			return cell.slots[slotAt(cell.layout, cell.rotation, [cx, cy])];
+		});
+	}
+
+	/*
+	 * Work out the exact cell a placement click would produce. Shared by
+	 * placeAt and the ghost preview so what you see is what you get. The
+	 * placed slot is budgeted first; inherited slots that no longer fit
+	 * the scrap pile fall back to empty.
+	 */
+	function buildPlacement(
+		index: number,
+		point: Point,
+		fabricId: string
+	): { cell: Cell; slot: number; blocked: boolean } {
 		const cell = cells[index];
 		const matches = cell.layout === piece && cell.rotation === rotation;
+		const slots = matches ? [...cell.slots] : inheritedSlots(cell, piece, rotation);
 		const target: Cell = matches
-			? { ...cell, slots: [...cell.slots] }
-			: { layout: piece, rotation, slots: Array(LAYOUTS[piece].slots.length).fill(null) };
-
+			? { layout: cell.layout, rotation: cell.rotation, slots }
+			: { layout: piece, rotation, slots };
+		const defs = LAYOUTS[target.layout].slots;
 		const slot = slotAt(target.layout, target.rotation, point);
-		if (matches && target.slots[slot] === fabricId) return;
-		const kind = LAYOUTS[target.layout].slots[slot].kind;
-		if (target.slots[slot] !== fabricId && remaining[fabricId] < SHAPE_AREA[kind]) return;
-		target.slots[slot] = fabricId;
+
+		// The whole cell is being rebuilt, so its current usage is refundable.
+		const before = cellUsage(cell);
+		const avail: Record<string, number> = {};
+		for (const f of FABRICS) avail[f.id] = remaining[f.id] + (before[f.id] ?? 0);
+
+		if (avail[fabricId] < SHAPE_AREA[defs[slot].kind]) {
+			return { cell, slot, blocked: true };
+		}
+		slots[slot] = fabricId;
+		avail[fabricId] -= SHAPE_AREA[defs[slot].kind];
+		slots.forEach((f, i) => {
+			if (i === slot || !f) return;
+			const area = SHAPE_AREA[defs[i].kind];
+			if (avail[f] >= area) avail[f] -= area;
+			else slots[i] = null;
+		});
+		return { cell: target, slot, blocked: false };
+	}
+
+	/** Drop the pending piece into the cell at the given local point. */
+	function placeAt(index: number, point: Point, fabricId: string) {
+		const { cell: target, blocked } = buildPlacement(index, point, fabricId);
+		if (blocked) return;
+		if (JSON.stringify(target) === JSON.stringify(cells[index])) return;
 		update(index, target);
 	}
 
@@ -171,23 +323,11 @@
 
 	/* ── Ghost previews ────────────────────────────────────────────────
 	 * In place mode the hovered cell renders as the exact state a click
-	 * would produce, with the incoming slot at reduced opacity. If the
-	 * layout differs, pieces the click would wipe simply vanish from the
-	 * preview: an honest before/after.
+	 * would produce, with the incoming slot at reduced opacity.
 	 */
 	const placePreview = $derived.by(() => {
 		if (tool !== 'place' || painting || drag || !hover) return null;
-		const { index, point } = hover;
-		const cell = cells[index];
-		const matches = cell.layout === piece && cell.rotation === rotation;
-		const target: Cell = matches
-			? { ...cell, slots: [...cell.slots] }
-			: { layout: piece, rotation, slots: Array(LAYOUTS[piece].slots.length).fill(null) };
-		const slot = slotAt(target.layout, target.rotation, point);
-		const kind = LAYOUTS[target.layout].slots[slot].kind;
-		const blocked = target.slots[slot] !== fabric && remaining[fabric] < SHAPE_AREA[kind];
-		if (!blocked) target.slots[slot] = fabric;
-		return { index, cell: target, slot, blocked };
+		return { index: hover.index, ...buildPlacement(hover.index, hover.point, fabric) };
 	});
 
 	const erasePreview = $derived.by(() => {
@@ -428,6 +568,32 @@
 						</button>
 					{/each}
 				</div>
+
+				<h3 class="scraps-head">Patterns</h3>
+				<form class="pattern-save" onsubmit={savePattern}>
+					<input type="text" placeholder="Pattern name" bind:value={patternName} maxlength="40" />
+					<button class="tool-btn" type="submit" disabled={!patternName.trim()}>Save</button>
+				</form>
+				{#if patternList.length > 0}
+					<ul class="pattern-list">
+						{#each patternList as p (p.name)}
+							<li>
+								<button class="pattern-load" onclick={() => loadPattern(p.name)} title="Load">
+									{p.name}
+								</button>
+								<button
+									class="pattern-delete"
+									onclick={() => deletePattern(p.name)}
+									aria-label={`Delete ${p.name}`}
+								>
+									×
+								</button>
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="hint">Nothing saved yet. Patterns are stored in this browser.</p>
+				{/if}
 			</aside>
 
 			<div class="wall-side">
@@ -704,6 +870,69 @@
 		font-size: 0.8rem;
 		color: var(--color-text-muted);
 		margin: 0.6rem 0 0;
+	}
+
+	.pattern-save {
+		display: flex;
+		gap: 0.4rem;
+		margin-bottom: 0.6rem;
+	}
+	.pattern-save input {
+		flex: 1;
+		min-width: 0;
+		padding: 0.3rem 0.5rem;
+		border: 1px solid var(--color-border-strong);
+		border-radius: 0.375rem;
+		background: none;
+		font: inherit;
+		font-size: 0.82rem;
+		color: inherit;
+	}
+	.pattern-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+	}
+	.pattern-list li {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
+	.pattern-load {
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		text-align: left;
+		padding: 0.3rem 0.5rem;
+		border: 1px solid transparent;
+		border-radius: 0.375rem;
+		background: none;
+		font: inherit;
+		font-size: 0.82rem;
+		cursor: pointer;
+	}
+	.pattern-load:hover {
+		background: var(--color-surface-active);
+	}
+	.pattern-delete {
+		border: none;
+		background: none;
+		font: inherit;
+		font-size: 1rem;
+		line-height: 1;
+		padding: 0.2rem 0.4rem;
+		color: var(--color-text-muted);
+		cursor: pointer;
+		border-radius: 0.25rem;
+	}
+	.pattern-delete:hover {
+		background: var(--color-surface-active);
+		color: var(--color-text-strong);
 	}
 
 	.drag-ghost {
