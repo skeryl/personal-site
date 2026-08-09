@@ -36,8 +36,8 @@ export const FABRICS: Fabric[] = [
 	{ id: 'blue-sky', name: 'Sky', hex: '#a9dcea', count: 4 },
 	{ id: 'blue-bright', name: 'Bright blue', hex: '#0b62d4', count: 4 },
 	{ id: 'orchid', name: 'Orchid', hex: '#e0a9e0', count: 18 },
-	{ id: 'cream', name: 'Cream', hex: '#e9e7cb', count: 4 },
-	{ id: 'tan', name: 'Tan', hex: '#d9d3c1', count: 20 },
+	{ id: 'cream', name: 'Cream', hex: '#e9e7cb', count: 8 },
+	{ id: 'tan', name: 'Tan', hex: '#d9d3c1', count: 21 },
 	{ id: 'white', name: 'White', hex: '#ffffff', count: 8 }
 ];
 
