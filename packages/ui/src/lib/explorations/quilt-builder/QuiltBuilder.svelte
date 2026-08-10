@@ -102,6 +102,29 @@
 			.sort((a, b) => b.savedAt - a.savedAt)
 	);
 
+	let patternFilter = $state('');
+	const filteredPatterns = $derived(
+		patternList.filter((p) => p.name.toLowerCase().includes(patternFilter.trim().toLowerCase()))
+	);
+
+	/** Flatten a saved pattern into offset polygons for a thumbnail SVG. */
+	function thumbPolys(cellsArr: Cell[]): { points: string; fill: string }[] {
+		const polys: { points: string; fill: string }[] = [];
+		cellsArr.forEach((cell, i) => {
+			if (isEmpty(cell)) return;
+			const r = rowOf(i);
+			const c = colOf(i);
+			rotatedSlots(cell.layout, cell.rotation).forEach((slot, s) => {
+				const id = cell.slots[s];
+				polys.push({
+					points: slot.points.map(([x, y]) => `${(c + x) * 10},${(r + y) * 10}`).join(' '),
+					fill: id ? FABRIC_BY_ID[id].hex : '#ffffff'
+				});
+			});
+		});
+		return polys;
+	}
+
 	function savePattern(e: SubmitEvent) {
 		e.preventDefault();
 		const name = patternName.trim();
@@ -832,32 +855,6 @@
 						</button>
 					{/each}
 				</div>
-
-				<h3 class="scraps-head">Patterns</h3>
-				<form class="pattern-save" onsubmit={savePattern}>
-					<input type="text" placeholder="Pattern name" bind:value={patternName} maxlength="40" />
-					<button class="tool-btn" type="submit" disabled={!patternName.trim()}>Save</button>
-				</form>
-				{#if patternList.length > 0}
-					<ul class="pattern-list">
-						{#each patternList as p (p.name)}
-							<li>
-								<button class="pattern-load" onclick={() => loadPattern(p.name)} title="Load">
-									{p.name}
-								</button>
-								<button
-									class="pattern-delete"
-									onclick={() => deletePattern(p.name)}
-									aria-label={`Delete ${p.name}`}
-								>
-									×
-								</button>
-							</li>
-						{/each}
-					</ul>
-				{:else}
-					<p class="hint">Nothing saved yet. Patterns are stored in this browser.</p>
-				{/if}
 			</aside>
 
 			<div class="wall-side">
@@ -915,6 +912,58 @@
 					it at the cursor. ⌘Z undoes.
 				</p>
 			</div>
+
+			<aside class="patterns-panel">
+				<h3>Patterns</h3>
+				<form class="pattern-save" onsubmit={savePattern}>
+					<input type="text" placeholder="Pattern name" bind:value={patternName} maxlength="40" />
+					<button class="tool-btn" type="submit" disabled={!patternName.trim()}>Save</button>
+				</form>
+				{#if patternList.length > 1}
+					<input
+						class="pattern-filter"
+						type="text"
+						placeholder="Filter patterns"
+						bind:value={patternFilter}
+					/>
+				{/if}
+				{#if filteredPatterns.length > 0}
+					<ul class="pattern-list">
+						{#each filteredPatterns as p (p.name)}
+							<li>
+								<button
+									class="pattern-load"
+									onclick={() => loadPattern(p.name)}
+									title="Load {p.name}"
+								>
+									<svg
+										class="pattern-thumb"
+										viewBox="0 0 {COLS * 10} {ROWS * 10}"
+										preserveAspectRatio="none"
+									>
+										<rect width={COLS * 10} height={ROWS * 10} fill="#ffffff" />
+										{#each thumbPolys(p.cells) as poly}
+											<polygon points={poly.points} fill={poly.fill} />
+										{/each}
+									</svg>
+									<span class="pattern-name">{p.name}</span>
+								</button>
+								<button
+									class="pattern-delete"
+									onclick={() => deletePattern(p.name)}
+									aria-label={`Delete ${p.name}`}
+								>
+									×
+								</button>
+							</li>
+						{/each}
+					</ul>
+				{:else if patternList.length === 0}
+					<p class="hint">Nothing saved yet. Patterns are stored in this browser.</p>
+				{:else}
+					<p class="hint">No patterns match.</p>
+				{/if}
+			</aside>
 		</div>
 	</section>
 </div>
@@ -934,7 +983,7 @@
 
 <style>
 	.exploration {
-		max-width: 1000px;
+		max-width: 1200px;
 		margin: 0 auto;
 		padding: 3rem 1.25rem 6rem;
 		color: var(--color-text);
@@ -959,11 +1008,12 @@
 
 	.tool-grid {
 		display: grid;
-		grid-template-columns: 15rem minmax(0, 1fr);
+		grid-template-columns: 14rem minmax(0, 1fr) 13rem;
 		gap: 2rem;
 		align-items: start;
 	}
-	.palette h3 {
+	.palette h3,
+	.patterns-panel h3 {
 		font-size: 1.1rem;
 		margin: 0 0 0.5rem;
 		color: var(--color-text-heading);
@@ -1172,6 +1222,18 @@
 		gap: 0.4rem;
 		margin-bottom: 0.6rem;
 	}
+	.pattern-filter {
+		width: 100%;
+		box-sizing: border-box;
+		padding: 0.3rem 0.5rem;
+		margin-bottom: 0.6rem;
+		border: 1px solid var(--color-border);
+		border-radius: 0.375rem;
+		background: none;
+		font: inherit;
+		font-size: 0.8rem;
+		color: inherit;
+	}
 	.pattern-save input {
 		flex: 1;
 		min-width: 0;
@@ -1189,45 +1251,60 @@
 		padding: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 0.15rem;
+		gap: 0.75rem;
 	}
 	.pattern-list li {
-		display: flex;
-		align-items: center;
-		gap: 0.25rem;
+		position: relative;
 	}
 	.pattern-load {
-		flex: 1;
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		text-align: left;
-		padding: 0.3rem 0.5rem;
-		border: 1px solid transparent;
+		display: block;
+		width: 100%;
+		padding: 0.35rem;
+		border: 1px solid var(--color-border);
 		border-radius: 0.375rem;
 		background: none;
 		font: inherit;
-		font-size: 0.82rem;
+		font-size: 0.8rem;
+		text-align: left;
 		cursor: pointer;
 	}
 	.pattern-load:hover {
 		background: var(--color-surface-active);
+		border-color: var(--color-border-strong);
+	}
+	.pattern-thumb {
+		display: block;
+		width: 100%;
+		aspect-ratio: 7 / 10;
+		border: 1px solid var(--color-border-subtle);
+		border-radius: 0.25rem;
+		background: #ffffff;
+	}
+	.pattern-name {
+		display: block;
+		margin-top: 0.3rem;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 	.pattern-delete {
+		position: absolute;
+		top: 0.6rem;
+		right: 0.6rem;
 		border: none;
-		background: none;
+		background: rgba(255, 255, 255, 0.85);
 		font: inherit;
-		font-size: 1rem;
+		font-size: 0.9rem;
 		line-height: 1;
-		padding: 0.2rem 0.4rem;
+		padding: 0.15rem 0.35rem;
 		color: var(--color-text-muted);
 		cursor: pointer;
 		border-radius: 0.25rem;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 	}
 	.pattern-delete:hover {
-		background: var(--color-surface-active);
-		color: var(--color-text-strong);
+		background: #ffffff;
+		color: #b91c1c;
 	}
 
 	.drag-ghost {
@@ -1253,6 +1330,18 @@
 		border-radius: 999px;
 	}
 
+	@media (max-width: 1100px) {
+		.tool-grid {
+			grid-template-columns: 14rem minmax(0, 1fr);
+		}
+		.patterns-panel {
+			grid-column: 1 / -1;
+		}
+		.pattern-list {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+		}
+	}
 	@media (max-width: 768px) {
 		.tool-grid {
 			grid-template-columns: minmax(0, 1fr);
