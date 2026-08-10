@@ -115,7 +115,8 @@
 		if (!p) return;
 		pushHistory();
 		cells = sanitizeCells(p.cells);
-		selected = null;
+		selection = [];
+		anchor = null;
 		patternName = name;
 	}
 
@@ -132,7 +133,9 @@
 	let fabric = $state<string>(FABRICS[0].id);
 	let piece = $state<LayoutId>('whole');
 	let rotation = $state(0);
-	let selected = $state<number | null>(null);
+	let selection = $state<number[]>([]);
+	/** Last cell acted on: base for arrow-key navigation and group drags. */
+	let anchor = $state<number | null>(null);
 	let hover = $state<{ index: number; point: Point } | null>(null);
 	let painting = $state(false);
 
@@ -154,16 +157,17 @@
 	 * a quarter-square triangle a quarter. Offcuts are assumed reusable,
 	 * which is optimistic but keeps the number legible.
 	 */
-	const used = $derived.by(() => {
+	function usageOf(arr: Cell[]): Record<string, number> {
 		const totals: Record<string, number> = {};
-		for (const cell of cells) {
-			const slots = LAYOUTS[cell.layout].slots;
+		for (const cell of arr) {
+			const defs = LAYOUTS[cell.layout].slots;
 			cell.slots.forEach((id, i) => {
-				if (id) totals[id] = (totals[id] ?? 0) + SHAPE_AREA[slots[i].kind];
+				if (id) totals[id] = (totals[id] ?? 0) + SHAPE_AREA[defs[i].kind];
 			});
 		}
 		return totals;
-	});
+	}
+	const used = $derived(usageOf(cells));
 	const remaining = $derived(
 		Object.fromEntries(FABRICS.map((f) => [f.id, f.count - (used[f.id] ?? 0)]))
 	);
@@ -296,29 +300,37 @@
 		update(index, slots.every((s) => s === null) ? emptyCell() : { ...cell, slots });
 	}
 
-	function rotateCell(index: number) {
-		const cell = cells[index];
-		if (isEmpty(cell)) return;
+	const rowOf = (i: number) => Math.floor(i / COLS);
+	const colOf = (i: number) => i % COLS;
+
+	function rotateCells(indices: number[]) {
+		const targets = indices.filter((i) => !isEmpty(cells[i]));
+		if (!targets.length) return;
 		pushHistory();
-		update(index, { ...cell, rotation: (cell.rotation + 1) % 4 });
+		const copy = [...cells];
+		for (const i of targets) copy[i] = { ...copy[i], rotation: (copy[i].rotation + 1) % 4 };
+		cells = copy;
 	}
 
-	function deleteSelected() {
-		if (selected === null || isEmpty(cells[selected])) return;
+	function deleteCells(indices: number[]) {
+		const targets = indices.filter((i) => !isEmpty(cells[i]));
+		if (!targets.length) return;
 		pushHistory();
-		update(selected, emptyCell());
-		selected = null;
+		const copy = [...cells];
+		for (const i of targets) copy[i] = emptyCell();
+		cells = copy;
+		selection = [];
 	}
 
 	function clearAll() {
 		pushHistory();
 		cells = Array.from({ length: CELL_COUNT }, emptyCell);
-		selected = null;
+		selection = [];
 	}
 
 	function rotate() {
 		if (tool === 'place') rotation = (rotation + 1) % 4;
-		else if (selected !== null) rotateCell(selected);
+		else if (selection.length) rotateCells(selection);
 	}
 
 	/* ── Ghost previews ────────────────────────────────────────────────
@@ -349,15 +361,61 @@
 		fabricId: string;
 		/** Where the drag started, or null when dragging a fresh piece from the palette. */
 		from: { index: number; slot: number } | null;
+		/** Set when dragging the whole multi-selection as a group. */
+		groupFrom: number | null;
 		x: number;
 		y: number;
 		active: boolean;
+		/** Alt held: the drop duplicates instead of moving. */
+		copy: boolean;
 	}
 	let drag = $state<Drag | null>(null);
 
-	function startDrag(e: PointerEvent, fabricId: string, from: Drag['from']) {
+	function startDrag(
+		e: PointerEvent,
+		fabricId: string,
+		from: Drag['from'],
+		groupFrom: number | null = null
+	) {
 		if (e.button !== 0) return;
-		drag = { fabricId, from, x: e.clientX, y: e.clientY, active: false };
+		drag = { fabricId, from, groupFrom, x: e.clientX, y: e.clientY, active: false, copy: e.altKey };
+	}
+
+	/** Move or duplicate the whole selection by the drag offset, clamped to the grid. */
+	function dropGroup(srcIndex: number, destIndex: number, copy: boolean) {
+		const sel = selection.filter((i) => !isEmpty(cells[i]));
+		if (!sel.length) return;
+		const rows = sel.map(rowOf);
+		const colsList = sel.map(colOf);
+		const dr = Math.max(
+			-Math.min(...rows),
+			Math.min(ROWS - 1 - Math.max(...rows), rowOf(destIndex) - rowOf(srcIndex))
+		);
+		const dc = Math.max(
+			-Math.min(...colsList),
+			Math.min(COLS - 1 - Math.max(...colsList), colOf(destIndex) - colOf(srcIndex))
+		);
+		if (!dr && !dc) return;
+		const next = [...cells];
+		if (!copy) for (const s of sel) next[s] = emptyCell();
+		const moved: number[] = [];
+		for (const s of sel) {
+			const t = (rowOf(s) + dr) * COLS + (colOf(s) + dc);
+			next[t] = { ...cells[s], slots: [...cells[s].slots] };
+			moved.push(t);
+		}
+		if (copy) {
+			// A duplicate has to fit the scrap pile; reject the drop if it can't.
+			const totals = usageOf(next);
+			if (FABRICS.some((f) => (totals[f.id] ?? 0) > f.count)) return;
+		}
+		pushHistory();
+		cells = next;
+		selection = moved;
+		anchor =
+			anchor !== null && sel.includes(anchor)
+				? (rowOf(anchor) + dr) * COLS + (colOf(anchor) + dc)
+				: moved[0];
 	}
 
 	function onCellPointerDown(e: PointerEvent, index: number) {
@@ -379,12 +437,27 @@
 		const cell = cells[index];
 		const slot = slotAt(cell.layout, cell.rotation, hit.point);
 		const existing = cell.slots[slot];
-		if (existing) {
-			selected = index;
-			startDrag(e, existing, { index, slot });
-		} else {
-			selected = null;
+		if (e.shiftKey) {
+			selection = selection.includes(index)
+				? selection.filter((i) => i !== index)
+				: [...selection, index];
+			anchor = index;
+			return;
 		}
+		if (!existing) {
+			selection = [];
+			anchor = null;
+			return;
+		}
+		if (selection.length > 1 && selection.includes(index)) {
+			// Dragging any member of a multi-selection carries the group.
+			anchor = index;
+			startDrag(e, cell.slots.find((s) => s !== null) ?? existing, null, index);
+			return;
+		}
+		selection = [index];
+		anchor = index;
+		startDrag(e, existing, { index, slot });
 	}
 
 	function onPointerMove(e: PointerEvent) {
@@ -402,21 +475,33 @@
 				if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < DRAG_THRESHOLD) return;
 				drag = { ...drag, active: true };
 			}
-			drag = { ...drag, x: e.clientX, y: e.clientY };
+			drag = { ...drag, x: e.clientX, y: e.clientY, copy: e.altKey };
 		}
 	}
 
 	function onPointerUp(e: PointerEvent) {
 		painting = false;
 		if (!drag) return;
-		const { from, fabricId, active } = drag;
+		const { from, groupFrom, fabricId, active } = drag;
+		const copy = drag.copy || e.altKey;
 		drag = null;
 		if (!active) return;
 
 		const hit = resolve(e.clientX, e.clientY);
+
+		if (groupFrom !== null) {
+			if (!hit) {
+				// Group dragged off the blanket: remove it (a copy just cancels).
+				if (!copy) deleteCells(selection);
+			} else {
+				dropGroup(groupFrom, hit.index, copy);
+			}
+			return;
+		}
+
 		if (!hit) {
 			// Dragged off the blanket: take the piece back out of the layout.
-			if (from) {
+			if (from && !copy) {
 				pushHistory();
 				const cell = cells[from.index];
 				const slots = [...cell.slots];
@@ -432,12 +517,26 @@
 			return;
 		}
 
-		// Moving a piece already on the blanket: swap with whatever it lands on.
-		const source = cells[from.index];
 		const dest = cells[hit.index];
 		const destSlot = slotAt(dest.layout, dest.rotation, hit.point);
 		if (from.index === hit.index && from.slot === destSlot) return;
 
+		if (copy) {
+			// Alt-drop: duplicate the piece into the target slot, source untouched.
+			if (dest.slots[destSlot] === fabricId) return;
+			const kind = LAYOUTS[dest.layout].slots[destSlot].kind;
+			if (remaining[fabricId] < SHAPE_AREA[kind]) return;
+			pushHistory();
+			const destSlots = [...dest.slots];
+			destSlots[destSlot] = fabricId;
+			update(hit.index, { ...dest, slots: destSlots });
+			selection = [hit.index];
+			anchor = hit.index;
+			return;
+		}
+
+		// Moving a piece already on the blanket: swap with whatever it lands on.
+		const source = cells[from.index];
 		pushHistory();
 		const sourceSlots = [...source.slots];
 		const destSlots = from.index === hit.index ? sourceSlots : [...dest.slots];
@@ -452,10 +551,20 @@
 				sourceSlots.every((s) => s === null) ? emptyCell() : { ...source, slots: sourceSlots }
 			);
 		}
-		selected = hit.index;
+		selection = [hit.index];
+		anchor = hit.index;
 	}
 
+	const ARROW_DELTAS: Record<string, [number, number]> = {
+		ArrowUp: [-1, 0],
+		ArrowDown: [1, 0],
+		ArrowLeft: [0, -1],
+		ArrowRight: [0, 1]
+	};
+
 	function onKeyDown(e: KeyboardEvent) {
+		// Typing in the pattern-name input must not trigger shortcuts.
+		if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 		if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
 			e.preventDefault();
 			undo();
@@ -463,11 +572,28 @@
 		}
 		if (e.key === 'Escape') {
 			drag = null;
-			selected = null;
+			selection = [];
+			anchor = null;
 			return;
 		}
 		if (e.key === 'Delete' || e.key === 'Backspace') {
-			if (tool === 'select') deleteSelected();
+			if (tool === 'select') deleteCells(selection);
+			return;
+		}
+		if (e.key in ARROW_DELTAS && tool === 'select') {
+			e.preventDefault();
+			const [dr, dc] = ARROW_DELTAS[e.key];
+			const next =
+				anchor === null
+					? 0
+					: Math.min(ROWS - 1, Math.max(0, rowOf(anchor) + dr)) * COLS +
+						Math.min(COLS - 1, Math.max(0, colOf(anchor) + dc));
+			selection = e.shiftKey
+				? selection.includes(next)
+					? selection
+					: [...selection, next]
+				: [next];
+			anchor = next;
 			return;
 		}
 		if (e.key === 'r' || e.key === 'R') rotate();
@@ -612,13 +738,13 @@
 							<button
 								class="cell"
 								class:hovered={hover?.index === i}
-								class:selected={selected === i}
+								class:selected={selection.includes(i)}
 								class:blocked={pv?.blocked}
 								data-cell-index={i}
 								onpointerdown={(e) => onCellPointerDown(e, i)}
 								oncontextmenu={(e) => {
 									e.preventDefault();
-									rotateCell(i);
+									rotateCells(selection.length > 1 && selection.includes(i) ? selection : [i]);
 								}}
 								aria-label={`Row ${Math.floor(i / COLS) + 1}, column ${(i % COLS) + 1}`}
 							>
@@ -644,8 +770,8 @@
 					{COLS} × {ROWS} squares at {SQUARE_INCHES}" ({inchesToFeet(widthIn)} × {inchesToFeet(
 						heightIn
 					)} finished); {filled} of {CELL_COUNT} cells started. Pick a piece and color, then click or
-					drag to paint. The mouse tool selects a square: R or right-click rotates it, delete removes
-					it, drag moves it. ⌘Z undoes.
+					drag to paint. The mouse tool selects squares (shift-click or arrow keys for more): R or right-click
+					rotates, delete removes, drag moves, alt-drag duplicates. ⌘Z undoes.
 				</p>
 			</div>
 		</div>
@@ -656,7 +782,13 @@
 	<div
 		class="drag-ghost"
 		style="left: {drag.x}px; top: {drag.y}px; background: {FABRIC_BY_ID[drag.fabricId].hex}"
-	></div>
+	>
+		{#if drag.groupFrom !== null || drag.copy}
+			<span class="ghost-badge">
+				{drag.groupFrom !== null ? `×${selection.length}` : ''}{drag.copy ? '+' : ''}
+			</span>
+		{/if}
+	</div>
 {/if}
 
 <style>
@@ -854,8 +986,18 @@
 		z-index: 1;
 	}
 	.cell.selected {
-		box-shadow: inset 0 0 0 3px #f59e0b;
 		z-index: 2;
+	}
+	/* Drawn on top of the fabric so selection reads on any color. */
+	.cell.selected::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border: 3px solid #f59e0b;
+		box-shadow:
+			inset 0 0 0 2px rgba(255, 255, 255, 0.95),
+			0 0 8px rgba(245, 158, 11, 0.7);
+		pointer-events: none;
 	}
 	polygon.ghost {
 		opacity: 0.55;
@@ -945,6 +1087,17 @@
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 		pointer-events: none;
 		z-index: 50;
+	}
+	.ghost-badge {
+		position: absolute;
+		top: -0.55rem;
+		right: -0.55rem;
+		background: #1f2937;
+		color: #fff;
+		font-size: 0.65rem;
+		line-height: 1;
+		padding: 0.2rem 0.35rem;
+		border-radius: 999px;
 	}
 
 	@media (max-width: 768px) {
