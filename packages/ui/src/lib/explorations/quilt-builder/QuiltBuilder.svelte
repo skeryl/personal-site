@@ -177,6 +177,16 @@
 	let axisV = $state(COLS);
 	let axisH = $state(ROWS);
 	let axisDrag = $state<'v' | 'h' | null>(null);
+	/** Shift-drag rubber-band selection (mouse tool). */
+	let marquee = $state<{
+		x0: number;
+		y0: number;
+		x: number;
+		y: number;
+		toggleIndex: number;
+		base: number[];
+		active: boolean;
+	} | null>(null);
 	let blanketEl = $state<HTMLElement | null>(null);
 
 	/** Reflect a cell's geometry across a vertical or horizontal axis. */
@@ -613,9 +623,16 @@
 		const slot = slotAt(cell.layout, cell.rotation, hit.point);
 		const existing = cell.slots[slot];
 		if (e.shiftKey) {
-			selection = selection.includes(index)
-				? selection.filter((i) => i !== index)
-				: [...selection, index];
+			// Becomes a rubber-band drag if the pointer moves; else toggles on release.
+			marquee = {
+				x0: e.clientX,
+				y0: e.clientY,
+				x: e.clientX,
+				y: e.clientY,
+				toggleIndex: index,
+				base: [...selection],
+				active: false
+			};
 			anchor = index;
 			return;
 		}
@@ -654,6 +671,30 @@
 			}
 			return;
 		}
+		if (marquee) {
+			if (
+				!marquee.active &&
+				Math.hypot(e.clientX - marquee.x0, e.clientY - marquee.y0) < DRAG_THRESHOLD
+			) {
+				return;
+			}
+			const m = { ...marquee, x: e.clientX, y: e.clientY, active: true };
+			marquee = m;
+			const left = Math.min(m.x0, m.x);
+			const right = Math.max(m.x0, m.x);
+			const top = Math.min(m.y0, m.y);
+			const bottom = Math.max(m.y0, m.y);
+			const hits: number[] = [];
+			document.querySelectorAll<HTMLElement>('[data-cell-index]').forEach((el) => {
+				const r = el.getBoundingClientRect();
+				if (r.left < right && r.right > left && r.top < bottom && r.bottom > top) {
+					const idx = Number(el.dataset.cellIndex);
+					if (!isEmpty(cells[idx])) hits.push(idx);
+				}
+			});
+			selection = [...new Set([...m.base, ...hits])];
+			return;
+		}
 		const hit = resolve(e.clientX, e.clientY);
 		hover = hit ? { index: hit.index, point: hit.point } : null;
 		if (painting) {
@@ -675,6 +716,17 @@
 	function onPointerUp(e: PointerEvent) {
 		if (axisDrag) {
 			axisDrag = null;
+			return;
+		}
+		if (marquee) {
+			const m = marquee;
+			marquee = null;
+			if (!m.active) {
+				selection = selection.includes(m.toggleIndex)
+					? selection.filter((i) => i !== m.toggleIndex)
+					: [...selection, m.toggleIndex];
+				anchor = m.toggleIndex;
+			}
 			return;
 		}
 		painting = false;
@@ -790,8 +842,10 @@
 		}
 		if (e.key === 'Escape') {
 			// Staged: cancel a drag, else deselect, else back to the mouse tool.
-			if (drag) {
+			if (drag || marquee) {
+				if (marquee) selection = marquee.base;
 				drag = null;
+				marquee = null;
 				return;
 			}
 			if (selection.length) {
@@ -1047,9 +1101,9 @@
 					{COLS} × {ROWS} squares at {SQUARE_INCHES}" ({inchesToFeet(widthIn)} × {inchesToFeet(
 						heightIn
 					)} finished); {filled} of {CELL_COUNT} cells started. Pick a piece and color, then click or
-					drag to paint. The mouse tool selects squares (shift-click or arrow keys for more): R or right-click
-					rotates, delete removes, drag moves, alt-drag duplicates. ⌘C copies the selection and ⌘V pastes
-					it at the cursor. ⌘Z undoes.
+					drag to paint. The mouse tool selects squares (shift-click, shift-drag, or arrow keys for more):
+					R or right-click rotates, delete removes, drag moves, alt-drag duplicates. ⌘C copies the selection
+					and ⌘V pastes it at the cursor. ⌘Z undoes.
 				</p>
 			</div>
 
@@ -1110,6 +1164,16 @@
 		</div>
 	</section>
 </div>
+
+{#if marquee?.active}
+	<div
+		class="marquee"
+		style="left: {Math.min(marquee.x0, marquee.x)}px; top: {Math.min(
+			marquee.y0,
+			marquee.y
+		)}px; width: {Math.abs(marquee.x - marquee.x0)}px; height: {Math.abs(marquee.y - marquee.y0)}px"
+	></div>
+{/if}
 
 {#if drag?.active}
 	<div
@@ -1496,6 +1560,13 @@
 		color: #b91c1c;
 	}
 
+	.marquee {
+		position: fixed;
+		border: 1.5px dashed #f59e0b;
+		background: rgba(245, 158, 11, 0.12);
+		pointer-events: none;
+		z-index: 40;
+	}
 	.drag-ghost {
 		position: fixed;
 		width: 2.5rem;
