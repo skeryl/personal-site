@@ -1,6 +1,14 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { COLS, FABRIC_BY_ID, FABRICS, ROWS, SQUARE_INCHES, inchesToFeet } from './data';
+	import {
+		COLS,
+		FABRIC_BY_ID,
+		FABRICS,
+		ROWS,
+		SEAM_INCHES,
+		SQUARE_INCHES,
+		inchesToFeet
+	} from './data';
 	import {
 		LAYOUTS,
 		SHAPE_AREA,
@@ -133,12 +141,15 @@
 	 */
 	const CUT_YIELD: Record<ShapeKind, number> = { square: 1, rect: 2, hst: 2, qst: 4 };
 	const KIND_ORDER: ShapeKind[] = ['square', 'rect', 'hst', 'qst'];
-	const SQ = SQUARE_INCHES + 0.5;
-	const HST = SQUARE_INCHES + 0.875;
-	const QST = SQUARE_INCHES + 1.25;
+	/** Rulers cut in eighths; round the bias math up to the next one. */
+	const ceilEighth = (v: number) => Math.ceil(v * 8) / 8;
+	const SQ = SQUARE_INCHES + 2 * SEAM_INCHES;
+	const RECT_SHORT = SQUARE_INCHES / 2 + 2 * SEAM_INCHES;
+	const HST = SQUARE_INCHES + ceilEighth(SEAM_INCHES * (2 + Math.SQRT2));
+	const QST = SQUARE_INCHES + ceilEighth(2 * SEAM_INCHES * (1 + Math.SQRT2));
 	const CUT_DIMS: Record<ShapeKind, string> = {
 		square: `${SQ}”x${SQ}”`,
-		rect: `${SQUARE_INCHES / 2 + 0.5}”x${SQ}”`,
+		rect: `${RECT_SHORT}”x${SQ}”`,
 		hst: `${HST}”x${HST}” square cut corner to corner`,
 		qst: `${QST}”x${QST}” square cut on both diagonals`
 	};

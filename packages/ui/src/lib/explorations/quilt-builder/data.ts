@@ -17,6 +17,9 @@ export interface Fabric {
 /** Finished size of a single square, in inches. */
 export const SQUARE_INCHES = 8;
 
+/** Seam allowance per side, in inches. */
+export const SEAM_INCHES = 0.25;
+
 /*
  * Provisional blanket dimensions. Shane's target is 10.5 x 7 squares
  * (84in x 56in); the half row is pending a decision on block configurations,
