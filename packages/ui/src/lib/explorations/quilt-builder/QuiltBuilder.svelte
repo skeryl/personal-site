@@ -5,7 +5,6 @@
 		LAYOUTS,
 		SHAPE_AREA,
 		SHAPE_CUT,
-		SHAPE_LABEL,
 		type LayoutId,
 		type Point,
 		type ShapeKind,
@@ -123,17 +122,37 @@
 		patternList.filter((p) => p.name.toLowerCase().includes(patternFilter.trim().toLowerCase()))
 	);
 
-	/* ── Cutting list ──────────────────────────────────────────────────
-	 * Real-world counts for the layout on the wall. Triangles come two
-	 * per cut square and quarter-triangles four, so squares-to-cut is
-	 * rounded up per piece kind.
+	/* ── Cutting spec ──────────────────────────────────────────────────
+	 * Real-world counts per pattern. Cut dimensions bake in seam
+	 * allowance: pieces subdivide an 8.5" cut square, so a rectangle is
+	 * 4.25" x 8.5" and triangles come from diagonal cuts (2 or 4 per
+	 * square); squares-to-cut round up per piece kind.
 	 */
 	const CUT_YIELD: Record<ShapeKind, number> = { square: 1, rect: 2, hst: 2, qst: 4 };
 	const KIND_ORDER: ShapeKind[] = ['square', 'rect', 'hst', 'qst'];
+	const CUT_IN = SQUARE_INCHES + 0.5;
+	const CUT_DIMS: Record<ShapeKind, string> = {
+		square: `${CUT_IN}”x${CUT_IN}”`,
+		rect: `${CUT_IN / 2}”x${CUT_IN}”`,
+		hst: `${CUT_IN}”x${CUT_IN}” cut corner to corner`,
+		qst: `${CUT_IN}”x${CUT_IN}” cut on both diagonals`
+	};
+	const KIND_NOUN: Record<ShapeKind, string> = {
+		square: 'square',
+		rect: 'rectangle',
+		hst: 'triangle',
+		qst: 'half triangle'
+	};
+	const KIND_LAYOUT: Record<ShapeKind, LayoutId> = {
+		square: 'whole',
+		rect: 'half',
+		hst: 'diagonal',
+		qst: 'quarters'
+	};
 
-	const cuttingList = $derived.by(() => {
+	function cuttingListFor(cellsArr: Cell[]) {
 		const byFabric = new Map<string, Map<ShapeKind, number>>();
-		for (const cell of cells) {
+		for (const cell of cellsArr) {
 			const defs = LAYOUTS[cell.layout].slots;
 			cell.slots.forEach((id, i) => {
 				if (!id) return;
@@ -155,7 +174,7 @@
 				totalSquares: rows.reduce((sum, r) => sum + r.squares, 0)
 			};
 		});
-	});
+	}
 
 	/** Flatten a saved pattern into offset polygons for a thumbnail SVG. */
 	function thumbPolys(cellsArr: Cell[]): { points: string; fill: string }[] {
@@ -1220,43 +1239,6 @@
 					R or right-click rotates, delete removes, drag moves, alt-drag duplicates. ⌘C copies the selection
 					and ⌘V pastes it at the cursor. ⌘Z undoes.
 				</p>
-
-				{#if cuttingList.length > 0}
-					<div class="cutting">
-						<h3>Cutting list</h3>
-						<p class="hint">
-							What the layout above takes to build. Squares-to-cut round up: one 8" square yields 2
-							triangles or 4 half-triangles. Dimensions are finished sizes; add seam allowance when
-							cutting.
-						</p>
-						<div class="cutting-groups">
-							{#each cuttingList as group (group.fabric.id)}
-								<div class="cutting-group">
-									<div class="cutting-fabric">
-										<span class="chip" style="background: {group.fabric.hex}"></span>
-										<span class="cutting-name">{group.fabric.name}</span>
-										<span class="cutting-total">
-											{group.totalSquares}/{group.fabric.count} squares
-										</span>
-									</div>
-									<ul class="cutting-rows">
-										{#each group.rows as row (row.kind)}
-											<li>
-												<strong>{row.count}×</strong>
-												{SHAPE_LABEL[row.kind]}: {SHAPE_CUT[row.kind]}
-												{#if row.kind !== 'square'}
-													<span class="cutting-note">
-														(cut {row.squares} square{row.squares === 1 ? '' : 's'})
-													</span>
-												{/if}
-											</li>
-										{/each}
-									</ul>
-								</div>
-							{/each}
-						</div>
-					</div>
-				{/if}
 			</div>
 
 			<aside class="patterns-panel">
@@ -1287,17 +1269,56 @@
 									onclick={() => loadPattern(p.id)}
 									title="Load {p.name}"
 								>
-									<svg
-										class="pattern-thumb"
-										viewBox="0 0 {COLS * 10} {ROWS * 10}"
-										preserveAspectRatio="none"
-									>
-										<rect width={COLS * 10} height={ROWS * 10} fill="#ffffff" />
-										{#each thumbPolys(p.cells) as poly}
-											<polygon points={poly.points} fill={poly.fill} />
+									<div class="pattern-thumb-col">
+										<svg
+											class="pattern-thumb"
+											viewBox="0 0 {COLS * 10} {ROWS * 10}"
+											preserveAspectRatio="none"
+										>
+											<rect width={COLS * 10} height={ROWS * 10} fill="#ffffff" />
+											{#each thumbPolys(p.cells) as poly}
+												<polygon points={poly.points} fill={poly.fill} />
+											{/each}
+										</svg>
+										<span class="pattern-name">{p.name}</span>
+									</div>
+									<div class="pattern-spec">
+										{#each cuttingListFor(p.cells) as group (group.fabric.id)}
+											<div class="spec-group">
+												<div class="spec-head">
+													<span class="chip" style="background: {group.fabric.hex}"></span>
+													<span class="spec-title">
+														{group.fabric.name} ({group.totalSquares} square{group.totalSquares ===
+														1
+															? ''
+															: 's'})
+													</span>
+												</div>
+												<ul class="spec-rows">
+													{#each group.rows as row (row.kind)}
+														<li>
+															<svg viewBox="0 0 {VB} {VB}" class="spec-icon" aria-hidden="true">
+																{#each rotatedSlots(KIND_LAYOUT[row.kind], row.kind === 'rect' ? 1 : 0) as slot, i}
+																	<polygon
+																		points={toPolygonPoints(slot.points, VB)}
+																		fill={i === 0 ? 'var(--color-text-secondary)' : '#ffffff'}
+																		stroke="var(--color-text-secondary)"
+																		stroke-width="6"
+																	/>
+																{/each}
+															</svg>
+															<span>
+																{row.count}
+																{KIND_NOUN[row.kind]}{row.count === 1 ? '' : 's'}: {CUT_DIMS[
+																	row.kind
+																]}
+															</span>
+														</li>
+													{/each}
+												</ul>
+											</div>
 										{/each}
-									</svg>
-									<span class="pattern-name">{p.name}</span>
+									</div>
 								</button>
 								<button
 									class="pattern-delete"
@@ -1344,7 +1365,7 @@
 
 <style>
 	.exploration {
-		max-width: 1200px;
+		max-width: 1400px;
 		margin: 0 auto;
 		padding: 3rem 1.25rem 6rem;
 		color: var(--color-text);
@@ -1369,13 +1390,12 @@
 
 	.tool-grid {
 		display: grid;
-		grid-template-columns: 14rem minmax(0, 1fr) 13rem;
+		grid-template-columns: 14rem minmax(0, 1fr) 24rem;
 		gap: 2rem;
 		align-items: start;
 	}
 	.palette h3,
-	.patterns-panel h3,
-	.cutting h3 {
+	.patterns-panel h3 {
 		font-size: 1.1rem;
 		margin: 0 0 0.5rem;
 		color: var(--color-text-heading);
@@ -1615,47 +1635,6 @@
 		transform: translateY(-50%);
 		background: #2563eb;
 	}
-	.cutting {
-		margin-top: 1.75rem;
-	}
-	.cutting-groups {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-		gap: 0.75rem;
-	}
-	.cutting-group {
-		border: 1px solid var(--color-border);
-		border-radius: 0.375rem;
-		padding: 0.6rem 0.75rem;
-	}
-	.cutting-fabric {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		margin-bottom: 0.4rem;
-	}
-	.cutting-name {
-		font-weight: 600;
-		flex: 1;
-	}
-	.cutting-total {
-		font-size: 0.78rem;
-		font-variant-numeric: tabular-nums;
-		color: var(--color-text-secondary);
-	}
-	.cutting-rows {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 0.2rem;
-		font-size: 0.8rem;
-		color: var(--color-text-secondary);
-	}
-	.cutting-note {
-		color: var(--color-text-muted);
-	}
 	.wall-caption {
 		font-size: 0.8rem;
 		color: var(--color-text-muted);
@@ -1736,9 +1715,11 @@
 		position: relative;
 	}
 	.pattern-load {
-		display: block;
+		display: flex;
+		align-items: flex-start;
+		gap: 0.6rem;
 		width: 100%;
-		padding: 0.35rem;
+		padding: 0.45rem;
 		border: 1px solid var(--color-border);
 		border-radius: 0.375rem;
 		background: none;
@@ -1755,6 +1736,10 @@
 		border-color: var(--color-border-strong);
 		background: var(--color-surface-active);
 	}
+	.pattern-thumb-col {
+		width: 6.5rem;
+		flex-shrink: 0;
+	}
 	.pattern-thumb {
 		display: block;
 		width: 100%;
@@ -1762,6 +1747,50 @@
 		border: 1px solid var(--color-border-subtle);
 		border-radius: 0.25rem;
 		background: #ffffff;
+	}
+	.pattern-spec {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.6rem;
+	}
+	.spec-head {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		padding-bottom: 0.25rem;
+		border-bottom: 2px solid var(--color-text-strong);
+		margin-bottom: 0.3rem;
+	}
+	.spec-head .chip {
+		width: 1.1rem;
+		height: 1.1rem;
+	}
+	.spec-title {
+		font-weight: 700;
+		font-size: 0.82rem;
+		color: var(--color-text-strong);
+	}
+	.spec-rows {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		font-size: 0.78rem;
+		color: var(--color-text-secondary);
+	}
+	.spec-rows li {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+	}
+	.spec-icon {
+		width: 1.05rem;
+		height: 1.05rem;
+		flex-shrink: 0;
 	}
 	.pattern-name {
 		display: block;
@@ -1829,7 +1858,7 @@
 		}
 		.pattern-list {
 			display: grid;
-			grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+			grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
 		}
 	}
 	@media (max-width: 768px) {
