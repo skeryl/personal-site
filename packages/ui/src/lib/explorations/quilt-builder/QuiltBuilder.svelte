@@ -331,6 +331,60 @@
 		selection = [];
 	}
 
+	/* ── Clipboard ─────────────────────────────────────────────────────
+	 * Copies keep their arrangement relative to the group's bounding box.
+	 * Paste lands the box at the hovered cell (clamped to the grid), or
+	 * just right of the originals when the cursor is off the blanket.
+	 */
+	let clipboard: { w: number; h: number; items: { dr: number; dc: number; cell: Cell }[] } | null =
+		null;
+
+	function copySelection() {
+		const sel = selection.filter((i) => !isEmpty(cells[i]));
+		if (!sel.length) return;
+		const minR = Math.min(...sel.map(rowOf));
+		const minC = Math.min(...sel.map(colOf));
+		clipboard = {
+			w: Math.max(...sel.map(colOf)) - minC + 1,
+			h: Math.max(...sel.map(rowOf)) - minR + 1,
+			items: sel.map((i) => ({
+				dr: rowOf(i) - minR,
+				dc: colOf(i) - minC,
+				cell: { ...cells[i], slots: [...cells[i].slots] }
+			}))
+		};
+	}
+
+	function pasteClipboard() {
+		if (!clipboard) return;
+		let baseR = 0;
+		let baseC = 0;
+		if (hover) {
+			baseR = rowOf(hover.index);
+			baseC = colOf(hover.index);
+		} else if (anchor !== null) {
+			baseR = rowOf(anchor);
+			baseC = colOf(anchor) + clipboard.w;
+		}
+		baseR = Math.min(ROWS - clipboard.h, Math.max(0, baseR));
+		baseC = Math.min(COLS - clipboard.w, Math.max(0, baseC));
+		const next = [...cells];
+		const placed: number[] = [];
+		for (const it of clipboard.items) {
+			const t = (baseR + it.dr) * COLS + (baseC + it.dc);
+			next[t] = { ...it.cell, slots: [...it.cell.slots] };
+			placed.push(t);
+		}
+		// The paste has to fit the scrap pile.
+		const totals = usageOf(next);
+		if (FABRICS.some((f) => (totals[f.id] ?? 0) > f.count)) return;
+		pushHistory();
+		cells = next;
+		selection = placed;
+		anchor = placed[0];
+		tool = 'select';
+	}
+
 	function rotate() {
 		if (tool === 'place') rotation = (rotation + 1) % 4;
 		else if (selection.length) rotateCells(selection);
@@ -351,6 +405,18 @@
 		const slot = slotAt(cell.layout, cell.rotation, hover.point);
 		if (cell.slots[slot] === null) return null;
 		return { index: hover.index, slot };
+	});
+
+	/** During a group drag, the exact cells the drop would produce, keyed by target index. */
+	const groupPreview = $derived.by(() => {
+		if (!drag?.active || drag.groupFrom === null || !hover) return null;
+		const sel = selection.filter((i) => !isEmpty(cells[i]));
+		if (!sel.length) return null;
+		const [dr, dc] = groupDelta(sel, drag.groupFrom, hover.index);
+		if (!dr && !dc) return null;
+		const map = new Map<number, Cell>();
+		for (const s of sel) map.set((rowOf(s) + dr) * COLS + (colOf(s) + dc), cells[s]);
+		return map;
 	});
 
 	/* ── Drag (mouse tool: move pieces between cells) ──────────────────
@@ -384,10 +450,8 @@
 		drag = { fabricId, from, groupFrom, x: e.clientX, y: e.clientY, active: false, copy: e.altKey };
 	}
 
-	/** Move or duplicate the whole selection by the drag offset, clamped to the grid. */
-	function dropGroup(srcIndex: number, destIndex: number, copy: boolean) {
-		const sel = selection.filter((i) => !isEmpty(cells[i]));
-		if (!sel.length) return;
+	/** Drag offset in rows/columns, clamped so the whole group stays on the grid. */
+	function groupDelta(sel: number[], srcIndex: number, destIndex: number): [number, number] {
 		const rows = sel.map(rowOf);
 		const colsList = sel.map(colOf);
 		const dr = Math.max(
@@ -398,6 +462,14 @@
 			-Math.min(...colsList),
 			Math.min(COLS - 1 - Math.max(...colsList), colOf(destIndex) - colOf(srcIndex))
 		);
+		return [dr, dc];
+	}
+
+	/** Move or duplicate the whole selection by the drag offset, clamped to the grid. */
+	function dropGroup(srcIndex: number, destIndex: number, copy: boolean) {
+		const sel = selection.filter((i) => !isEmpty(cells[i]));
+		if (!sel.length) return;
+		const [dr, dc] = groupDelta(sel, srcIndex, destIndex);
 		if (!dr && !dc) return;
 		const next = [...cells];
 		if (!copy) for (const s of sel) next[s] = emptyCell();
@@ -452,8 +524,11 @@
 			anchor = null;
 			return;
 		}
-		if (selection.length > 1 && selection.includes(index)) {
+		if (e.altKey || (selection.length > 1 && selection.includes(index))) {
 			// Dragging any member of a multi-selection carries the group.
+			// Alt-drag always carries whole cells, so duplicating a pieced
+			// square copies all of it, not just the piece under the cursor.
+			if (!selection.includes(index)) selection = [index];
 			anchor = index;
 			startDrag(e, cell.slots.find((s) => s !== null) ?? existing, null, index);
 			return;
@@ -488,7 +563,14 @@
 		const { from, groupFrom, fabricId, active } = drag;
 		const copy = drag.copy || e.altKey;
 		drag = null;
-		if (!active) return;
+		if (!active) {
+			// A plain click on a multi-selected square collapses the selection to it.
+			if (groupFrom !== null) {
+				selection = [groupFrom];
+				anchor = groupFrom;
+			}
+			return;
+		}
 
 		const hit = resolve(e.clientX, e.clientY);
 
@@ -571,6 +653,20 @@
 		if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
 			e.preventDefault();
 			undo();
+			return;
+		}
+		if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'c') {
+			if (selection.length) {
+				e.preventDefault();
+				copySelection();
+			}
+			return;
+		}
+		if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'v') {
+			if (clipboard) {
+				e.preventDefault();
+				pasteClipboard();
+			}
 			return;
 		}
 		if (e.key === 'Escape') {
@@ -758,12 +854,14 @@
 						{#each cells as cell, i}
 							{@const pv = placePreview?.index === i ? placePreview : null}
 							{@const ev = erasePreview?.index === i ? erasePreview : null}
-							{@const display = pv ? pv.cell : cell}
+							{@const gv = groupPreview?.get(i) ?? null}
+							{@const display = gv ?? (pv ? pv.cell : cell)}
 							<button
 								class="cell"
 								class:hovered={hover?.index === i}
 								class:selected={selection.includes(i)}
 								class:blocked={pv?.blocked}
+								class:lifted={groupPreview !== null && !drag?.copy && selection.includes(i)}
 								data-cell-index={i}
 								onpointerdown={(e) => onCellPointerDown(e, i)}
 								oncontextmenu={(e) => {
@@ -778,7 +876,7 @@
 										<polygon
 											points={toPolygonPoints(slot.points, VB)}
 											fill={id ? FABRIC_BY_ID[id].hex : '#ffffff'}
-											class:ghost={pv !== null && s === pv.slot && !pv.blocked}
+											class:ghost={gv !== null || (pv !== null && s === pv.slot && !pv.blocked)}
 											class:erasing={ev !== null && s === ev.slot}
 											stroke={display.slots.length > 1 ? 'rgba(0,0,0,0.18)' : 'none'}
 											stroke-width="1"
@@ -795,7 +893,8 @@
 						heightIn
 					)} finished); {filled} of {CELL_COUNT} cells started. Pick a piece and color, then click or
 					drag to paint. The mouse tool selects squares (shift-click or arrow keys for more): R or right-click
-					rotates, delete removes, drag moves, alt-drag duplicates. ⌘Z undoes.
+					rotates, delete removes, drag moves, alt-drag duplicates. ⌘C copies the selection and ⌘V pastes
+					it at the cursor. ⌘Z undoes.
 				</p>
 			</div>
 		</div>
@@ -1031,6 +1130,10 @@
 	}
 	polygon.erasing {
 		opacity: 0.3;
+	}
+	/* Group-move sources fade while their ghost shows at the destination. */
+	.cell.lifted svg {
+		opacity: 0.35;
 	}
 	.wall-caption {
 		font-size: 0.8rem;
