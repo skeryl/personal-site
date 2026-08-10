@@ -131,27 +131,21 @@
 	);
 
 	/* ── Cutting spec ──────────────────────────────────────────────────
-	 * Real-world counts per pattern, with 1/4" seam allowance on every
-	 * side of every piece. Squares and rectangles just add 1/2" per
-	 * dimension. Diagonal edges need more at the points: the standard
-	 * quilting rules are finished + 7/8" for half-square triangles
-	 * (exact: 1/4"x(2+sqrt2) = 0.854") and finished + 1 1/4" for
-	 * quarter-square triangles (exact: 1/2"x(1+sqrt2) = 1.207"), both
-	 * rounded up for trim room.
+	 * Shane's real-world order of operations: every piece starts from
+	 * one cut blank (finished size + seam allowance both sides, 8.5").
+	 * Rectangles are the blank folded in half and cut on the fold;
+	 * triangles are the blank cut on one or both diagonals. Piece
+	 * dimensions are subdivisions of the blank, by design; do not
+	 * "correct" them to standard quilting formulas.
 	 */
 	const CUT_YIELD: Record<ShapeKind, number> = { square: 1, rect: 2, hst: 2, qst: 4 };
 	const KIND_ORDER: ShapeKind[] = ['square', 'rect', 'hst', 'qst'];
-	/** Rulers cut in eighths; round the bias math up to the next one. */
-	const ceilEighth = (v: number) => Math.ceil(v * 8) / 8;
 	const SQ = SQUARE_INCHES + 2 * SEAM_INCHES;
-	const RECT_SHORT = SQUARE_INCHES / 2 + 2 * SEAM_INCHES;
-	const HST = SQUARE_INCHES + ceilEighth(SEAM_INCHES * (2 + Math.SQRT2));
-	const QST = SQUARE_INCHES + ceilEighth(2 * SEAM_INCHES * (1 + Math.SQRT2));
 	const CUT_DIMS: Record<ShapeKind, string> = {
 		square: `${SQ}”x${SQ}”`,
-		rect: `${RECT_SHORT}”x${SQ}”`,
-		hst: `${HST}”x${HST}” square cut corner to corner`,
-		qst: `${QST}”x${QST}” square cut on both diagonals`
+		rect: `${SQ / 2}”x${SQ}”`,
+		hst: `${SQ}”x${SQ}” square cut corner to corner`,
+		qst: `${SQ}”x${SQ}” square cut on both diagonals`
 	};
 	const KIND_NOUN: Record<ShapeKind, string> = {
 		square: 'square',
