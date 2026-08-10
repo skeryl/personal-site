@@ -336,8 +336,11 @@
 	 * Paste lands the box at the hovered cell (clamped to the grid), or
 	 * just right of the originals when the cursor is off the blanket.
 	 */
-	let clipboard: { w: number; h: number; items: { dr: number; dc: number; cell: Cell }[] } | null =
-		null;
+	let clipboard = $state<{
+		w: number;
+		h: number;
+		items: { dr: number; dc: number; cell: Cell }[];
+	} | null>(null);
 
 	function copySelection() {
 		const sel = selection.filter((i) => !isEmpty(cells[i]));
@@ -697,7 +700,9 @@
 			return;
 		}
 		if (e.key === 'Delete' || e.key === 'Backspace') {
-			if (tool === 'select') deleteCells(selection);
+			// With a selection, delete removes it; otherwise it picks up the eraser.
+			if (tool === 'select' && selection.length) deleteCells(selection);
+			else tool = 'erase';
 			return;
 		}
 		if (e.key in ARROW_DELTAS && tool === 'select') {
@@ -716,7 +721,10 @@
 			anchor = next;
 			return;
 		}
+		if (e.metaKey || e.ctrlKey) return;
 		if (e.key === 'r' || e.key === 'R') rotate();
+		if (e.key === 'e' || e.key === 'E') tool = 'erase';
+		if (e.key === 'v' || e.key === 'V') tool = 'select';
 	}
 
 	function pickPiece(entry: (typeof PALETTE)[number]) {
@@ -774,18 +782,28 @@
 						</button>
 					{/each}
 				</div>
+				<div class="group-label">Tools</div>
 				<div class="palette-actions">
 					<button
 						class="tool-btn"
 						class:active={tool === 'select'}
 						onclick={() => (tool = 'select')}
 					>
-						Mouse
+						Mouse <kbd>V</kbd>
 					</button>
 					<button class="tool-btn" class:active={tool === 'erase'} onclick={() => (tool = 'erase')}>
-						Eraser
+						Eraser <kbd>E ⌫</kbd>
 					</button>
+				</div>
+				<div class="group-label">Actions</div>
+				<div class="palette-actions">
 					<button class="tool-btn" onclick={rotate}>Rotate <kbd>R</kbd></button>
+					<button class="tool-btn" onclick={copySelection} disabled={selection.length === 0}>
+						Copy <kbd>⌘C</kbd>
+					</button>
+					<button class="tool-btn" onclick={pasteClipboard} disabled={clipboard === null}>
+						Paste <kbd>⌘V</kbd>
+					</button>
 					<button class="tool-btn" onclick={undo} disabled={history.length === 0}>
 						Undo <kbd>⌘Z</kbd>
 					</button>
@@ -1037,6 +1055,14 @@
 		color: var(--color-text-muted);
 	}
 
+	.group-label {
+		font-size: 0.68rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--color-text-muted);
+		margin-top: 0.9rem;
+	}
 	.palette-actions {
 		display: flex;
 		flex-wrap: wrap;
