@@ -40,6 +40,8 @@
 	const CURRENT_KEY = 'quilt-builder:current';
 
 	interface SavedPattern {
+		id: string;
+		name: string;
 		cells: Cell[];
 		savedAt: number;
 	}
@@ -72,9 +74,13 @@
 	function sanitizePatterns(raw: unknown): Record<string, SavedPattern> {
 		if (typeof raw !== 'object' || raw === null) return {};
 		const out: Record<string, SavedPattern> = {};
-		for (const [name, p] of Object.entries(raw as Record<string, Partial<SavedPattern>>)) {
+		for (const [key, p] of Object.entries(raw as Record<string, Partial<SavedPattern>>)) {
 			if (typeof p !== 'object' || p === null) continue;
-			out[name] = {
+			// Saves from before ids existed were keyed by name; migrate them.
+			const id = typeof p.id === 'string' ? p.id : crypto.randomUUID();
+			out[id] = {
+				id,
+				name: typeof p.name === 'string' ? p.name : key,
 				cells: sanitizeCells(p.cells),
 				savedAt: typeof p.savedAt === 'number' ? p.savedAt : 0
 			};
@@ -82,28 +88,33 @@
 		return out;
 	}
 
-	let patterns = $state<Record<string, SavedPattern>>(
-		browser ? sanitizePatterns(readJson(PATTERNS_KEY)) : {}
-	);
+	const initialPatterns = browser ? sanitizePatterns(readJson(PATTERNS_KEY)) : {};
+	let patterns = $state<Record<string, SavedPattern>>(initialPatterns);
 	let patternName = $state('');
+	/** Id of the loaded pattern; null while working on something unsaved. */
+	let currentId = $state<string | null>(null);
 
 	if (browser) {
 		const current = readJson(CURRENT_KEY);
-		if (current) cells = sanitizeCells(current);
+		if (Array.isArray(current)) {
+			cells = sanitizeCells(current);
+		} else if (current && typeof current === 'object') {
+			const c = current as { cells?: unknown; currentId?: unknown; name?: unknown };
+			if (c.cells) cells = sanitizeCells(c.cells);
+			if (typeof c.currentId === 'string' && c.currentId in initialPatterns) {
+				currentId = c.currentId;
+			}
+			if (typeof c.name === 'string') patternName = c.name;
+		}
 	}
 
 	$effect(() => {
-		localStorage.setItem(CURRENT_KEY, JSON.stringify(cells));
+		localStorage.setItem(CURRENT_KEY, JSON.stringify({ cells, currentId, name: patternName }));
 	});
 
-	const patternList = $derived(
-		Object.entries(patterns)
-			.map(([name, p]) => ({ name, ...p }))
-			.sort((a, b) => b.savedAt - a.savedAt)
-	);
+	const patternList = $derived(Object.values(patterns).sort((a, b) => b.savedAt - a.savedAt));
 
 	let patternFilter = $state('');
-	const nameExists = $derived(patternName.trim() !== '' && patternName.trim() in patterns);
 	const filteredPatterns = $derived(
 		patternList.filter((p) => p.name.toLowerCase().includes(patternFilter.trim().toLowerCase()))
 	);
@@ -130,26 +141,45 @@
 		e.preventDefault();
 		const name = patternName.trim();
 		if (!name) return;
-		patterns = { ...patterns, [name]: { cells: snapshot(), savedAt: Date.now() } };
+		// Saving with a loaded pattern updates it in place, renames included;
+		// otherwise a fresh id is minted.
+		const id = currentId ?? crypto.randomUUID();
+		patterns = { ...patterns, [id]: { id, name, cells: snapshot(), savedAt: Date.now() } };
+		currentId = id;
 		localStorage.setItem(PATTERNS_KEY, JSON.stringify(patterns));
 	}
 
-	function loadPattern(name: string) {
-		const p = patterns[name];
+	function loadPattern(id: string) {
+		const p = patterns[id];
 		if (!p) return;
 		pushHistory();
 		cells = sanitizeCells(p.cells);
 		selection = [];
 		anchor = null;
-		patternName = name;
+		currentId = id;
+		patternName = p.name;
 	}
 
-	function deletePattern(name: string) {
-		if (!confirm(`Delete pattern "${name}"?`)) return;
+	function deletePattern(id: string) {
+		const p = patterns[id];
+		if (!p || !confirm(`Delete pattern "${p.name}"?`)) return;
 		const next = { ...patterns };
-		delete next[name];
+		delete next[id];
 		patterns = next;
+		if (currentId === id) currentId = null;
 		localStorage.setItem(PATTERNS_KEY, JSON.stringify(patterns));
+	}
+
+	function newPattern() {
+		pushHistory();
+		cells = Array.from({ length: CELL_COUNT }, emptyCell);
+		selection = [];
+		anchor = null;
+		currentId = null;
+		const names = new Set(Object.values(patterns).map((p) => p.name));
+		let n = 1;
+		while (names.has(`Pattern ${n}`)) n++;
+		patternName = `Pattern ${n}`;
 	}
 
 	type Tool = 'select' | 'place' | 'erase';
@@ -291,10 +321,12 @@
 	 * eat an undo press.
 	 */
 	let history = $state<Cell[][]>([]);
+	let future = $state<Cell[][]>([]);
 	const snapshot = () => cells.map((c) => ({ ...c, slots: [...c.slots] }));
 
 	function pushHistory() {
 		history = [...history.slice(-199), snapshot()];
+		future = [];
 	}
 
 	function undo() {
@@ -304,11 +336,27 @@
 			const prev = h.pop()!;
 			if (JSON.stringify(prev) !== now) {
 				history = h;
+				future = [...future, snapshot()];
 				cells = prev;
 				return;
 			}
 		}
 		history = h;
+	}
+
+	function redo() {
+		const f = [...future];
+		const now = JSON.stringify(cells);
+		while (f.length) {
+			const next = f.pop()!;
+			if (JSON.stringify(next) !== now) {
+				future = f;
+				history = [...history.slice(-199), snapshot()];
+				cells = next;
+				return;
+			}
+		}
+		future = f;
 	}
 
 	/** Resolve a screen point to a cell and its local 0..1 coordinates. */
@@ -823,7 +871,8 @@
 		if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 		if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
 			e.preventDefault();
-			undo();
+			if (e.shiftKey) redo();
+			else undo();
 			return;
 		}
 		if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'c') {
@@ -977,6 +1026,9 @@
 					<button class="tool-btn" onclick={undo} disabled={history.length === 0}>
 						Undo <kbd>⌘Z</kbd>
 					</button>
+					<button class="tool-btn" onclick={redo} disabled={future.length === 0}>
+						Redo <kbd>⇧⌘Z</kbd>
+					</button>
 					<button class="tool-btn" onclick={clearAll} disabled={filled === 0}>Clear</button>
 				</div>
 				<div class="group-label">Symmetry</div>
@@ -1108,11 +1160,14 @@
 			</div>
 
 			<aside class="patterns-panel">
-				<h3>Patterns</h3>
+				<div class="patterns-head">
+					<h3>Patterns</h3>
+					<button class="tool-btn" onclick={newPattern}>New</button>
+				</div>
 				<form class="pattern-save" onsubmit={savePattern}>
 					<input type="text" placeholder="Pattern name" bind:value={patternName} maxlength="40" />
 					<button class="tool-btn" type="submit" disabled={!patternName.trim()}>
-						{nameExists ? 'Update' : 'Save'}
+						{currentId !== null ? 'Update' : 'Save'}
 					</button>
 				</form>
 				{#if patternList.length > 1}
@@ -1125,12 +1180,12 @@
 				{/if}
 				{#if filteredPatterns.length > 0}
 					<ul class="pattern-list">
-						{#each filteredPatterns as p (p.name)}
+						{#each filteredPatterns as p (p.id)}
 							<li>
 								<button
 									class="pattern-load"
-									class:current={p.name === patternName.trim()}
-									onclick={() => loadPattern(p.name)}
+									class:current={p.id === currentId}
+									onclick={() => loadPattern(p.id)}
 									title="Load {p.name}"
 								>
 									<svg
@@ -1147,7 +1202,7 @@
 								</button>
 								<button
 									class="pattern-delete"
-									onclick={() => deletePattern(p.name)}
+									onclick={() => deletePattern(p.id)}
 									aria-label={`Delete ${p.name}`}
 								>
 									×
@@ -1466,6 +1521,12 @@
 		margin: 0.6rem 0 0;
 	}
 
+	.patterns-head {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.5rem;
+	}
 	.pattern-save {
 		display: flex;
 		gap: 0.4rem;
