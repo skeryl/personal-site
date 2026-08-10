@@ -95,6 +95,10 @@
 	let currentId = $state<string | null>(null);
 
 	if (browser) {
+		// Write migrated ids back immediately; otherwise legacy name-keyed
+		// saves would mint a fresh uuid on every load and the autosaved
+		// currentId could never match after a reload.
+		localStorage.setItem(PATTERNS_KEY, JSON.stringify(initialPatterns));
 		const current = readJson(CURRENT_KEY);
 		if (Array.isArray(current)) {
 			cells = sanitizeCells(current);
