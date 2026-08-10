@@ -136,6 +136,9 @@
 	let selection = $state<number[]>([]);
 	/** Last cell acted on: base for arrow-key navigation and group drags. */
 	let anchor = $state<number | null>(null);
+	/** What escape deselected, so enter can bring it back. */
+	let lastSelection: number[] = [];
+	let lastAnchor: number | null = null;
 	let hover = $state<{ index: number; point: Point } | null>(null);
 	let painting = $state(false);
 
@@ -571,9 +574,30 @@
 			return;
 		}
 		if (e.key === 'Escape') {
-			drag = null;
-			selection = [];
-			anchor = null;
+			// Staged: cancel a drag, else deselect, else back to the mouse tool.
+			if (drag) {
+				drag = null;
+				return;
+			}
+			if (selection.length) {
+				lastSelection = selection;
+				lastAnchor = anchor;
+				selection = [];
+				anchor = null;
+				return;
+			}
+			tool = 'select';
+			return;
+		}
+		if (e.key === 'Enter') {
+			if (!selection.length && lastSelection.length) {
+				selection = lastSelection.filter((i) => !isEmpty(cells[i]));
+				anchor =
+					lastAnchor !== null && selection.includes(lastAnchor)
+						? lastAnchor
+						: (selection[0] ?? null);
+				if (selection.length) tool = 'select';
+			}
 			return;
 		}
 		if (e.key === 'Delete' || e.key === 'Backspace') {
