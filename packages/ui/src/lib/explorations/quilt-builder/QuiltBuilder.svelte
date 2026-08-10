@@ -103,6 +103,7 @@
 	);
 
 	let patternFilter = $state('');
+	const nameExists = $derived(patternName.trim() !== '' && patternName.trim() in patterns);
 	const filteredPatterns = $derived(
 		patternList.filter((p) => p.name.toLowerCase().includes(patternFilter.trim().toLowerCase()))
 	);
@@ -164,6 +165,76 @@
 	let lastAnchor: number | null = null;
 	let hover = $state<{ index: number; point: Point } | null>(null);
 	let painting = $state(false);
+
+	/* ── Symmetry ──────────────────────────────────────────────────────
+	 * Axis positions are in half-cell units, so a mirror line can sit on
+	 * a grid line or through the middle of a row/column. Painting and
+	 * erasing mirror across the enabled axes; pieces reflect properly
+	 * (a triangle mirrors to its mirror image, not a copy).
+	 */
+	let symV = $state(false);
+	let symH = $state(false);
+	let axisV = $state(COLS);
+	let axisH = $state(ROWS);
+	let axisDrag = $state<'v' | 'h' | null>(null);
+	let blanketEl = $state<HTMLElement | null>(null);
+
+	/** Reflect a cell's geometry across a vertical or horizontal axis. */
+	function mirrorCellGeom(cell: Cell, axis: 'v' | 'h'): Cell {
+		if (isEmpty(cell)) return emptyCell();
+		const src = rotatedSlots(cell.layout, cell.rotation);
+		const polyKey = (pts: Point[]) =>
+			pts
+				.map(([x, y]) => `${x.toFixed(3)},${y.toFixed(3)}`)
+				.sort()
+				.join('|');
+		const mirroredKeys = src.map((slot) =>
+			polyKey(slot.points.map(([x, y]) => (axis === 'v' ? [1 - x, y] : [x, 1 - y]) as Point))
+		);
+		for (let r = 0; r < 4; r++) {
+			const cand = rotatedSlots(cell.layout, r);
+			const candKeys = cand.map((slot) => polyKey(slot.points));
+			if ([...candKeys].sort().join(';') !== [...mirroredKeys].sort().join(';')) continue;
+			const taken = new Set<number>();
+			const slots = candKeys.map((ck) => {
+				const mi = mirroredKeys.findIndex((mk, idx) => mk === ck && !taken.has(idx));
+				taken.add(mi);
+				return cell.slots[mi];
+			});
+			return { layout: cell.layout, rotation: r, slots };
+		}
+		return { ...cell, slots: [...cell.slots] };
+	}
+
+	/** Mirrored copies of a cell for every enabled axis, keyed by grid index. */
+	function mirrorTargets(index: number, cell: Cell): Map<number, Cell> {
+		const out = new Map<number, Cell>();
+		const r = rowOf(index);
+		const c = colOf(index);
+		const cv = symV ? axisV - c - 1 : null;
+		const rh = symH ? axisH - r - 1 : null;
+		const push = (rr: number, cc: number, mc: Cell) => {
+			if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) return;
+			const idx = rr * COLS + cc;
+			if (idx === index || out.has(idx)) return;
+			out.set(idx, mc);
+		};
+		if (cv !== null) push(r, cv, mirrorCellGeom(cell, 'v'));
+		if (rh !== null) push(rh, c, mirrorCellGeom(cell, 'h'));
+		if (cv !== null && rh !== null) push(rh, cv, mirrorCellGeom(mirrorCellGeom(cell, 'v'), 'h'));
+		return out;
+	}
+
+	/** Write a cell plus its mirrors, rejecting anything over the scrap budget. */
+	function applyWithMirrors(index: number, target: Cell) {
+		const next = [...cells];
+		next[index] = target;
+		for (const [mi, mc] of mirrorTargets(index, target)) next[mi] = mc;
+		const totals = usageOf(next);
+		if (FABRICS.some((f) => (totals[f.id] ?? 0) > f.count)) return;
+		if (JSON.stringify(next) === JSON.stringify(cells)) return;
+		cells = next;
+	}
 
 	/*
 	 * The rectangle gets two palette entries (horizontal and vertical) instead
@@ -313,8 +384,7 @@
 	function placeAt(index: number, point: Point, fabricId: string) {
 		const { cell: target, blocked } = buildPlacement(index, point, fabricId);
 		if (blocked) return;
-		if (JSON.stringify(target) === JSON.stringify(cells[index])) return;
-		update(index, target);
+		applyWithMirrors(index, target);
 	}
 
 	function eraseAt(index: number, point: Point) {
@@ -323,7 +393,7 @@
 		if (cell.slots[slot] === null) return;
 		const slots = [...cell.slots];
 		slots[slot] = null;
-		update(index, slots.every((s) => s === null) ? emptyCell() : { ...cell, slots });
+		applyWithMirrors(index, slots.every((s) => s === null) ? emptyCell() : { ...cell, slots });
 	}
 
 	const rowOf = (i: number) => Math.floor(i / COLS);
@@ -422,7 +492,11 @@
 	 */
 	const placePreview = $derived.by(() => {
 		if (tool !== 'place' || painting || drag || !hover) return null;
-		return { index: hover.index, ...buildPlacement(hover.index, hover.point, fabric) };
+		const built = buildPlacement(hover.index, hover.point, fabric);
+		const mirrors = built.blocked
+			? new Map<number, Cell>()
+			: mirrorTargets(hover.index, built.cell);
+		return { index: hover.index, ...built, mirrors };
 	});
 
 	const erasePreview = $derived.by(() => {
@@ -565,6 +639,21 @@
 	}
 
 	function onPointerMove(e: PointerEvent) {
+		if (axisDrag && blanketEl) {
+			const r = blanketEl.getBoundingClientRect();
+			if (axisDrag === 'v') {
+				axisV = Math.min(
+					2 * COLS - 1,
+					Math.max(1, Math.round(((e.clientX - r.left) / r.width) * 2 * COLS))
+				);
+			} else {
+				axisH = Math.min(
+					2 * ROWS - 1,
+					Math.max(1, Math.round(((e.clientY - r.top) / r.height) * 2 * ROWS))
+				);
+			}
+			return;
+		}
 		const hit = resolve(e.clientX, e.clientY);
 		hover = hit ? { index: hit.index, point: hit.point } : null;
 		if (painting) {
@@ -584,6 +673,10 @@
 	}
 
 	function onPointerUp(e: PointerEvent) {
+		if (axisDrag) {
+			axisDrag = null;
+			return;
+		}
 		painting = false;
 		if (!drag) return;
 		const { from, groupFrom, fabricId, active } = drag;
@@ -832,6 +925,20 @@
 					</button>
 					<button class="tool-btn" onclick={clearAll} disabled={filled === 0}>Clear</button>
 				</div>
+				<div class="group-label">Symmetry</div>
+				<div class="palette-actions">
+					<button class="tool-btn" class:active={symV} onclick={() => (symV = !symV)}>
+						Vertical
+					</button>
+					<button class="tool-btn" class:active={symH} onclick={() => (symH = !symH)}>
+						Horizontal
+					</button>
+				</div>
+				{#if symV || symH}
+					<p class="hint">
+						Painting and erasing mirror across the axes. Drag a line on the blanket to move it.
+					</p>
+				{/if}
 
 				<h3 class="scraps-head">The scrap pile</h3>
 				<p class="hint">
@@ -861,6 +968,7 @@
 				<div class="wall">
 					<div
 						class="blanket"
+						bind:this={blanketEl}
 						class:tool-select={tool === 'select'}
 						class:tool-place={tool === 'place'}
 						class:tool-erase={tool === 'erase'}
@@ -870,7 +978,11 @@
 							{@const pv = placePreview?.index === i ? placePreview : null}
 							{@const ev = erasePreview?.index === i ? erasePreview : null}
 							{@const gv = groupPreview?.get(i) ?? null}
-							{@const display = gv ?? (pv ? pv.cell : cell)}
+							{@const mv =
+								placePreview !== null && placePreview.index !== i
+									? (placePreview.mirrors.get(i) ?? null)
+									: null}
+							{@const display = gv ?? mv ?? (pv ? pv.cell : cell)}
 							<button
 								class="cell"
 								class:hovered={hover?.index === i}
@@ -891,7 +1003,9 @@
 										<polygon
 											points={toPolygonPoints(slot.points, VB)}
 											fill={id ? FABRIC_BY_ID[id].hex : '#ffffff'}
-											class:ghost={gv !== null || (pv !== null && s === pv.slot && !pv.blocked)}
+											class:ghost={gv !== null ||
+												mv !== null ||
+												(pv !== null && s === pv.slot && !pv.blocked)}
 											class:erasing={ev !== null && s === ev.slot}
 											stroke={display.slots.length > 1 ? 'rgba(0,0,0,0.18)' : 'none'}
 											stroke-width="1"
@@ -901,6 +1015,32 @@
 								</svg>
 							</button>
 						{/each}
+						{#if symV}
+							<div
+								class="axis axis-v"
+								role="separator"
+								aria-orientation="vertical"
+								aria-label="Vertical symmetry axis"
+								style="left: {(axisV / (2 * COLS)) * 100}%"
+								onpointerdown={(e) => {
+									e.stopPropagation();
+									axisDrag = 'v';
+								}}
+							></div>
+						{/if}
+						{#if symH}
+							<div
+								class="axis axis-h"
+								role="separator"
+								aria-orientation="horizontal"
+								aria-label="Horizontal symmetry axis"
+								style="top: {(axisH / (2 * ROWS)) * 100}%"
+								onpointerdown={(e) => {
+									e.stopPropagation();
+									axisDrag = 'h';
+								}}
+							></div>
+						{/if}
 					</div>
 				</div>
 				<p class="wall-caption">
@@ -917,7 +1057,9 @@
 				<h3>Patterns</h3>
 				<form class="pattern-save" onsubmit={savePattern}>
 					<input type="text" placeholder="Pattern name" bind:value={patternName} maxlength="40" />
-					<button class="tool-btn" type="submit" disabled={!patternName.trim()}>Save</button>
+					<button class="tool-btn" type="submit" disabled={!patternName.trim()}>
+						{nameExists ? 'Update' : 'Save'}
+					</button>
 				</form>
 				{#if patternList.length > 1}
 					<input
@@ -933,6 +1075,7 @@
 							<li>
 								<button
 									class="pattern-load"
+									class:current={p.name === patternName.trim()}
 									onclick={() => loadPattern(p.name)}
 									title="Load {p.name}"
 								>
@@ -1148,6 +1291,7 @@
 		border-radius: 0.5rem;
 	}
 	.blanket {
+		position: relative;
 		display: grid;
 		width: 100%;
 		gap: 1px;
@@ -1211,6 +1355,47 @@
 	.cell.lifted svg {
 		opacity: 0.35;
 	}
+	.axis {
+		position: absolute;
+		z-index: 5;
+		touch-action: none;
+	}
+	.axis-v {
+		top: 0;
+		bottom: 0;
+		width: 14px;
+		transform: translateX(-50%);
+		cursor: col-resize;
+	}
+	.axis-h {
+		left: 0;
+		right: 0;
+		height: 14px;
+		transform: translateY(-50%);
+		cursor: row-resize;
+	}
+	.axis-v::before,
+	.axis-h::before {
+		content: '';
+		position: absolute;
+		background: #e11d48;
+		opacity: 0.8;
+	}
+	.axis-v::before {
+		left: 50%;
+		top: 0;
+		bottom: 0;
+		width: 3px;
+		transform: translateX(-50%);
+	}
+	.axis-h::before {
+		top: 50%;
+		left: 0;
+		right: 0;
+		height: 3px;
+		transform: translateY(-50%);
+		background: #2563eb;
+	}
 	.wall-caption {
 		font-size: 0.8rem;
 		color: var(--color-text-muted);
@@ -1271,6 +1456,10 @@
 	.pattern-load:hover {
 		background: var(--color-surface-active);
 		border-color: var(--color-border-strong);
+	}
+	.pattern-load.current {
+		border-color: var(--color-border-strong);
+		background: var(--color-surface-active);
 	}
 	.pattern-thumb {
 		display: block;
