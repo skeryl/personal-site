@@ -137,8 +137,7 @@
 		return polys;
 	}
 
-	function savePattern(e: SubmitEvent) {
-		e.preventDefault();
+	function savePattern() {
 		const name = patternName.trim();
 		if (!name) return;
 		// Saving with a loaded pattern updates it in place, renames included;
@@ -167,6 +166,16 @@
 		delete next[id];
 		patterns = next;
 		if (currentId === id) currentId = null;
+		localStorage.setItem(PATTERNS_KEY, JSON.stringify(patterns));
+	}
+
+	/** Title edits rename a loaded pattern immediately on blur or enter. */
+	function commitName() {
+		const name = patternName.trim();
+		if (!currentId || !name) return;
+		const p = patterns[currentId];
+		if (!p || p.name === name) return;
+		patterns = { ...patterns, [currentId]: { ...p, name } };
 		localStorage.setItem(PATTERNS_KEY, JSON.stringify(patterns));
 	}
 
@@ -1071,6 +1080,22 @@
 			</aside>
 
 			<div class="wall-side">
+				<div class="wall-title-row">
+					<input
+						class="wall-title"
+						type="text"
+						placeholder="Untitled pattern"
+						maxlength="40"
+						bind:value={patternName}
+						onblur={commitName}
+						onkeydown={(e) => {
+							if (e.key === 'Enter') e.currentTarget.blur();
+						}}
+					/>
+					{#if currentId === null}
+						<span class="unsaved-tag">unsaved</span>
+					{/if}
+				</div>
 				<div class="wall">
 					<div
 						class="blanket"
@@ -1162,14 +1187,13 @@
 			<aside class="patterns-panel">
 				<div class="patterns-head">
 					<h3>Patterns</h3>
-					<button class="tool-btn" onclick={newPattern}>New</button>
+					<div class="patterns-head-actions">
+						<button class="tool-btn" onclick={newPattern}>New</button>
+						<button class="tool-btn" onclick={savePattern} disabled={!patternName.trim()}>
+							{currentId !== null ? 'Update' : 'Save'}
+						</button>
+					</div>
 				</div>
-				<form class="pattern-save" onsubmit={savePattern}>
-					<input type="text" placeholder="Pattern name" bind:value={patternName} maxlength="40" />
-					<button class="tool-btn" type="submit" disabled={!patternName.trim()}>
-						{currentId !== null ? 'Update' : 'Save'}
-					</button>
-				</form>
 				{#if patternList.length > 1}
 					<input
 						class="pattern-filter"
@@ -1526,11 +1550,50 @@
 		align-items: baseline;
 		justify-content: space-between;
 		gap: 0.5rem;
+		margin-bottom: 0.6rem;
 	}
-	.pattern-save {
+	.patterns-head-actions {
 		display: flex;
 		gap: 0.4rem;
-		margin-bottom: 0.6rem;
+	}
+	.wall-title-row {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		margin-bottom: 0.5rem;
+	}
+	/* A title that is secretly an input: plain text at rest, obviously
+	   editable on hover, a real field when focused. */
+	.wall-title {
+		flex: 1;
+		min-width: 0;
+		font: inherit;
+		font-size: 1.35rem;
+		font-weight: 700;
+		color: var(--color-text-strong);
+		background: none;
+		border: 1px solid transparent;
+		border-radius: 0.375rem;
+		padding: 0.1rem 0.4rem;
+		margin-left: -0.4rem;
+	}
+	.wall-title:hover {
+		border-color: var(--color-border);
+		background: var(--color-surface-active);
+		cursor: text;
+	}
+	.wall-title:focus {
+		border-color: var(--color-border-strong);
+		background: var(--color-surface-active);
+		outline: none;
+	}
+	.unsaved-tag {
+		font-size: 0.72rem;
+		color: var(--color-text-muted);
+		border: 1px dashed var(--color-border-strong);
+		padding: 0.1rem 0.5rem;
+		border-radius: 999px;
+		white-space: nowrap;
 	}
 	.pattern-filter {
 		width: 100%;
@@ -1542,17 +1605,6 @@
 		background: none;
 		font: inherit;
 		font-size: 0.8rem;
-		color: inherit;
-	}
-	.pattern-save input {
-		flex: 1;
-		min-width: 0;
-		padding: 0.3rem 0.5rem;
-		border: 1px solid var(--color-border-strong);
-		border-radius: 0.375rem;
-		background: none;
-		font: inherit;
-		font-size: 0.82rem;
 		color: inherit;
 	}
 	.pattern-list {
