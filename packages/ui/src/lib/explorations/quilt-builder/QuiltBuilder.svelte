@@ -123,19 +123,24 @@
 	);
 
 	/* ── Cutting spec ──────────────────────────────────────────────────
-	 * Real-world counts per pattern. Cut dimensions bake in seam
-	 * allowance: pieces subdivide an 8.5" cut square, so a rectangle is
-	 * 4.25" x 8.5" and triangles come from diagonal cuts (2 or 4 per
-	 * square); squares-to-cut round up per piece kind.
+	 * Real-world counts per pattern, with 1/4" seam allowance on every
+	 * side of every piece. Squares and rectangles just add 1/2" per
+	 * dimension. Diagonal edges need more at the points: the standard
+	 * quilting rules are finished + 7/8" for half-square triangles
+	 * (exact: 1/4"x(2+sqrt2) = 0.854") and finished + 1 1/4" for
+	 * quarter-square triangles (exact: 1/2"x(1+sqrt2) = 1.207"), both
+	 * rounded up for trim room.
 	 */
 	const CUT_YIELD: Record<ShapeKind, number> = { square: 1, rect: 2, hst: 2, qst: 4 };
 	const KIND_ORDER: ShapeKind[] = ['square', 'rect', 'hst', 'qst'];
-	const CUT_IN = SQUARE_INCHES + 0.5;
+	const SQ = SQUARE_INCHES + 0.5;
+	const HST = SQUARE_INCHES + 0.875;
+	const QST = SQUARE_INCHES + 1.25;
 	const CUT_DIMS: Record<ShapeKind, string> = {
-		square: `${CUT_IN}”x${CUT_IN}”`,
-		rect: `${CUT_IN / 2}”x${CUT_IN}”`,
-		hst: `${CUT_IN}”x${CUT_IN}” cut corner to corner`,
-		qst: `${CUT_IN}”x${CUT_IN}” cut on both diagonals`
+		square: `${SQ}”x${SQ}”`,
+		rect: `${SQUARE_INCHES / 2 + 0.5}”x${SQ}”`,
+		hst: `${HST}”x${HST}” square cut corner to corner`,
+		qst: `${QST}”x${QST}” square cut on both diagonals`
 	};
 	const KIND_NOUN: Record<ShapeKind, string> = {
 		square: 'square',
