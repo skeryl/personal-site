@@ -50,11 +50,13 @@
 		video.preload = 'auto';
 		video.className = 'preview-video';
 
-		const source = document.createElement('source');
 		const src = videos[postId];
-		source.src = `${src}#t=[3]`;
-		source.type = getMimeType(src);
-		video.appendChild(source);
+		if (src) {
+			const source = document.createElement('source');
+			source.src = `${src}#t=[3]`;
+			source.type = getMimeType(src);
+			video.appendChild(source);
+		}
 
 		const entry: PoolEntry = { video, ready: false };
 

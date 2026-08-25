@@ -17,13 +17,21 @@
 
 	run(() => {
 		if (selectedPost && currentPost !== selectedPost.id && vid) {
+			const src = videos[selectedPost.id];
+			if (!src) {
+				// Post without a preview video: clear the player instead of
+				// crashing the reactive flush (which broke card hover states).
+				vid.pause();
+				Array.from(vid.querySelectorAll('source')).forEach((el) => el.remove());
+				vid.load();
+				return;
+			}
 			console.log('changing video source...');
 			const sources = Array.from(vid.querySelectorAll('source'));
-			sources.forEach((src) => src.remove());
+			sources.forEach((el) => el.remove());
 			vid.load();
 
 			const source = document.createElement('source');
-			const src = videos[selectedPost.id];
 			source.setAttribute('src', `${src}#t=[3]`);
 			const ext = src.split('.').pop()?.split('?')[0] ?? '';
 			const mimeTypes: Record<string, string> = {
