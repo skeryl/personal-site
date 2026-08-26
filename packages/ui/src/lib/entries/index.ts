@@ -19,6 +19,7 @@ import nycSubway from "$lib/entries/nyc-subway";
 import orbit from "$lib/entries/orbit";
 import playlistHelper from "$lib/entries/playlist-helper";
 import primeColoring from "$lib/entries/prime-coloring";
+import quiltBuilder from "$lib/entries/quilt-builder";
 import scalePractice from "$lib/entries/scale-practice";
 import splineExperiment0 from "$lib/entries/spline-experiment-0";
 import springHarp from "$lib/entries/spring-harp";
@@ -45,6 +46,7 @@ const posts = {
     [orbit.summary.id]: orbit,
     [playlistHelper.summary.id]: playlistHelper,
     [primeColoring.summary.id]: primeColoring,
+    [quiltBuilder.summary.id]: quiltBuilder,
     [scalePractice.summary.id]: scalePractice,
     [splineExperiment0.summary.id]: splineExperiment0,
     [springHarp.summary.id]: springHarp,

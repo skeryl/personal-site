@@ -1,3 +1,5 @@
+import { readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
 // Collect console errors during each test
@@ -27,13 +29,22 @@ const IGNORED_PATTERNS = [
 	'AnalyserNode',
 	'AudioContext',
 	'The AudioContext was not allowed to start',
-	'Cannot read properties of null', // canvas.getContext() returns null in headless
-	'is not a function' // runtime errors from WebGL-dependent code paths (e.g. Walker in cell)
+	'Cannot read properties of null' // canvas.getContext() returns null in headless
 ];
 
-function assertNoErrors(page: any) {
+/*
+ * Broad patterns that could mask real bugs are opted into per route instead
+ * of applying everywhere ("is not a function" once hid a genuine crash on
+ * the home page).
+ */
+const ROUTE_IGNORED_PATTERNS: Record<string, string[]> = {
+	cell: ['is not a function'] // WebGL-dependent Walker code path
+};
+
+function assertNoErrors(page: any, route?: string) {
 	const errors: string[] = (page as any).__consoleErrors ?? [];
-	const real = errors.filter((e) => !IGNORED_PATTERNS.some((p) => e.includes(p)));
+	const ignored = [...IGNORED_PATTERNS, ...(route ? (ROUTE_IGNORED_PATTERNS[route] ?? []) : [])];
+	const real = errors.filter((e) => !ignored.some((p) => e.includes(p)));
 	expect(real, `Unexpected console errors: ${real.join('\n')}`).toHaveLength(0);
 }
 
@@ -69,39 +80,19 @@ test('cards link to journal entries', async ({ page }) => {
 });
 
 // --- Journal entry smoke tests ---
-// Each test visits the route and asserts no JS errors on load.
+// Every entry file gets a route test automatically, so a new exploration
+// cannot silently ship without CI ever loading its page.
 
-const journalEntries = [
-	'ant-farm',
-	'blob-convergence',
-	'blob-grid',
-	'cell',
-	'chrysanthemum',
-	'cube-peg-torus-hole',
-	'down-south',
-	'follow',
-	'gravity-swell',
-	'math-journey',
-	'mirrors',
-	'note-playground',
-	'note-points',
-	'note-shader',
-	'note-shader-2',
-	'note-shader-3',
-	'nyc-subway',
-	'orbit',
-	'playlist-helper',
-	'prime-coloring',
-	'scale-practice',
-	'spline-experiment-0',
-	'spring-harp',
-	'squiggles'
-];
+const entriesDir = fileURLToPath(new URL('../src/lib/entries', import.meta.url));
+const journalEntries = readdirSync(entriesDir)
+	.filter((file) => file.endsWith('.ts') && file !== 'index.ts')
+	.map((file) => file.replace(/\.ts$/, ''))
+	.sort();
 
 for (const entry of journalEntries) {
 	test(`journal/${entry} loads without errors`, async ({ page }) => {
 		await page.goto(`/journal/${entry}`);
 		await page.waitForLoadState('networkidle');
-		assertNoErrors(page);
+		assertNoErrors(page, entry);
 	});
 }
