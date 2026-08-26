@@ -1,15 +1,15 @@
 /*
  * Cell geometry.
  *
- * Every cell of the blanket is one 8in square. A cell is subdivided by a
+ * Every cell of the blanket is one square. A cell is subdivided by a
  * "layout": a plain list of polygons over the unit square, drawn from the
  * top-left. Supporting a new piece configuration means adding one entry to
  * LAYOUTS — nothing else in the app needs to know about it.
  *
  * Orientation is not baked into the layouts. Each cell carries a rotation of
  * 0-3 quarter turns that is applied to the polygons at render time, so the
- * horizontal 8x4 rectangle and the vertical 4x8 rectangle are the same layout
- * seen from two angles.
+ * horizontal rectangle pair and the vertical pair are the same layout seen
+ * from two angles.
  */
 
 export type Point = [number, number];
@@ -17,27 +17,12 @@ export type Point = [number, number];
 /** Which physical piece a slot is cut from. Drives inventory accounting. */
 export type ShapeKind = 'square' | 'rect' | 'hst' | 'qst';
 
-/** Fraction of one 8in square of fabric each piece consumes. */
+/** Fraction of one square of fabric each piece consumes. */
 export const SHAPE_AREA: Record<ShapeKind, number> = {
 	square: 1,
 	rect: 1 / 2,
 	hst: 1 / 2,
 	qst: 1 / 4
-};
-
-export const SHAPE_LABEL: Record<ShapeKind, string> = {
-	square: 'Square',
-	rect: 'Rectangle',
-	hst: 'Triangle',
-	qst: 'Half triangle'
-};
-
-/** Cut dimensions in inches, for the cutting list. */
-export const SHAPE_CUT: Record<ShapeKind, string> = {
-	square: '8" × 8"',
-	rect: '8" × 4"',
-	hst: '8" square, cut corner to corner',
-	qst: '8" square, cut both diagonals'
 };
 
 export interface Slot {
@@ -61,19 +46,25 @@ const BL: Point = [0, 1];
 const MID: Point = [0.5, 0.5];
 
 export const LAYOUTS: Record<LayoutId, Layout> = {
-	/** One 8x8 square filling the cell. */
+	/** One square filling the cell. */
 	whole: {
 		id: 'whole',
 		kind: 'square',
 		slots: [{ kind: 'square', points: [TL, TR, BR, BL] }]
 	},
-	/** Two 8x4 rectangles, split horizontally. Rotate for the vertical pair. */
+	/** Two rectangles, split horizontally. Rotate for the vertical pair. */
 	half: {
 		id: 'half',
 		kind: 'rect',
 		slots: [
-			{ kind: 'rect', points: [TL, TR, [1, 0.5], [0, 0.5]] },
-			{ kind: 'rect', points: [[0, 0.5], [1, 0.5], BR, BL] }
+			{
+				kind: 'rect',
+				points: [TL, TR, [1, 0.5], [0, 0.5]]
+			},
+			{
+				kind: 'rect',
+				points: [[0, 0.5], [1, 0.5], BR, BL]
+			}
 		]
 	},
 	/** Two half-square triangles, split top-left to bottom-right. */
@@ -98,46 +89,63 @@ export const LAYOUTS: Record<LayoutId, Layout> = {
 	}
 };
 
-/** The palette lists pieces in the order they were described. */
-export const PIECE_ORDER: LayoutId[] = ['whole', 'half', 'diagonal', 'quarters'];
+export const normalizeTurns = (turns: number): number => ((turns % 4) + 4) % 4;
 
 /** Rotate a point clockwise about the centre of the unit square. */
-function rotatePoint([x, y]: Point, turns: number): Point {
-	let p: Point = [x, y];
-	for (let i = 0; i < (turns % 4) + (turns < 0 ? 4 : 0); i++) {
-		p = [1 - p[1], p[0]];
-	}
-	return p;
-}
+export const rotatePoint = (point: Point, turns: number): Point =>
+	Array.from({ length: normalizeTurns(turns) }).reduce<Point>(([x, y]) => [1 - y, x], point);
 
-export function rotatedSlots(layoutId: LayoutId, rotation: number): Slot[] {
+/*
+ * There are only |layouts| x 4 possible slot lists; memoize them so hot
+ * paths (previews recompute per pointer move) reuse frozen instances.
+ */
+const rotationCache = new Map<string, Slot[]>();
+
+export const rotatedSlots = (layoutId: LayoutId, rotation: number): Slot[] => {
+	const turns = normalizeTurns(rotation);
+	const key = `${layoutId}:${turns}`;
+	const cached = rotationCache.get(key);
+	if (cached) return cached;
 	const layout = LAYOUTS[layoutId];
-	if (!rotation) return layout.slots;
-	return layout.slots.map((slot) => ({
-		...slot,
-		points: slot.points.map((p) => rotatePoint(p, rotation))
-	}));
-}
+	const slots =
+		turns === 0
+			? layout.slots
+			: layout.slots.map((slot) => ({
+					...slot,
+					points: slot.points.map((p) => rotatePoint(p, turns))
+				}));
+	rotationCache.set(key, slots);
+	return slots;
+};
 
-export function toPolygonPoints(points: Point[], size: number): string {
-	return points.map(([x, y]) => `${x * size},${y * size}`).join(' ');
-}
+export const toPolygonPoints = (points: readonly Point[], size: number): string =>
+	points.map(([x, y]) => `${x * size},${y * size}`).join(' ');
+
+export const centroidOf = (points: readonly Point[]): Point => [
+	points.reduce((sum, [x]) => sum + x, 0) / points.length,
+	points.reduce((sum, [, y]) => sum + y, 0) / points.length
+];
 
 /** Ray casting, so a click can be resolved to the slot it landed in. */
-export function pointInPolygon([px, py]: Point, points: Point[]): boolean {
-	let inside = false;
-	for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
-		const [xi, yi] = points[i];
-		const [xj, yj] = points[j];
+export const pointInPolygon = ([px, py]: Point, points: readonly Point[]): boolean =>
+	points.reduce((inside, [xi, yi], i) => {
+		const [xj, yj] = points[(i + points.length - 1) % points.length];
 		const intersects = yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi;
-		if (intersects) inside = !inside;
-	}
-	return inside;
-}
+		return intersects ? !inside : inside;
+	}, false);
+
+/*
+ * Points exactly on the far edges (x or y of 1) fall outside every polygon's
+ * strict inequalities; clamp just inside so edge clicks resolve to the edge
+ * slot instead of falling through to slot 0.
+ */
+const clamp01 = (v: number): number => Math.min(Math.max(v, 0), 1 - 1e-6);
 
 /** Which slot of `layoutId` contains the unit-square point, or 0 as a fallback. */
-export function slotAt(layoutId: LayoutId, rotation: number, point: Point): number {
-	const slots = rotatedSlots(layoutId, rotation);
-	const hit = slots.findIndex((slot) => pointInPolygon(point, slot.points));
+export const slotAt = (layoutId: LayoutId, rotation: number, [x, y]: Point): number => {
+	const point: Point = [clamp01(x), clamp01(y)];
+	const hit = rotatedSlots(layoutId, rotation).findIndex((slot) =>
+		pointInPolygon(point, slot.points)
+	);
 	return hit === -1 ? 0 : hit;
-}
+};
