@@ -2,6 +2,7 @@
 import antFarm from "$lib/entries/ant-farm";
 import blobConvergence from "$lib/entries/blob-convergence";
 import blobGrid from "$lib/entries/blob-grid";
+import calcBuilder from "$lib/entries/calc-builder";
 import cell from "$lib/entries/cell";
 import chrysanthemum from "$lib/entries/chrysanthemum";
 import cubePegTorusHole from "$lib/entries/cube-peg-torus-hole";
@@ -29,6 +30,7 @@ const posts = {
     [antFarm.summary.id]: antFarm,
     [blobConvergence.summary.id]: blobConvergence,
     [blobGrid.summary.id]: blobGrid,
+    [calcBuilder.summary.id]: calcBuilder,
     [cell.summary.id]: cell,
     [chrysanthemum.summary.id]: chrysanthemum,
     [cubePegTorusHole.summary.id]: cubePegTorusHole,
