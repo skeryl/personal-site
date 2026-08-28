@@ -26,8 +26,8 @@
 		'<span class="kw">double</span> value = attr.evaluate(position);  <span class="cm">// compiled: 2-6 ms</span>'
 	].join('\n');
 
-	const TOTAL = 15;
-	const DEMO_SLIDE = 6;
+	const TOTAL = 16;
+	const DEMO_SLIDE = 7;
 	let current = $state(0);
 	let direction = $state(1);
 	let deckEl = $state<HTMLDivElement>();
@@ -168,7 +168,7 @@
 					</ul>
 				{:else if current === 2}
 					<span class="kicker">the problem</span>
-					<h2>The support call</h2>
+					<h2>The problem</h2>
 					<div class="split">
 						<ul class="points">
 							<li>Recurring case: "why is my trade blocked?"</li>
@@ -192,8 +192,27 @@
 						<div class="fig-wrap"><FigPipelines /></div>
 					</div>
 				{:else if current === 4}
+					<span class="kicker">discovery</span>
+					<h2>What the interviews surfaced</h2>
+					<ul class="points">
+						<li>
+							Spent the discovery phase with stakeholders: engineers, desk heads, portfolio
+							managers, traders
+						</li>
+						<li>
+							The common thread: understanding any calculation meant
+							<strong>pulling an engineer into the loop</strong>
+						</li>
+						<li>The ask: discover and debug calculation definitions self-service</li>
+						<li>
+							That became a core feature: search an instrument, then step through a rule's
+							evaluation in the UI, node by node
+						</li>
+						<li>A critical need we would not have found without the interviews</li>
+					</ul>
+				{:else if current === 5}
 					<span class="kicker">the idea</span>
-					<h2>Calculations as data</h2>
+					<h2>Calculations as graphs!</h2>
 					<div class="split">
 						<ul class="points">
 							<li>
@@ -206,11 +225,10 @@
 						</ul>
 						<div class="fig-wrap shrink"><FigAst /></div>
 					</div>
-				{:else if current === 5}
+				{:else if current === 6}
 					<span class="kicker">making it real</span>
 					<h2>Getting buy-in</h2>
 					<ul class="points">
-						<li>Verified the problem across teams: engineers, desk heads, PMs, traders</li>
 						<li>Pitched the division executive; got one month, solo, for a proof of concept</li>
 						<li>Architecture review: division head + senior leads, an hour of probing</li>
 						<li>
@@ -218,13 +236,13 @@
 						</li>
 						<li>Approved</li>
 					</ul>
-				{:else if current === 6}
+				{:else if current === 7}
 					<div class="demo-head">
 						<span class="kicker">live</span>
 						<h2>The reconstruction</h2>
 					</div>
 					<div class="demo-fill"><CalcBuilder /></div>
-				{:else if current === 7}
+				{:else if current === 8}
 					<span class="kicker">engineers</span>
 					<h2>The fluent Java API</h2>
 					<div class="code-wrap">
@@ -235,13 +253,13 @@
 							call.
 						</p>
 					</div>
-				{:else if current === 8}
+				{:else if current === 9}
 					<span class="kicker">architecture</span>
 					<h2>The shape of the system</h2>
 					<div class="stack">
 						<div class="fig-wrap"><FigArchitecture /></div>
 					</div>
-				{:else if current === 9}
+				{:else if current === 10}
 					<span class="kicker">trust</span>
 					<h2>Definitions are code</h2>
 					<div class="stack">
@@ -253,7 +271,7 @@
 						</ul>
 						<div class="fig-wrap"><FigLifecycle /></div>
 					</div>
-				{:else if current === 10}
+				{:else if current === 11}
 					<span class="kicker">performance</span>
 					<h2>The compiler turn</h2>
 					<div class="stack">
@@ -273,7 +291,7 @@
 						</ul>
 						<div class="fig-wrap"><FigCodegen /></div>
 					</div>
-				{:else if current === 11}
+				{:else if current === 12}
 					<span class="kicker">people</span>
 					<h2>Team and responsibilities</h2>
 					<ul class="points">
@@ -290,7 +308,7 @@
 							productive under a strict correctness bar
 						</li>
 					</ul>
-				{:else if current === 12}
+				{:else if current === 13}
 					<span class="kicker">impact</span>
 					<h2>Where it landed</h2>
 					<div class="split">
@@ -305,7 +323,7 @@
 						</ul>
 						<div class="fig-wrap shrink"><FigLenses /></div>
 					</div>
-				{:else if current === 13}
+				{:else if current === 14}
 					<span class="kicker">reflection</span>
 					<h2>Tradeoffs and what I'd change</h2>
 					<ul class="points">

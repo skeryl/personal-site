@@ -619,20 +619,20 @@ test('slide deck presents full screen, navigates, and exits back to the article'
 	await page.locator('[data-present]').click();
 	const deck = page.locator('[data-slide-deck]');
 	await expect(deck).toBeVisible();
-	await expect(page.locator('[data-deck-counter]')).toHaveText('1 / 15');
+	await expect(page.locator('[data-deck-counter]')).toHaveText('1 / 16');
 
 	await page.keyboard.press('ArrowRight');
 	await page.keyboard.press('ArrowRight');
-	await expect(page.locator('[data-deck-counter]')).toHaveText('3 / 15');
+	await expect(page.locator('[data-deck-counter]')).toHaveText('3 / 16');
 	await expect(page.locator('[data-figure-incident]')).toBeVisible();
 
 	// The demo slide hosts the live builder; deck keys must not fire from its inputs.
 	await page.keyboard.press('End');
 	await page.keyboard.press('Home');
-	await expect(page.locator('[data-deck-counter]')).toHaveText('1 / 15');
+	await expect(page.locator('[data-deck-counter]')).toHaveText('1 / 16');
 
 	await page.locator('[data-deck-next]').click();
-	await expect(page.locator('[data-deck-counter]')).toHaveText('2 / 15');
+	await expect(page.locator('[data-deck-counter]')).toHaveText('2 / 16');
 
 	await page.keyboard.press('Escape');
 	await expect(deck).not.toBeVisible();
@@ -642,32 +642,32 @@ test('slide deck presents full screen, navigates, and exits back to the article'
 test('slide deck demo slide hosts the working calc builder', async ({ page }) => {
 	await page.locator('[data-present]').click();
 	await page.keyboard.press('End');
-	// Walk back to the demo slide (index 6).
+	// Walk back to the demo slide (index 7).
 	for (let i = 0; i < 8; i++) await page.keyboard.press('ArrowLeft');
-	await page.waitForSelector('[data-slide="6"] [data-slot-path="root"]');
+	await page.waitForSelector('[data-slide="7"] [data-slot-path="root"]');
 
 	// Typing in the DSL bar must not advance slides.
-	const dsl = page.locator('[data-slide="6"] .dsl-input');
+	const dsl = page.locator('[data-slide="7"] .dsl-input');
 	await dsl.click();
 	await dsl.press('ArrowRight');
 	await dsl.press('Space');
-	await expect(page.locator('[data-deck-counter]')).toHaveText('7 / 15');
+	await expect(page.locator('[data-deck-counter]')).toHaveText('8 / 16');
 });
 
 test('wheel flick advances one slide with a cooldown', async ({ page }) => {
 	await page.locator('[data-present]').click();
 	await page.mouse.move(720, 450);
 	await page.mouse.wheel(0, 400);
-	await expect(page.locator('[data-deck-counter]')).toHaveText('2 / 15');
+	await expect(page.locator('[data-deck-counter]')).toHaveText('2 / 16');
 
 	// Inertia within the cooldown must not double-advance.
 	await page.mouse.wheel(0, 400);
-	await expect(page.locator('[data-deck-counter]')).toHaveText('2 / 15');
+	await expect(page.locator('[data-deck-counter]')).toHaveText('2 / 16');
 });
 
 test('java api and architecture slides render', async ({ page }) => {
 	await page.locator('[data-present]').click();
-	for (let i = 0; i < 7; i++) await page.keyboard.press('ArrowRight');
+	for (let i = 0; i < 8; i++) await page.keyboard.press('ArrowRight');
 	await expect(page.locator('.code-block')).toContainText('DerivedAttribute');
 	await page.keyboard.press('ArrowRight');
 	await expect(page.locator('[data-figure-arch]')).toBeVisible();
