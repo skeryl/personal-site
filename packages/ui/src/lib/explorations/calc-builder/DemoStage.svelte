@@ -107,5 +107,6 @@
 	.demo-stage.expanded .stage-body {
 		flex: 1;
 		overflow: auto;
+		container-type: size;
 	}
 </style>

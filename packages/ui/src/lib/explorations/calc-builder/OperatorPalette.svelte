@@ -365,10 +365,13 @@
 
 <style>
 	.palette {
-		/* Clears the site's fixed nav when the page (not the deck) scrolls. */
+		/* Sticky within whichever scroller hosts the tool: cqh resolves
+		   against the deck slide or expanded stage (size containers) and
+		   falls back to the viewport on the article page, where the 4rem
+		   offset clears the site's fixed nav. */
 		position: sticky;
 		top: 4rem;
-		max-height: calc(100vh - 4.5rem);
+		max-height: calc(100cqh - 4.5rem);
 		overflow-y: auto;
 		overscroll-behavior: contain;
 		padding-right: 0.35rem;

@@ -531,6 +531,7 @@
 		flex: 1;
 		min-height: 0;
 		overflow: auto;
+		container-type: size;
 		margin-top: 0.75rem;
 		border: 1px solid var(--color-border-subtle);
 		border-radius: 0.5rem;
