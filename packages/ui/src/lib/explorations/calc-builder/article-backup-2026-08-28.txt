@@ -267,7 +267,7 @@
 		<p>
 			The first evaluator was a straightforward recursive interpreter in Java: for each node, either
 			fetch a leaf value or evaluate the children and apply the operator. Simple, correct, easy to
-			reason about. Also slow: roughly 250 milliseconds to evaluate one derived attribute against
+			reason about. Also slow: roughly 200 milliseconds to evaluate one derived attribute against
 			one input item, and pre-trade checks evaluate portfolios of thousands of rows. The math does
 			not work out.
 		</p>
@@ -278,7 +278,7 @@
 				>stop interpreting and compile</strong
 			>. Generate Java source from the AST, compile it in memory inside the running process, load it
 			through an in-memory classloader, and invoke it like any other class. Evaluation dropped from
-			roughly 250ms to between 2 and 6 milliseconds, with the JVM's JIT doing the optimization work
+			roughly 200ms to roughly 10 milliseconds, with the JVM's JIT doing the optimization work
 			I had been planning to do by hand.
 		</p>
 

@@ -598,7 +598,7 @@ test('New starts a fresh calc; Clear keeps the identity', async ({ page }) => {
 
 test('the article embeds the demo in an expandable stage', async ({ page }) => {
 	await expect(page.locator('.article .hero h1')).toContainText('Derived Attributes');
-	await expect(page.locator('[data-article-section="compiler"]')).toContainText('250');
+	await expect(page.locator('[data-article-section="compiler"]')).toContainText('200');
 
 	const stage = page.locator('[data-demo-stage]');
 	await expect(stage).not.toHaveClass(/expanded/);
@@ -678,7 +678,7 @@ test('wheel flick advances one slide with a cooldown', async ({ page }) => {
 test('java api and architecture slides render', async ({ page }) => {
 	await page.locator('[data-present]').click();
 	for (let i = 0; i < 8; i++) await page.keyboard.press('ArrowRight');
-	await expect(page.locator('.code-block')).toContainText('DerivedAttribute');
+	await expect(page.locator('.code-block')).toContainText('ComputedAttribute');
 	await page.keyboard.press('ArrowRight');
 	await expect(page.locator('[data-figure-arch]')).toBeVisible();
 });

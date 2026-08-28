@@ -28,17 +28,17 @@
 	<div class="bars">
 		<div class="bar-row">
 			<span class="bar-label">interpreted</span>
-			<div class="bar slow"><span>~250 ms</span></div>
+			<div class="bar slow"><span>~200 ms</span></div>
 		</div>
 		<div class="bar-row">
 			<span class="bar-label">compiled</span>
 			<div class="bar fast"></div>
-			<span class="bar-value">2–6 ms</span>
+			<span class="bar-value">~10 ms</span>
 		</div>
 	</div>
 	<figcaption>
-		From definition to machine code. The bars are the measured numbers from the original Java
-		system: one derived attribute, one input item, drawn to scale.
+		From definition to machine code. The bars are approximate timings from the original Java system:
+		one derived attribute, one input item, drawn to scale.
 	</figcaption>
 </figure>
 
@@ -153,7 +153,7 @@
 		color: var(--color-text-strong);
 	}
 	.bar.fast {
-		width: 1.6%;
+		width: 5%;
 		min-width: 4px;
 		background: var(--cb-type-boolean);
 	}

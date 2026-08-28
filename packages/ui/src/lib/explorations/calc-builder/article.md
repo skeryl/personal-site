@@ -80,9 +80,9 @@ The benefit extended beyond compliance. With definitions as versioned data with 
 
 ## The compiler turn
 
-The first evaluator was a recursive interpreter in Java: for each node, either fetch a leaf value or evaluate the children and apply the operator. It was simple and correct, and it was slow: roughly 250 milliseconds to evaluate one derived attribute against one input item. Pre-trade checks evaluate portfolios of thousands of rows, so this did not scale.
+The first evaluator was a recursive interpreter in Java: for each node, either fetch a leaf value or evaluate the children and apply the operator. It was simple and correct, and it was slow: roughly 200 milliseconds to evaluate one derived attribute against one input item. Pre-trade checks evaluate portfolios of thousands of rows, so this did not scale.
 
-The optimizations on my list (constant folding, caching, dead-branch elimination) are standard compiler work, which pointed at a simpler approach: stop interpreting and compile. The evaluator was replaced with code generation. Java source is generated from the AST, compiled in memory inside the running process, loaded through an in-memory classloader, and invoked like any other class. Evaluation time dropped from roughly 250ms to between 2 and 6 milliseconds, with the JVM's JIT providing the optimization work.
+The optimizations on my list (constant folding, caching, dead-branch elimination) are standard compiler work, which pointed at a simpler approach: stop interpreting and compile. The evaluator was replaced with code generation. Java source is generated from the AST, compiled in memory inside the running process, loaded through an in-memory classloader, and invoked like any other class. Evaluation time dropped from roughly 200ms to roughly 10 milliseconds, with the JVM's JIT providing the optimization work.
 
 Distribution followed the same design. A consuming service pins the ID of a derived attribute, hydrates the compiled class at startup, and refreshes when a new revision is published. Definitions changed infrequently, so polling or refresh-on-restart was sufficient; no pub/sub was required. Teams kept operational independence while definitions remained centralized, versioned, and shared.
 

@@ -15,18 +15,18 @@
 	/* Static, self-authored markup; rendered via {@html} so the formatter
 	   cannot collapse the pre's line breaks. */
 	const javaSnippet = [
-		'<span class="kw">import static</span> attributes.<span class="ty">Nodes</span>.data;',
+		'<span class="kw">import static</span> attributes.<span class="ty">Inputs</span>.field;',
 		'',
 		'<span class="cm">// engineers declare attributes directly in code</span>',
-		'<span class="ty">DerivedAttribute</span>&lt;<span class="ty">Position</span>, <span class="ty">BigDecimal</span>&gt; notional =',
-		'    <span class="ty">DerivedAttribute</span>.of(<span class="ty">Position</span>.class, <span class="st">&quot;notional&quot;</span>)',
-		'        .mult(data(<span class="ty">Position</span>::price), data(<span class="ty">Position</span>::quantity));',
+		'<span class="ty">ComputedAttribute</span>&lt;<span class="ty">Position</span>, <span class="ty">BigDecimal</span>&gt; notional =',
+		'    <span class="ty">ComputedAttribute</span>.of(<span class="ty">Position</span>.class, <span class="st">&quot;notional&quot;</span>)',
+		'        .mult(field(<span class="ty">Position</span>::price), field(<span class="ty">Position</span>::quantity));',
 		'<span class="ty">BigDecimal</span> value = notional.evaluate(position);  <span class="cm">// strong typing in the Java API</span>',
 		'',
 		'<span class="cm">// UI-authored attributes are fetched by unique ID, injected via app config</span>',
-		'<span class="ty">DerivedAttribute</span>&lt;<span class="ty">Position</span>, <span class="ty">BigDecimal</span>&gt; liquidity =',
+		'<span class="ty">ComputedAttribute</span>&lt;<span class="ty">Position</span>, <span class="ty">BigDecimal</span>&gt; liquidity =',
 		'    attributes.fetch(config.get(<span class="st">&quot;surveillance.liquidity-attr-id&quot;</span>));',
-		'<span class="ty">BigDecimal</span> score = liquidity.evaluate(position);  <span class="cm">// compiled: 2-6 ms</span>'
+		'<span class="ty">BigDecimal</span> score = liquidity.evaluate(position);  <span class="cm">// compiled: ~10 ms</span>'
 	].join('\n');
 
 	const TOTAL = 16;
@@ -158,6 +158,10 @@
 							How treating calculations as graphs unified definitions at a large asset manager
 						</p>
 						<p class="deck-byline">Shane Carroll</p>
+						<p class="deck-note">
+							A from-memory reconstruction: names, numbers, and code are approximations or
+							inventions; all data is fabricated.
+						</p>
 					</div>
 				{:else if current === 1}
 					<span class="kicker">context</span>
@@ -242,7 +246,7 @@
 							<span class="ask">"Nothing can slow the trade path"<em>desk systems</em></span>
 							<span class="need-arrow">→</span>
 							<span class="answer">
-								Compiled definitions evaluated <strong>in-process</strong>: 2-6 ms per attribute
+								Compiled definitions evaluated <strong>in-process</strong>: ~10 ms per attribute
 							</span>
 						</div>
 						<div class="need">
@@ -327,14 +331,14 @@
 					<div class="stack">
 						<ul class="points">
 							<li>
-								v1: recursive interpreter, ~250ms per attribute per row; too slow for portfolios
+								v1: recursive interpreter, ~200ms per attribute per row; too slow for portfolios
 							</li>
 							<li>
 								Wanted constant folding, caching, dead branches; that list is
 								<strong>compiler work</strong>
 							</li>
 							<li>
-								Codegen: AST → Java source → in-memory compile → classloader → <strong>2-6ms</strong
+								Codegen: AST → Java source → in-memory compile → classloader → <strong>~10ms</strong
 								>
 							</li>
 							<li>Consumers pin an attribute ID, hydrate at startup, refresh on publish</li>
@@ -466,6 +470,12 @@
 	.deck-sub {
 		font-size: 1.4rem;
 		color: var(--color-text-secondary);
+		margin: 0;
+	}
+	.deck-note {
+		font-size: 0.75rem;
+		color: var(--color-text-muted);
+		max-width: 34rem;
 		margin: 0;
 	}
 	.deck-byline {

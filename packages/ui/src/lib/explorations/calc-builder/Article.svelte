@@ -272,7 +272,7 @@
 		<p>
 			The first evaluator was a straightforward recursive interpreter in Java: for each node, either
 			fetch a leaf value or evaluate the children and apply the operator. Simple, correct, easy to
-			reason about. Also slow: roughly 250 milliseconds to evaluate one derived attribute against
+			reason about. Also slow: roughly 200 milliseconds to evaluate one derived attribute against
 			one input item, and pre-trade checks evaluate portfolios of thousands of rows. The math does
 			not work out.
 		</p>
@@ -283,8 +283,8 @@
 				>stop interpreting and compile</strong
 			>. Generate Java source from the AST, compile it in memory inside the running process, load it
 			through an in-memory classloader, and invoke it like any other class. Evaluation dropped from
-			roughly 250ms to between 2 and 6 milliseconds, with the JVM's JIT doing the optimization work
-			I had been planning to do by hand.
+			roughly 200ms to roughly 10 milliseconds, with the JVM's JIT doing the optimization work I had
+			been planning to do by hand.
 		</p>
 
 		<!-- FIGURE S6: definition-to-machine-code flow + historical timing bars -->
@@ -339,6 +339,14 @@
 			that one representation.
 		</p>
 	</section>
+	<!-- ═══════════════ COLOPHON · text (edit here) ═══════════════ -->
+	<footer class="prose colophon" data-article-section="colophon">
+		<p>
+			Everything here is a from-memory reconstruction written well after the fact. Names, numbers,
+			and code are approximations or inventions of my own; the demo and its data were fabricated for
+			this article. No proprietary code or information appears here.
+		</p>
+	</footer>
 </article>
 
 <style>
@@ -390,6 +398,13 @@
 	.present-btn:hover {
 		color: var(--color-text-strong);
 		border-color: var(--color-border-strong);
+	}
+	.colophon {
+		margin-top: 3.5rem;
+		padding-top: 1.25rem;
+		border-top: 1px solid var(--color-border-subtle);
+		font-size: 0.85rem;
+		color: var(--color-text-muted);
 	}
 	.prose {
 		max-width: 42rem;

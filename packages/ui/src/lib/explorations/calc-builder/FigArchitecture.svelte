@@ -28,7 +28,7 @@
 			<b>Client library</b>
 			<span>hydrate at startup · codegen → bytecode · cache</span>
 		</div>
-		<div class="arrow">↓ <em>evaluate(position) · in-process · 2-6 ms</em></div>
+		<div class="arrow">↓ <em>evaluate(position) · in-process · ~10 ms</em></div>
 		<div class="box app">
 			<b>Application code</b>
 			<span>rules, checks, classification (no network hop per row)</span>
