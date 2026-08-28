@@ -146,8 +146,10 @@
 			>
 				{#if current === 0}
 					<div class="center">
-						<h1 class="deck-title">Same word, different numbers</h1>
-						<p class="deck-sub">A calculation platform for a large asset manager</p>
+						<h1 class="deck-title">Derived Attributes</h1>
+						<p class="deck-sub">
+							How treating calculations as graphs unified definitions at a large asset manager
+						</p>
 						<p class="deck-byline">Shane Carroll</p>
 					</div>
 				{:else if current === 1}

@@ -32,10 +32,10 @@
 <article class="article">
 	<!-- ═══════════════ HERO · text (edit here) ═══════════════ -->
 	<header class="hero">
-		<h1>Same word, different numbers</h1>
+		<h1>Derived Attributes</h1>
 		<p class="deck">
-			A calculation platform built at a large asset manager: the problem that motivated it, the
-			architecture, and a working reconstruction of its core.
+			How treating calculations as graphs unified definitions at a large asset manager: the problem,
+			the architecture, and a working reconstruction of the core.
 		</p>
 		{#if onpresent}
 			<button class="present-btn" data-present onclick={onpresent}>View as slides</button>
