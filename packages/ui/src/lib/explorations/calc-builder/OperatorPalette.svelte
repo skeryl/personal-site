@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { typeClass } from './ast';
+	import { newMapNode, newOpNode, newSwitchNode, typeClass, type CalcNode } from './ast';
 	import { OPERATORS, type OperatorCategory } from './operators';
 	import type { CalcStore } from './state.svelte';
 
@@ -28,6 +28,13 @@
 	};
 	const useString = () => {
 		store.fillLiteral({ kind: 'literal', type: 'string', value: stringText });
+	};
+
+	/* Palette entries drag in as copies; valid targets light up in the tree. */
+	const dragStart = (e: DragEvent, node: CalcNode) => {
+		e.dataTransfer?.setData('text/plain', 'calc-node');
+		if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copy';
+		store.startPaletteDrag(node);
 	};
 
 	/* Filtering: an active query expands everything and hides empty groups. */
@@ -128,6 +135,9 @@
 							class:depleted={!enabled}
 							aria-disabled={!enabled}
 							data-op-id="switch"
+							draggable="true"
+							ondragstart={(e) => dragStart(e, newSwitchNode())}
+							ondragend={() => store.endDrag()}
 							onclick={() => store.fillSwitch()}
 							title={enabled ? 'Match a value against cases' : 'Select a slot first'}
 						>
@@ -142,6 +152,9 @@
 							class:depleted={!enabled}
 							aria-disabled={!enabled}
 							data-op-id="map"
+							draggable="true"
+							ondragstart={(e) => dragStart(e, newMapNode())}
+							ondragend={() => store.endDrag()}
 							onclick={() => store.fillMap()}
 							title={enabled
 								? 'Evaluate an expression once per element'
@@ -159,6 +172,9 @@
 							class:depleted={!enabled}
 							aria-disabled={!enabled}
 							data-op-id={def.id}
+							draggable="true"
+							ondragstart={(e) => dragStart(e, newOpNode(def.id))}
+							ondragend={() => store.endDrag()}
 							onclick={() => store.fillOperator(def.id)}
 							title={enabled ? def.label : 'Does not fit the selected slot'}
 						>
@@ -190,6 +206,9 @@
 						class:depleted={!enabled}
 						aria-disabled={!enabled}
 						data-field-id={scopeField.id}
+						draggable="true"
+						ondragstart={(e) => dragStart(e, { kind: 'field', field: scopeField.id })}
+						ondragend={() => store.endDrag()}
 						onclick={() => store.fillField(scopeField.id)}
 						title={enabled
 							? `Use ${scopeField.id} from the current element`
@@ -221,6 +240,9 @@
 						class:depleted={!enabled}
 						aria-disabled={!enabled}
 						data-calc-id={entry.def.id}
+						draggable="true"
+						ondragstart={(e) => dragStart(e, { kind: 'calc', calcId: entry.def.id })}
+						ondragend={() => store.endDrag()}
 						onclick={() => store.fillCalc(entry.def.id)}
 						title={enabled ? entry.def.description : 'Does not fit the selected slot'}
 					>
@@ -252,6 +274,9 @@
 						class:depleted={!enabled}
 						aria-disabled={!enabled}
 						data-field-id={field.id}
+						draggable="true"
+						ondragstart={(e) => dragStart(e, { kind: 'field', field: field.id })}
+						ondragend={() => store.endDrag()}
 						onclick={() => store.fillField(field.id)}
 						title={enabled
 							? `Use ${field.label} from the record`

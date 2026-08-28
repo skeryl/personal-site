@@ -16,8 +16,24 @@
 		class="slot"
 		class:selected={store.selectedKey === key}
 		class:debug={store.debugKey === key}
+		class:droppable={store.canDropAt(path)}
+		class:dropover={store.drag !== null && store.dragOverKey === key}
 		data-slot-path={key}
 		onclick={() => store.openMenu(path)}
+		ondragover={(e) => {
+			e.stopPropagation();
+			if (!store.canDropAt(path)) return;
+			e.preventDefault();
+			store.dragOverKey = key;
+		}}
+		ondragleave={() => {
+			if (store.dragOverKey === key) store.dragOverKey = null;
+		}}
+		ondrop={(e) => {
+			e.stopPropagation();
+			e.preventDefault();
+			store.dropAt(path);
+		}}
 		title="Click to fill this slot"
 	>
 		<span class="type-badge t-{badge}">{expected}</span>
@@ -62,6 +78,14 @@
 	}
 	.slot.debug {
 		border-color: var(--cb-accent);
+		box-shadow: 0 0 0 2px color-mix(in srgb, var(--cb-accent) 45%, transparent);
+	}
+	.slot.droppable {
+		border-style: solid;
+		border-color: var(--cb-accent);
+	}
+	.slot.dropover {
+		background: color-mix(in srgb, var(--cb-accent) 14%, transparent);
 		box-shadow: 0 0 0 2px color-mix(in srgb, var(--cb-accent) 45%, transparent);
 	}
 </style>

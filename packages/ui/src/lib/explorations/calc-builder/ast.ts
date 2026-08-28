@@ -87,6 +87,10 @@ export const pathKey = (path: NodePath): string =>
 
 export const pathsEqual = (a: NodePath, b: NodePath): boolean => pathKey(a) === pathKey(b);
 
+/** True when `path` lies strictly inside the subtree rooted at `prefix`. */
+export const pathInside = (path: NodePath, prefix: NodePath): boolean =>
+	path.length > prefix.length && pathKey(path.slice(0, prefix.length)) === pathKey(prefix);
+
 export interface ChildSlot {
 	step: PathStep;
 	child: CalcNode | null;

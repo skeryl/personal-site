@@ -33,6 +33,49 @@
 	const onOpChange = (e: Event) => {
 		store.changeOperator(path, (e.currentTarget as HTMLSelectElement).value as OperatorId);
 	};
+
+	const newInputKey = $derived(`${key}:new`);
+
+	/* Drag this subtree; stopPropagation keeps ancestor nodes from hijacking. */
+	const onDragStart = (e: DragEvent) => {
+		if (e.target instanceof HTMLSelectElement) {
+			e.preventDefault();
+			return;
+		}
+		e.stopPropagation();
+		e.dataTransfer?.setData('text/plain', 'calc-node');
+		if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+		store.startTreeDrag(path);
+	};
+	const onDragEnd = () => store.endDrag();
+	const onDragOver = (e: DragEvent) => {
+		e.stopPropagation();
+		if (!store.canDropAt(path)) return;
+		e.preventDefault();
+		store.dragOverKey = key;
+	};
+	const onDragLeave = () => {
+		if (store.dragOverKey === key) store.dragOverKey = null;
+	};
+	const onDrop = (e: DragEvent) => {
+		e.stopPropagation();
+		e.preventDefault();
+		store.dropAt(path);
+	};
+	const onNewInputOver = (e: DragEvent) => {
+		e.stopPropagation();
+		if (!store.canDropOnNewInput(path)) return;
+		e.preventDefault();
+		store.dragOverKey = newInputKey;
+	};
+	const onNewInputLeave = () => {
+		if (store.dragOverKey === newInputKey) store.dragOverKey = null;
+	};
+	const onNewInputDrop = (e: DragEvent) => {
+		e.stopPropagation();
+		e.preventDefault();
+		store.dropOnNewInput(path);
+	};
 </script>
 
 {#if node.kind === 'field' || node.kind === 'literal' || node.kind === 'calc'}
@@ -41,8 +84,17 @@
 		class:selected={store.selectedKey === key}
 		class:debug={store.debugKey === key}
 		class:calc={node.kind === 'calc'}
+		class:droppable={store.canDropAt(path)}
+		class:dropover={store.drag !== null && store.dragOverKey === key}
 		style="border-left-color: {accent}"
 		data-node-path={key}
+		draggable="true"
+		ondragstart={onDragStart}
+		ondragend={onDragEnd}
+		ondragover={onDragOver}
+		ondragleave={onDragLeave}
+		ondrop={onDrop}
+		role="listitem"
 	>
 		<button class="leaf-btn" onclick={() => store.openMenu(path)} title="Click to replace">
 			{#if node.kind === 'calc'}<span class="calc-mark">ƒ</span>{/if}
@@ -67,8 +119,17 @@
 	<div
 		class="node"
 		class:debug={store.debugKey === key}
+		class:droppable={store.canDropAt(path)}
+		class:dropover={store.drag !== null && store.dragOverKey === key}
 		style="border-left-color: {accent}"
 		data-node-path={key}
+		draggable="true"
+		ondragstart={onDragStart}
+		ondragend={onDragEnd}
+		ondragover={onDragOver}
+		ondragleave={onDragLeave}
+		ondrop={onDrop}
+		role="listitem"
 	>
 		<div class="node-head">
 			{#if swappable.length > 1}
@@ -111,7 +172,16 @@
 				</div>
 			{/each}
 			{#if variadic}
-				<button class="tool-btn" data-add-input={key} onclick={() => store.addInput(path)}>
+				<button
+					class="tool-btn"
+					class:droppable={store.canDropOnNewInput(path)}
+					class:dropover={store.drag !== null && store.dragOverKey === newInputKey}
+					data-add-input={key}
+					onclick={() => store.addInput(path)}
+					ondragover={onNewInputOver}
+					ondragleave={onNewInputLeave}
+					ondrop={onNewInputDrop}
+				>
 					+ input
 				</button>
 			{/if}
@@ -121,8 +191,17 @@
 	<div
 		class="node"
 		class:debug={store.debugKey === key}
+		class:droppable={store.canDropAt(path)}
+		class:dropover={store.drag !== null && store.dragOverKey === key}
 		style="border-left-color: {accent}"
 		data-node-path={key}
+		draggable="true"
+		ondragstart={onDragStart}
+		ondragend={onDragEnd}
+		ondragover={onDragOver}
+		ondragleave={onDragLeave}
+		ondrop={onDrop}
+		role="listitem"
 	>
 		<div class="node-head">
 			<span class="op-symbol">map</span>
@@ -146,8 +225,17 @@
 	<div
 		class="node"
 		class:debug={store.debugKey === key}
+		class:droppable={store.canDropAt(path)}
+		class:dropover={store.drag !== null && store.dragOverKey === key}
 		style="border-left-color: {accent}"
 		data-node-path={key}
+		draggable="true"
+		ondragstart={onDragStart}
+		ondragend={onDragEnd}
+		ondragover={onDragOver}
+		ondragleave={onDragLeave}
+		ondrop={onDrop}
+		role="listitem"
 	>
 		<div class="node-head">
 			<span class="op-symbol">switch</span>
@@ -309,5 +397,21 @@
 	.leaf.debug {
 		box-shadow: 0 0 0 2px var(--cb-accent);
 		background: color-mix(in srgb, var(--cb-accent) 8%, transparent);
+	}
+	.node.droppable,
+	.leaf.droppable {
+		outline: 1.5px dashed color-mix(in srgb, var(--cb-accent) 60%, transparent);
+		outline-offset: 1px;
+	}
+	.node.dropover,
+	.leaf.dropover {
+		outline: 2px solid var(--cb-accent);
+		background: color-mix(in srgb, var(--cb-accent) 9%, transparent);
+	}
+	.children :global(.tool-btn.droppable) {
+		border-color: var(--cb-accent);
+	}
+	.children :global(.tool-btn.dropover) {
+		background: color-mix(in srgb, var(--cb-accent) 14%, transparent);
 	}
 </style>

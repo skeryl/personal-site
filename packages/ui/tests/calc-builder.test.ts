@@ -34,6 +34,16 @@ const loadFromLibrary = async (page: Page, id: string) => {
 	await page.locator('[data-tab="results"]').click();
 };
 
+/** Deterministic HTML5 drag: dispatch the event chain with one DataTransfer. */
+const dragTo = async (page: Page, source: string, target: string) => {
+	const dt = await page.evaluateHandle(() => new DataTransfer());
+	await page.dispatchEvent(source, 'dragstart', { dataTransfer: dt });
+	await page.dispatchEvent(target, 'dragover', { dataTransfer: dt });
+	await page.dispatchEvent(target, 'drop', { dataTransfer: dt });
+	// The source may have moved out of the DOM with the drop.
+	await page.dispatchEvent(source, 'dragend', { dataTransfer: dt }).catch(() => {});
+};
+
 test.beforeEach(async ({ page }) => {
 	await page.goto(ROUTE);
 	await page.waitForSelector('[data-slot-path="root"]');
@@ -750,4 +760,41 @@ test('palette filters operations and groups collapse', async ({ page }) => {
 	await page.locator('[data-group-toggle="arithmetic"]').click();
 	await page.locator('[data-palette-filter]').fill('multiply');
 	await expect(op(page, 'mul')).toBeVisible();
+});
+
+test('drag and drop builds a calculation from the palette', async ({ page }) => {
+	await dragTo(page, '[data-op-id="mul"]', '[data-slot-path="root"]');
+	await dragTo(page, '[data-field-id="price"]', '[data-slot-path="input.0"]');
+	await dragTo(page, '[data-field-id="quantity"]', '[data-slot-path="input.1"]');
+	await expect(resultValues(page)).toHaveText(['7500', '2500', '8000']);
+});
+
+test('dragging a node onto an ancestor collapses the tree around it', async ({ page }) => {
+	const dsl = page.getByLabel('Calculation expression');
+	await dsl.fill('(@moodys-grade + @sp-grade) / 2');
+	await dsl.press('Enter');
+
+	// Retype the add as avg, then drag it over the divide at the root.
+	await page.locator('[data-op-select="input.0"]').selectOption('avg');
+	await dragTo(page, '[data-node-path="input.0"]', '[data-node-path="root"]');
+	await expect(dsl).toHaveValue('avg(@moodys-grade, @sp-grade)');
+});
+
+test('dropping onto + input appends and fills a new input', async ({ page }) => {
+	const dsl = page.getByLabel('Calculation expression');
+	await dsl.fill('avg(@moodys-grade)');
+	await dsl.press('Enter');
+
+	await dragTo(page, '[data-calc-id="sp-grade"]', '[data-add-input="root"]');
+	await expect(dsl).toHaveValue('avg(@moodys-grade, @sp-grade)');
+});
+
+test('a dragged node cannot drop inside its own subtree', async ({ page }) => {
+	const dsl = page.getByLabel('Calculation expression');
+	await dsl.fill('(@moodys-grade + @sp-grade) / 2');
+	await dsl.press('Enter');
+
+	// Root (divide) onto one of its own inputs: rejected, tree unchanged.
+	await dragTo(page, '[data-node-path="root"]', '[data-node-path="input.0"]');
+	await expect(dsl).toHaveValue('(@moodys-grade + @sp-grade) / 2');
 });

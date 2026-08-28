@@ -14,6 +14,7 @@ import {
 	newMapNode,
 	newOpNode,
 	newSwitchNode,
+	pathInside,
 	pathKey,
 	removeCase,
 	removeVariadicInput,
@@ -70,6 +71,10 @@ export class CalcStore {
 	sideTab = $state<'results' | 'library' | 'definition' | 'history' | 'debug'>('library');
 	/** pathKey of the debugger's current step; the tree highlights it. */
 	debugKey = $state<string | null>(null);
+	/** An in-flight drag: the payload, its origin (null = palette), its type. */
+	drag = $state<{ node: CalcNode; from: NodePath | null; produces: ValueType | null } | null>(null);
+	/** pathKey of the drop target currently hovered during a drag. */
+	dragOverKey = $state<string | null>(null);
 	/** Display name of the calculation being edited. */
 	calcName = $state('');
 	/** Library id this tree was loaded from or saved as, for in-place updates. */
@@ -429,6 +434,84 @@ export class CalcStore {
 		this.modelId = 'trading-position';
 		this.persistLibrary();
 		this.persistWorking();
+	}
+
+	/* ── Drag and drop ─────────────────────────────────────────────── */
+
+	startPaletteDrag(node: CalcNode) {
+		this.drag = { node, from: null, produces: this.producesOf(node) };
+	}
+
+	startTreeDrag(path: NodePath) {
+		const node = getAt(this.root, path);
+		if (node === null) return;
+		this.drag = { node, from: path, produces: this.producesOf(node) };
+	}
+
+	endDrag() {
+		this.drag = null;
+		this.dragOverKey = null;
+	}
+
+	private producesOf(node: CalcNode): ValueType | null {
+		return resultTypeOf(node, this.model, [], this.library);
+	}
+
+	/**
+	 * A drop may fill an empty slot or replace a whole subtree. Dropping a
+	 * node onto its own ancestor collapses the tree around it; dropping a
+	 * node inside its own subtree is rejected.
+	 */
+	canDropAt(path: NodePath): boolean {
+		if (this.drag === null) return false;
+		const from = this.drag.from;
+		if (from !== null && (pathKey(from) === pathKey(path) || pathInside(path, from))) return false;
+		const expected = expectedTypeAt(this.root, path, this.model, this.library);
+		if (expected === null) return false;
+		return this.drag.produces === null || accepts(expected, this.drag.produces);
+	}
+
+	dropAt(path: NodePath) {
+		const drag = this.drag;
+		if (drag === null || !this.canDropAt(path)) return;
+		this.root = setAt(this.root, path, drag.node);
+		// A move from elsewhere empties its origin; a move from inside the
+		// replaced subtree is already gone with it.
+		if (drag.from !== null && !pathInside(drag.from, path)) {
+			this.root = setAt(this.root, drag.from, null);
+		}
+		this.selectedPath = firstEmptyPath(this.root);
+		this.menuOpen = false;
+		this.endDrag();
+	}
+
+	canDropOnNewInput(path: NodePath): boolean {
+		if (this.drag === null) return false;
+		const node = getAt(this.root, path);
+		if (node === null || node.kind !== 'op') return false;
+		const def = OPERATOR_BY_ID[node.op];
+		if (def.arity.kind !== 'variadic') return false;
+		const from = this.drag.from;
+		if (from !== null && (pathKey(from) === pathKey(path) || pathInside(path, from))) return false;
+		return this.drag.produces === null || accepts(def.arity.param, this.drag.produces);
+	}
+
+	/** Drop onto "+ input": append a fresh input and place the payload there. */
+	dropOnNewInput(path: NodePath) {
+		const drag = this.drag;
+		if (drag === null || !this.canDropOnNewInput(path)) return;
+		this.root = addVariadicInput(this.root, path);
+		const node = getAt(this.root, path);
+		if (node === null || node.kind !== 'op') return;
+		this.root = setAt(
+			this.root,
+			[...path, { part: 'input', index: node.inputs.length - 1 }],
+			drag.node
+		);
+		if (drag.from !== null) this.root = setAt(this.root, drag.from, null);
+		this.selectedPath = firstEmptyPath(this.root);
+		this.menuOpen = false;
+		this.endDrag();
 	}
 
 	private persistLibrary() {
