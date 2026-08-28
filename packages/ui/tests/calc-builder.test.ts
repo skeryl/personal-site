@@ -851,3 +851,14 @@ test('calc references preview their definition and drill down', async ({ page })
 	// The parent shows up as a way back.
 	await expect(page.locator('[data-ref-in="consensus-grade"]')).toBeVisible();
 });
+
+test('publishing a newer version archives the previously published one', async ({ page }) => {
+	await loadFromLibrary(page, 'market-value');
+	await page.locator('[data-op-select="root"]').selectOption('add');
+	await page.locator('[data-save-calc]').click();
+
+	await page.locator('[data-tab="history"]').click();
+	await page.locator('[data-version-publish="2"]').click();
+	await expect(page.locator('[data-version-row="2"] .status')).toHaveText('published');
+	await expect(page.locator('[data-version-row="1"] .status')).toHaveText('archived');
+});

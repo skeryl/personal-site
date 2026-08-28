@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { printCalc } from './dsl';
-	import { effectiveVersion } from './library';
+	import { effectiveVersion, publishedVersion, type CalcVersion } from './library';
 	import type { CalcStore } from './state.svelte';
 
 	let { store }: { store: CalcStore } = $props();
@@ -9,6 +9,14 @@
 	const effective = $derived(def === null ? null : effectiveVersion(def));
 	/** Newest first: the audit trail reads top-down. */
 	const trail = $derived(def === null ? [] : [...def.versions].reverse());
+	const published = $derived(def === null ? null : publishedVersion(def));
+
+	/* Published-but-superseded versions display as archived; the stored
+	   record keeps its original publish entry for the audit trail. */
+	const displayStatus = (entry: CalcVersion): string =>
+		entry.status === 'published' && published !== null && entry.version !== published.version
+			? 'archived'
+			: entry.status;
 
 	const fmtTime = (stamp: number): string =>
 		new Date(stamp).toLocaleString(undefined, {
@@ -37,7 +45,7 @@
 					<div class="version-main">
 						<div class="version-head">
 							<span class="version-number">v{entry.version}</span>
-							<span class="status {entry.status}">{entry.status}</span>
+							<span class="status {displayStatus(entry)}">{displayStatus(entry)}</span>
 							{#if effective !== null && entry.version === effective.version}
 								<span class="effective-tag">in effect</span>
 							{/if}
@@ -123,6 +131,10 @@
 	.status.published {
 		color: var(--cb-type-boolean);
 		border: 1px solid var(--cb-type-boolean);
+	}
+	.status.archived {
+		color: var(--color-text-muted);
+		border: 1px solid var(--color-border-strong);
 	}
 	.effective-tag {
 		font-size: 0.62rem;
