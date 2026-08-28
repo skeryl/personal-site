@@ -363,12 +363,11 @@
 					<h2>Where it landed</h2>
 					<div class="split">
 						<ul class="points">
-							<li>Deep adoption in fixed income</li>
 							<li>
 								PMs found an unplanned use case: <strong>classification</strong>; bucketing
 								portfolios by region, segment, or both
 							</li>
-							<li>Traceable definitions addressed the support noise at its source</li>
+							<li>Traceable definitions helped to address the support noise at its source</li>
 							<li>In production for years after I moved on</li>
 						</ul>
 						<div class="fig-wrap shrink"><FigLenses /></div>
