@@ -612,3 +612,44 @@ test('clear resets to an empty, selected root slot', async ({ page }) => {
 	await expect(slot(page, 'root')).toHaveClass(/selected/);
 	await expect(status(page)).toContainText('1 empty slot');
 });
+
+test('slide deck presents full screen, navigates, and exits back to the article', async ({
+	page
+}) => {
+	await page.locator('[data-present]').click();
+	const deck = page.locator('[data-slide-deck]');
+	await expect(deck).toBeVisible();
+	await expect(page.locator('[data-deck-counter]')).toHaveText('1 / 13');
+
+	await page.keyboard.press('ArrowRight');
+	await page.keyboard.press('ArrowRight');
+	await expect(page.locator('[data-deck-counter]')).toHaveText('3 / 13');
+	await expect(page.locator('[data-figure-incident]')).toBeVisible();
+
+	// The demo slide hosts the live builder; deck keys must not fire from its inputs.
+	await page.keyboard.press('End');
+	await page.keyboard.press('Home');
+	await expect(page.locator('[data-deck-counter]')).toHaveText('1 / 13');
+
+	await page.locator('[data-deck-next]').click();
+	await expect(page.locator('[data-deck-counter]')).toHaveText('2 / 13');
+
+	await page.keyboard.press('Escape');
+	await expect(deck).not.toBeVisible();
+	await expect(page.locator('.hero h1')).toBeVisible();
+});
+
+test('slide deck demo slide hosts the working calc builder', async ({ page }) => {
+	await page.locator('[data-present]').click();
+	await page.keyboard.press('End');
+	// Walk back to the demo slide (index 6).
+	for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowLeft');
+	await page.waitForSelector('[data-slide="6"] [data-slot-path="root"]');
+
+	// Typing in the DSL bar must not advance slides.
+	const dsl = page.locator('[data-slide="6"] .dsl-input');
+	await dsl.click();
+	await dsl.press('ArrowRight');
+	await dsl.press('Space');
+	await expect(page.locator('[data-deck-counter]')).toHaveText('7 / 13');
+});

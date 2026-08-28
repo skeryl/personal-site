@@ -7,6 +7,8 @@
 	import FigLifecycle from './FigLifecycle.svelte';
 	import FigPipelines from './FigPipelines.svelte';
 
+	let { onpresent = undefined }: { onpresent?: () => void } = $props();
+
 	/* Gentle reveal for sections; decorative only, content visible without JS. */
 	function reveal(node: HTMLElement) {
 		node.style.opacity = '0';
@@ -35,6 +37,9 @@
 			A calculation platform built at a large asset manager: the problem that motivated it, the
 			architecture, and a working reconstruction of its core.
 		</p>
+		{#if onpresent}
+			<button class="present-btn" data-present onclick={onpresent}>View as slides</button>
+		{/if}
 	</header>
 
 	<!-- ═══════════════ SECTION 1 · THE CALL · text (edit here) ═══════════════ -->
@@ -370,6 +375,21 @@
 		line-height: 1.6;
 		margin: 0 auto;
 		max-width: 40rem;
+	}
+	.present-btn {
+		margin-top: 1.5rem;
+		border: 1px solid var(--color-border-subtle);
+		border-radius: 999px;
+		background: var(--color-bg);
+		font: inherit;
+		font-size: 0.85rem;
+		padding: 0.35rem 1rem;
+		color: var(--color-text-muted);
+		cursor: pointer;
+	}
+	.present-btn:hover {
+		color: var(--color-text-strong);
+		border-color: var(--color-border-strong);
 	}
 	.prose {
 		max-width: 42rem;
