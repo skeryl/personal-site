@@ -37,6 +37,8 @@ export interface TraceStep {
 	path: NodePath;
 	result: EvalResult;
 	note?: string;
+	/** A referenced calc's own trace, for the debugger's step-into. */
+	sub?: TraceStep[];
 }
 
 const ok = (value: Value): EvalResult => ({ ok: true, value });
@@ -162,9 +164,14 @@ const walk = (
 	path: NodePath,
 	note?: string
 ): EvalResult => {
-	const result = visit(node, ctx, scope, path);
-	ctx.trace?.push(note === undefined ? { path, result } : { path, result, note });
-	return result;
+	const visited = visit(node, ctx, scope, path);
+	if (ctx.trace !== undefined) {
+		const step: TraceStep = { path, result: visited.result };
+		if (note !== undefined) step.note = note;
+		if (visited.sub !== undefined) step.sub = visited.sub;
+		ctx.trace.push(step);
+	}
+	return visited.result;
 };
 
 const visit = (
@@ -172,35 +179,37 @@ const visit = (
 	ctx: EvalContext,
 	scope: RecordValue | undefined,
 	path: NodePath
-): EvalResult => {
-	if (node === null) return fail('incomplete');
+): { result: EvalResult; sub?: TraceStep[] } => {
+	if (node === null) return { result: fail('incomplete') };
 	switch (node.kind) {
 		case 'literal':
-			return ok(node.value);
+			return { result: ok(node.value) };
 		case 'field': {
 			const scoped = scope?.[node.field];
-			if (scoped !== undefined) return ok(scoped);
+			if (scoped !== undefined) return { result: ok(scoped) };
 			const value = resolveField(ctx.record, node.field);
-			return value === undefined ? fail('unknown-field') : ok(value);
+			return { result: value === undefined ? fail('unknown-field') : ok(value) };
 		}
 		case 'calc': {
 			const def = ctx.library.find((entry) => entry.id === node.calcId);
-			if (!def) return fail('unknown-calc');
-			if (ctx.active.has(def.id)) return fail('circular');
+			if (!def) return { result: fail('unknown-calc') };
+			if (ctx.active.has(def.id)) return { result: fail('circular') };
 			ctx.active.add(def.id);
 			// References resolve to the published version (drafts stay private)
 			// and see the record, never the local map scope. Their internal
-			// steps belong to a different tree, so tracing pauses inside.
-			const result = walk(effectiveVersion(def).root, { ...ctx, trace: undefined }, undefined, []);
+			// steps belong to a different tree, so they trace into a sub list
+			// that the debugger can step into.
+			const sub = ctx.trace === undefined ? undefined : [];
+			const result = walk(effectiveVersion(def).root, { ...ctx, trace: sub }, undefined, []);
 			ctx.active.delete(def.id);
-			return result;
+			return sub === undefined ? { result } : { result, sub };
 		}
 		case 'op':
-			return walkOp(node, ctx, scope, path);
+			return { result: walkOp(node, ctx, scope, path) };
 		case 'switch':
-			return walkSwitch(node, ctx, scope, path);
+			return { result: walkSwitch(node, ctx, scope, path) };
 		case 'map':
-			return walkMap(node, ctx, scope, path);
+			return { result: walkMap(node, ctx, scope, path) };
 	}
 };
 

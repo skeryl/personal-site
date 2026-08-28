@@ -394,3 +394,13 @@ describe('traceEvaluate', () => {
 		expect(steps[1].result).toEqual({ ok: false, error: 'incomplete' });
 	});
 });
+
+describe('sub-traces', () => {
+	it('captures a referenced calc trace for step-into', () => {
+		const ref: CalcNode = { kind: 'calc', calcId: 'market-value' };
+		const { steps } = traceEvaluate(ref, aapl, LIBRARY);
+		expect(steps).toHaveLength(1);
+		expect(steps[0].sub?.map((step) => pathKey(step.path))).toEqual(['input.0', 'input.1', 'root']);
+		expect(steps[0].sub?.[2].result).toEqual({ ok: true, value: 7500 });
+	});
+});

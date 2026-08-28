@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getAt, pathKey, type CalcNode } from './ast';
-	import { traceEvaluate, type EvalResult } from './evaluate';
+	import { traceEvaluate, type EvalResult, type TraceStep } from './evaluate';
 	import { effectiveVersion } from './library';
 	import { OPERATOR_BY_ID, type Value } from './operators';
 	import type { CalcStore } from './state.svelte';
@@ -9,8 +9,6 @@
 
 	let filter = $state('');
 	let sampleIndex = $state(0);
-	/** -1 = not started; otherwise an index into the trace. */
-	let stepIndex = $state(-1);
 
 	const samples = $derived(store.model.samples);
 	const matches = $derived(
@@ -19,29 +17,97 @@
 			.filter(({ sample }) => sample.label.toLowerCase().includes(filter.trim().toLowerCase()))
 	);
 	const sample = $derived(samples[sampleIndex] ?? samples[0]);
-	const steps = $derived(traceEvaluate(store.root, sample.values, store.library).steps);
+	const rootSteps = $derived(traceEvaluate(store.root, sample.values, store.library).steps);
+
+	/** One stack frame: the root frame plus one per stepped-into reference. */
+	interface Frame {
+		steps: TraceStep[];
+		index: number;
+		label: string;
+		/** pathKey of the root-tree ƒ leaf this call descends from. */
+		refKey: string | null;
+		root: CalcNode | null;
+	}
+
+	let frames = $state<Frame[]>([{ steps: [], index: -1, label: 'root', refKey: null, root: null }]);
 
 	/* Restart the walkthrough when the tree, record, or model changes. */
 	$effect(() => {
-		void store.root;
-		void store.modelId;
-		void sampleIndex;
-		stepIndex = -1;
+		frames = [{ steps: rootSteps, index: -1, label: 'root', refKey: null, root: store.root }];
 	});
 
-	/* The tree editor highlights whichever node the debugger is on. */
+	const current = $derived(frames[frames.length - 1]);
+	const nextStep = $derived(current.steps[current.index + 1]);
+	const atEnd = $derived(current.index >= current.steps.length - 1);
+	const canInto = $derived(nextStep !== undefined && (nextStep.sub?.length ?? 0) > 0);
+	const started = $derived(frames.length > 1 || current.index >= 0);
+	const finished = $derived(frames.length === 1 && atEnd && current.steps.length > 0);
+
+	/* The tree editor highlights the current step, or the ƒ leaf being
+	   stepped into while a call frame is open. */
 	$effect(() => {
-		store.debugKey =
-			stepIndex >= 0 && stepIndex < steps.length ? pathKey(steps[stepIndex].path) : null;
+		const top = frames[frames.length - 1];
+		if (frames.length > 1) {
+			store.debugKey = frames[1].refKey;
+		} else {
+			store.debugKey =
+				top.index >= 0 && top.index < top.steps.length ? pathKey(top.steps[top.index].path) : null;
+		}
 		return () => {
 			store.debugKey = null;
 		};
 	});
 
-	const reset = () => (stepIndex = -1);
-	const prev = () => (stepIndex = Math.max(-1, stepIndex - 1));
-	const next = () => (stepIndex = Math.min(steps.length - 1, stepIndex + 1));
-	const finish = () => (stepIndex = steps.length - 1);
+	const bumpTop = (delta: number) => {
+		frames = frames.map((frame, index) =>
+			index === frames.length - 1 ? { ...frame, index: frame.index + delta } : frame
+		);
+	};
+
+	const reset = () => {
+		frames = [{ steps: rootSteps, index: -1, label: 'root', refKey: null, root: store.root }];
+	};
+
+	const next = () => {
+		if (!atEnd) {
+			bumpTop(1);
+		} else if (frames.length > 1) {
+			// Stepping past a frame's last step returns to the caller, landing
+			// on the call itself with its computed result.
+			frames = frames
+				.slice(0, -1)
+				.map((frame, index, arr) =>
+					index === arr.length - 1 ? { ...frame, index: frame.index + 1 } : frame
+				);
+		}
+	};
+
+	const prev = () => {
+		if (current.index >= 0) bumpTop(-1);
+		else if (frames.length > 1) frames = frames.slice(0, -1);
+	};
+
+	const stepInto = () => {
+		const step = nextStep;
+		if (step === undefined || step.sub === undefined || step.sub.length === 0) return;
+		const callNode = getAt(current.root, step.path);
+		const def =
+			callNode !== null && callNode.kind === 'calc'
+				? store.library.find((entry) => entry.id === callNode.calcId)
+				: undefined;
+		frames = [
+			...frames,
+			{
+				steps: step.sub,
+				index: -1,
+				label: def ? `ƒ ${effectiveVersion(def).label}` : 'ƒ ?',
+				refKey: frames.length === 1 ? pathKey(step.path) : current.refKey,
+				root: def ? effectiveVersion(def).root : null
+			}
+		];
+	};
+
+	const finish = () => bumpTop(current.steps.length - 1 - current.index);
 
 	const describe = (node: CalcNode | null): string => {
 		if (node === null) return 'empty slot';
@@ -75,7 +141,7 @@
 <div class="debugger" data-debugger>
 	<p class="hint">
 		Pick a record, then step the evaluation: each node produces its value in order, and the tree
-		highlights the current step. This is the self-service walkthrough the interviews asked for.
+		highlights the current step. Step into a ƒ reference to walk its own evaluation.
 	</p>
 	<input
 		class="record-filter"
@@ -100,48 +166,45 @@
 		{/if}
 	</div>
 	<div class="controls">
-		<button class="tool-btn" data-debug-reset onclick={reset} disabled={stepIndex < 0}>
-			⏮ Reset
+		<button class="tool-btn" data-debug-reset onclick={reset} disabled={!started}>⏮ Reset</button>
+		<button class="tool-btn" data-debug-prev onclick={prev} disabled={!started}>←</button>
+		<button class="tool-btn" data-debug-next onclick={next} disabled={finished}>Step →</button>
+		<button class="tool-btn" data-debug-into onclick={stepInto} disabled={!canInto}>
+			↳ Into
 		</button>
-		<button class="tool-btn" data-debug-prev onclick={prev} disabled={stepIndex < 0}>←</button>
-		<button
-			class="tool-btn"
-			data-debug-next
-			onclick={next}
-			disabled={stepIndex >= steps.length - 1}
-		>
-			Step →
-		</button>
-		<button
-			class="tool-btn"
-			data-debug-finish
-			onclick={finish}
-			disabled={stepIndex >= steps.length - 1}
-		>
-			⏭
-		</button>
-		<span class="counter" data-debug-counter>{stepIndex + 1} / {steps.length}</span>
+		<button class="tool-btn" data-debug-finish onclick={finish} disabled={atEnd}>⏭</button>
+		<span class="counter" data-debug-counter>{current.index + 1} / {current.steps.length}</span>
 	</div>
-	{#if stepIndex < 0}
+	{#if frames.length > 1}
+		<div class="crumbs" data-debug-crumbs>
+			{frames.map((frame) => frame.label).join(' ▸ ')}
+		</div>
+	{/if}
+	{#if !started}
 		<p class="hint">Press Step to begin. Evaluation runs bottom-up: inputs before operators.</p>
 	{:else}
 		<ol class="steps">
-			{#each steps as step, index (index)}
-				{#if index <= stepIndex}
-					<li class="step" class:current={index === stepIndex} data-debug-step>
-						<span class="step-label">{describe(getAt(store.root, step.path))}</span>
+			{#each current.steps as step, index (index)}
+				{#if index <= current.index}
+					<li class="step" class:current={index === current.index} data-debug-step>
+						<span class="step-label">{describe(getAt(current.root, step.path))}</span>
 						{#if step.note}
 							<span class="step-note">{step.note}</span>
+						{/if}
+						{#if (step.sub?.length ?? 0) > 0}
+							<span class="step-note">call · {step.sub?.length} steps</span>
 						{/if}
 						<span class="step-value" class:error={!step.result.ok}>{fmt(step.result)}</span>
 					</li>
 				{/if}
 			{/each}
 		</ol>
-		{#if stepIndex === steps.length - 1}
+		{#if finished}
 			<p class="verdict" data-debug-done>
 				Evaluation finished: the root produced
-				<strong class:error={!steps[stepIndex].result.ok}>{fmt(steps[stepIndex].result)}</strong>
+				<strong class:error={!current.steps[current.index].result.ok}>
+					{fmt(current.steps[current.index].result)}
+				</strong>
 				for {sample.label}.
 			</p>
 		{/if}
@@ -182,6 +245,10 @@
 		font-size: 0.75rem;
 		font-variant-numeric: tabular-nums;
 		color: var(--color-text-muted);
+	}
+	.crumbs {
+		font-size: 0.75rem;
+		color: var(--cb-accent);
 	}
 	.steps {
 		list-style: none;

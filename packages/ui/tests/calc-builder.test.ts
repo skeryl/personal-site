@@ -862,3 +862,27 @@ test('publishing a newer version archives the previously published one', async (
 	await expect(page.locator('[data-version-row="2"] .status')).toHaveText('published');
 	await expect(page.locator('[data-version-row="1"] .status')).toHaveText('archived');
 });
+
+test('debugger steps into referenced calculations and back out', async ({ page }) => {
+	const dsl = page.getByLabel('Calculation expression');
+	await dsl.fill('@avg-credit-score >= 13');
+	await dsl.press('Enter');
+	await page.locator('[data-tab="debug"]').click();
+
+	// The next step is the reference: descend into its own trace.
+	await page.locator('[data-debug-into]').click();
+	await expect(page.locator('[data-debug-crumbs]')).toContainText('Average credit score');
+	// While inside the frame, the tree highlights the f leaf being evaluated.
+	await expect(page.locator('[data-node-path="input.0"]')).toHaveClass(/debug/);
+
+	await page.locator('[data-debug-finish]').click();
+	await expect(page.locator('[data-debug-step]').last()).toContainText('19');
+
+	// Stepping past the frame's end returns to the caller at the call step.
+	await page.locator('[data-debug-next]').click();
+	await expect(page.locator('[data-debug-crumbs]')).toHaveCount(0);
+	await expect(page.locator('[data-debug-counter]')).toHaveText('1 / 3');
+
+	await page.locator('[data-debug-finish]').click();
+	await expect(page.locator('[data-debug-done]')).toContainText('true');
+});
