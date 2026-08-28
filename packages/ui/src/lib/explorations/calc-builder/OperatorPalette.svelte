@@ -373,6 +373,7 @@
 		top: 4rem;
 		max-height: calc(100cqh - 4.5rem);
 		overflow-y: auto;
+		overflow-x: hidden;
 		overscroll-behavior: contain;
 		padding-right: 0.35rem;
 	}
@@ -468,6 +469,10 @@
 	.op-name {
 		color: var(--color-text-secondary);
 		font-size: 0.78rem;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 	.field-name {
 		font-family: var(--font-mono, monospace);

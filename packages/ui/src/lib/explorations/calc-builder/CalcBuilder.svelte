@@ -111,7 +111,7 @@
 
 	.tool-grid {
 		display: grid;
-		grid-template-columns: 15rem minmax(0, 1fr) 24rem;
+		grid-template-columns: 17rem minmax(0, 1fr) 30rem;
 		gap: 2rem;
 		align-items: start;
 	}
@@ -179,7 +179,7 @@
 	.side-tabs {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0 1.1rem;
+		gap: 0 0.9rem;
 		border-bottom: 1px solid var(--color-border-subtle);
 		margin-bottom: 0.85rem;
 	}
@@ -205,7 +205,7 @@
 
 	@media (max-width: 1100px) {
 		.tool-grid {
-			grid-template-columns: 15rem minmax(0, 1fr);
+			grid-template-columns: 17rem minmax(0, 1fr);
 		}
 		.tool-grid > .side-panel {
 			grid-column: 1 / -1;
