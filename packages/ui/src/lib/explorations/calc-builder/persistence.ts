@@ -103,7 +103,7 @@ const sanitizeVersion = (value: unknown): CalcVersion | null => {
 	};
 };
 
-/** Stored defs: valid versioned shape; built-in ids act as overrides. */
+/** Stored defs: the whole library, seeded once and then owned locally. */
 export const sanitizeDefs = (value: unknown): CalcDef[] => {
 	if (!Array.isArray(value)) return [];
 	const defs: CalcDef[] = [];

@@ -77,14 +77,14 @@ export class CalcStore {
 
 	constructor() {
 		if (!browser) return;
-		const saved = sanitizeDefs(readJson(localStorage, LIBRARY_KEY));
-		if (saved.length > 0) {
-			// Saved entries override built-ins by id; the rest are user calcs.
-			const overrides = new Map(saved.map((def) => [def.id, def]));
-			this.library = [
-				...LIBRARY.map((def) => overrides.get(def.id) ?? def),
-				...saved.filter((def) => !this.builtinIds.has(def.id))
-			];
+		// The seed writes once; from then on localStorage is the whole library
+		// and every entry is an ordinary, editable, deletable calc.
+		const raw = readJson(localStorage, LIBRARY_KEY);
+		if (raw === null) {
+			this.library = LIBRARY;
+			this.persistLibrary();
+		} else {
+			this.library = sanitizeDefs(raw);
 		}
 		const working = parseWorkingState(readJson(localStorage, CURRENT_KEY));
 		if (working.modelId !== null) this.modelId = working.modelId;
@@ -95,14 +95,6 @@ export class CalcStore {
 		}
 		this.calcName = working.name;
 		this.loadedId = working.loadedId;
-	}
-
-	private get builtinIds(): Set<string> {
-		return new Set(LIBRARY.map((def) => def.id));
-	}
-
-	isBuiltin(id: string): boolean {
-		return this.builtinIds.has(id);
 	}
 
 	model = $derived(MODEL_BY_ID[this.modelId]);
@@ -383,10 +375,10 @@ export class CalcStore {
 		this.persistLibrary();
 	}
 
-	/** Remove a user-saved calculation; built-ins stay. */
+	/** Remove a calculation; seeded entries come back via resetAll. */
 	deleteCalc(id: string) {
 		const def = this.library.find((entry) => entry.id === id);
-		if (!def || this.isBuiltin(id)) return;
+		if (!def) return;
 		if (!confirm(`Delete "${effectiveVersion(def).label}" from the library?`)) return;
 		this.library = this.library.filter((entry) => entry.id !== id);
 		if (this.loadedId === id) this.loadedId = null;
@@ -419,14 +411,29 @@ export class CalcStore {
 		this.loadedId = null;
 	}
 
+	/** Wipe all local data and re-seed the library, back to factory state. */
+	resetAll() {
+		if (
+			!confirm(
+				'Reset everything? All saved calculations and edits will be replaced by the original seed data.'
+			)
+		)
+			return;
+		this.library = LIBRARY;
+		this.root = null;
+		this.baseline = null;
+		this.selectedPath = [];
+		this.menuOpen = false;
+		this.calcName = '';
+		this.loadedId = null;
+		this.modelId = 'trading-position';
+		this.persistLibrary();
+		this.persistWorking();
+	}
+
 	private persistLibrary() {
 		if (!browser) return;
-		// Store user calcs plus built-ins that were edited away from factory.
-		const changed = this.library.filter((def) => {
-			const builtin = LIBRARY.find((entry) => entry.id === def.id);
-			return !builtin || JSON.stringify(builtin) !== JSON.stringify(def);
-		});
-		writeJson(localStorage, LIBRARY_KEY, changed);
+		writeJson(localStorage, LIBRARY_KEY, this.library);
 	}
 
 	persistWorking() {

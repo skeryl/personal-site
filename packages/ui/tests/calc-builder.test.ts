@@ -474,8 +474,8 @@ test('persists the working calc and library saves across reloads', async ({ page
 	await page.locator('[data-tab="library"]').click();
 	await expect(page.locator('[data-lib-row="persisted-calc"]')).toBeVisible();
 
-	// User-saved entries can be deleted; built-ins cannot.
-	await expect(page.locator('[data-calc-delete="market-value"]')).toHaveCount(0);
+	// Every entry is an ordinary calc now; seeded ones are deletable too.
+	await expect(page.locator('[data-calc-delete="market-value"]')).toHaveCount(1);
 	page.once('dialog', (dialog) => dialog.accept());
 	await page.locator('[data-calc-delete="persisted-calc"]').click();
 	await expect(page.locator('[data-lib-row="persisted-calc"]')).toHaveCount(0);
@@ -701,4 +701,32 @@ test('debugger steps through evaluation and highlights the tree', async ({ page 
 	// Leaving the debugger clears the tree highlight.
 	await page.locator('[data-tab="results"]').click();
 	await expect(page.locator('[data-node-path="input.0"]')).not.toHaveClass(/debug/);
+});
+
+test('reset all clears local data and re-seeds the library', async ({ page }) => {
+	// Delete a seeded calc, then save a scratch one.
+	await page.locator('[data-tab="library"]').click();
+	page.once('dialog', (dialog) => dialog.accept());
+	await page.locator('[data-calc-delete="market-value"]').click();
+	await expect(page.locator('[data-lib-row="market-value"]')).toHaveCount(0);
+
+	await page.locator('[data-tab="results"]').click();
+	await op(page, 'mul').click();
+	await field(page, 'price').click();
+	await field(page, 'quantity').click();
+	await page.getByLabel('Calculation name').fill('Scratch calc');
+	await page.locator('[data-save-calc]').click();
+	await page.locator('[data-tab="library"]').click();
+	await expect(page.locator('[data-lib-row="scratch-calc"]')).toBeVisible();
+
+	page.once('dialog', (dialog) => dialog.accept());
+	await page.locator('[data-reset-all]').click();
+	await expect(page.locator('[data-lib-row="market-value"]')).toBeVisible();
+	await expect(page.locator('[data-lib-row="scratch-calc"]')).toHaveCount(0);
+
+	// The re-seeded state is what a reload sees.
+	await page.reload();
+	await page.waitForSelector('[data-slot-path="root"]');
+	await expect(page.locator('[data-lib-row="market-value"]')).toBeVisible();
+	await expect(page.locator('[data-lib-row="scratch-calc"]')).toHaveCount(0);
 });

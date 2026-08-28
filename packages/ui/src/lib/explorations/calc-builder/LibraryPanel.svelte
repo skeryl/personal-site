@@ -37,16 +37,14 @@
 					<span class="lib-desc">{entry.def.description}</span>
 					<code class="lib-dsl">{printCalc(entry.version.root)}</code>
 				</button>
-				{#if !store.isBuiltin(entry.def.id)}
-					<button
-						class="lib-delete"
-						data-calc-delete={entry.def.id}
-						onclick={() => store.deleteCalc(entry.def.id)}
-						title="Delete from the library"
-					>
-						×
-					</button>
-				{/if}
+				<button
+					class="lib-delete"
+					data-calc-delete={entry.def.id}
+					onclick={() => store.deleteCalc(entry.def.id)}
+					title="Delete from the library"
+				>
+					×
+				</button>
 			</div>
 		{/each}
 	</div>
@@ -68,20 +66,25 @@
 							<span class="lib-model">{MODEL_BY_ID[entry.version.modelId].label}</span>
 						</span>
 					</button>
-					{#if !store.isBuiltin(entry.def.id)}
-						<button
-							class="lib-delete"
-							data-calc-delete={entry.def.id}
-							onclick={() => store.deleteCalc(entry.def.id)}
-							title="Delete from the library"
-						>
-							×
-						</button>
-					{/if}
+					<button
+						class="lib-delete"
+						data-calc-delete={entry.def.id}
+						onclick={() => store.deleteCalc(entry.def.id)}
+						title="Delete from the library"
+					>
+						×
+					</button>
 				</div>
 			{/each}
 		</div>
 	{/if}
+
+	<div class="reset-row">
+		<button class="tool-btn" data-reset-all onclick={() => store.resetAll()}>Reset all</button>
+		<span class="hint reset-hint">
+			Clears local storage and restores the original seed calculations.
+		</span>
+	</div>
 </div>
 
 <style>
@@ -189,5 +192,20 @@
 	}
 	.lib-delete:hover {
 		color: var(--cb-error);
+	}
+	.reset-row .tool-btn {
+		white-space: nowrap;
+	}
+	.reset-row {
+		display: flex;
+		align-items: baseline;
+		gap: 0.6rem;
+		margin-top: 1.4rem;
+		padding-top: 0.9rem;
+		border-top: 1px solid var(--color-border-subtle);
+	}
+	.reset-hint {
+		margin: 0;
+		font-size: 0.72rem;
 	}
 </style>
