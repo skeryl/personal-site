@@ -85,10 +85,14 @@
 			</p>
 		{:else if store.checkResult.complete}
 			<p class="hint">
-				Calculation complete. Click a value in the tree to swap it, or × to remove a piece.
+				Calculation complete. Click a value in the tree to swap it, drag nodes to rearrange, or drag
+				an operation onto a node to wrap it.
 			</p>
 		{:else}
-			<p class="hint">Nothing selected. Click an empty slot in the tree, then fill it from here.</p>
+			<p class="hint">
+				Nothing selected. Click an empty slot to fill it from here, or drag anything straight into
+				the tree.
+			</p>
 		{/if}
 		<input
 			class="palette-filter"
@@ -129,36 +133,33 @@
 			{#if open(category.id)}
 				<div class="ops" data-group={category.id}>
 					{#if category.hasSwitch}
-						{@const enabled = store.selectedPath !== null}
 						<button
 							class="op-btn"
-							class:depleted={!enabled}
-							aria-disabled={!enabled}
 							data-op-id="switch"
 							draggable="true"
 							ondragstart={(e) => dragStart(e, newSwitchNode())}
 							ondragend={() => store.endDrag()}
 							onclick={() => store.fillSwitch()}
-							title={enabled ? 'Match a value against cases' : 'Select a slot first'}
+							title="Match a value against cases; click a slot or drag it in"
 						>
 							<span class="op-symbol">switch</span>
 							<span class="op-name">Switch / case</span>
 						</button>
 					{/if}
 					{#if category.hasMap}
-						{@const enabled = store.canFill('number[]')}
+						{@const dimmed = store.selectedExpected !== null && !store.canFill('number[]')}
 						<button
 							class="op-btn"
-							class:depleted={!enabled}
-							aria-disabled={!enabled}
+							class:depleted={dimmed}
+							aria-disabled={dimmed}
 							data-op-id="map"
 							draggable="true"
 							ondragstart={(e) => dragStart(e, newMapNode())}
 							ondragend={() => store.endDrag()}
 							onclick={() => store.fillMap()}
-							title={enabled
-								? 'Evaluate an expression once per element'
-								: 'Does not fit the selected slot'}
+							title={dimmed
+								? 'Does not fit the selected slot; drag it where it belongs'
+								: 'Evaluate an expression once per element'}
 						>
 							<span class="op-symbol">map</span>
 							<span class="op-name">Map each</span>
@@ -166,17 +167,19 @@
 						</button>
 					{/if}
 					{#each category.ops as def (def.id)}
-						{@const enabled = store.canFill(def.result)}
+						{@const dimmed = store.selectedExpected !== null && !store.canFill(def.result)}
 						<button
 							class="op-btn"
-							class:depleted={!enabled}
-							aria-disabled={!enabled}
+							class:depleted={dimmed}
+							aria-disabled={dimmed}
 							data-op-id={def.id}
 							draggable="true"
 							ondragstart={(e) => dragStart(e, newOpNode(def.id))}
 							ondragend={() => store.endDrag()}
 							onclick={() => store.fillOperator(def.id)}
-							title={enabled ? def.label : 'Does not fit the selected slot'}
+							title={dimmed
+								? 'Does not fit the selected slot; drag it where it belongs'
+								: def.label}
 						>
 							<span class="op-symbol">{def.symbol}</span>
 							<span class="op-name">{def.label}</span>
@@ -200,19 +203,19 @@
 		{#if open('scope')}
 			<div class="ops">
 				{#each filteredScope as scopeField (scopeField.id)}
-					{@const enabled = store.canFill(scopeField.type)}
+					{@const dimmed = store.selectedExpected !== null && !store.canFill(scopeField.type)}
 					<button
 						class="op-btn field"
-						class:depleted={!enabled}
-						aria-disabled={!enabled}
+						class:depleted={dimmed}
+						aria-disabled={dimmed}
 						data-field-id={scopeField.id}
 						draggable="true"
 						ondragstart={(e) => dragStart(e, { kind: 'field', field: scopeField.id })}
 						ondragend={() => store.endDrag()}
 						onclick={() => store.fillField(scopeField.id)}
-						title={enabled
-							? `Use ${scopeField.id} from the current element`
-							: 'Does not fit the selected slot'}
+						title={dimmed
+							? 'Does not fit the selected slot; drag it where it belongs'
+							: `Use ${scopeField.id} from the current element`}
 					>
 						<span class="op-name field-name">{scopeField.id}</span>
 						<span class="type-badge t-{typeClass(scopeField.type)}">{scopeField.type}</span>
@@ -234,17 +237,21 @@
 		{#if open('library')}
 			<div class="ops">
 				{#each filteredLibrary as entry (entry.def.id)}
-					{@const enabled = entry.produces !== null && store.canFill(entry.produces)}
+					{@const dimmed =
+						store.selectedExpected !== null &&
+						!(entry.produces !== null && store.canFill(entry.produces))}
 					<button
 						class="op-btn field"
-						class:depleted={!enabled}
-						aria-disabled={!enabled}
+						class:depleted={dimmed}
+						aria-disabled={dimmed}
 						data-calc-id={entry.def.id}
 						draggable="true"
 						ondragstart={(e) => dragStart(e, { kind: 'calc', calcId: entry.def.id })}
 						ondragend={() => store.endDrag()}
 						onclick={() => store.fillCalc(entry.def.id)}
-						title={enabled ? entry.def.description : 'Does not fit the selected slot'}
+						title={dimmed
+							? 'Does not fit the selected slot; drag it where it belongs'
+							: entry.def.description}
 					>
 						<span class="op-name calc-name">ƒ {entry.version.label}</span>
 						{#if entry.produces !== null}
@@ -268,19 +275,19 @@
 		{#if open('fields')}
 			<div class="ops">
 				{#each filteredFields as field (field.id)}
-					{@const enabled = store.canFill(field.type)}
+					{@const dimmed = store.selectedExpected !== null && !store.canFill(field.type)}
 					<button
 						class="op-btn field"
-						class:depleted={!enabled}
-						aria-disabled={!enabled}
+						class:depleted={dimmed}
+						aria-disabled={dimmed}
 						data-field-id={field.id}
 						draggable="true"
 						ondragstart={(e) => dragStart(e, { kind: 'field', field: field.id })}
 						ondragend={() => store.endDrag()}
 						onclick={() => store.fillField(field.id)}
-						title={enabled
-							? `Use ${field.label} from the record`
-							: 'Does not fit the selected slot'}
+						title={dimmed
+							? 'Does not fit the selected slot; drag it where it belongs'
+							: `Use ${field.label} from the record`}
 					>
 						<span class="op-name field-name">{field.label}</span>
 						<span class="type-badge t-{typeClass(field.type)}">{field.type}</span>
