@@ -730,3 +730,24 @@ test('reset all clears local data and re-seeds the library', async ({ page }) =>
 	await expect(page.locator('[data-lib-row="market-value"]')).toBeVisible();
 	await expect(page.locator('[data-lib-row="scratch-calc"]')).toHaveCount(0);
 });
+
+test('palette filters operations and groups collapse', async ({ page }) => {
+	// Filtering narrows to matches and hides empty groups.
+	await page.locator('[data-palette-filter]').fill('avg');
+	await expect(op(page, 'avg')).toBeVisible();
+	await expect(op(page, 'mul')).toHaveCount(0);
+	await expect(page.locator('[data-group-toggle="logic"]')).toHaveCount(0);
+
+	// Clearing restores everything; collapsing a group hides its entries.
+	await page.locator('[data-palette-filter]').fill('');
+	await expect(op(page, 'mul')).toBeVisible();
+	await page.locator('[data-group-toggle="arithmetic"]').click();
+	await expect(op(page, 'mul')).toHaveCount(0);
+	await page.locator('[data-group-toggle="arithmetic"]').click();
+	await expect(op(page, 'mul')).toBeVisible();
+
+	// An active filter overrides collapsed state.
+	await page.locator('[data-group-toggle="arithmetic"]').click();
+	await page.locator('[data-palette-filter]').fill('multiply');
+	await expect(op(page, 'mul')).toBeVisible();
+});

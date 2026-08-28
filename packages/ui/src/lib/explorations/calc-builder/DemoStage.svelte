@@ -50,7 +50,9 @@
 		border: 1px solid var(--color-border-strong);
 		border-radius: 0.75rem;
 		background: var(--color-bg);
-		overflow: hidden;
+		/* clip (not hidden): a scroll container here would swallow the
+		   palette's page-level sticky positioning. */
+		overflow: clip;
 	}
 	.demo-stage.expanded {
 		position: fixed;
@@ -100,9 +102,10 @@
 		background: var(--color-surface-active);
 	}
 	.stage-body {
-		overflow: auto;
+		overflow: visible;
 	}
 	.demo-stage.expanded .stage-body {
 		flex: 1;
+		overflow: auto;
 	}
 </style>
