@@ -837,3 +837,17 @@ test('the slide position rides in the url and survives reloads', async ({ page }
 	await expect(page.locator('.hero h1')).toBeVisible();
 	expect(new URL(page.url()).hash).toBe('');
 });
+
+test('calc references preview their definition and drill down', async ({ page }) => {
+	await loadFromLibrary(page, 'consensus-grade');
+
+	// Hover preview: the reference's title carries its printed definition.
+	const leaf = page.locator('[data-node-path="input.0/input.0"] .leaf-btn');
+	await expect(leaf).toHaveAttribute('title', /lookupText/);
+
+	// Drill down: the open button loads the referenced calc in the editor.
+	await page.locator('[data-open-calc="moodys-grade"]').click();
+	await expect(page.getByLabel('Calculation name')).toHaveValue("Moody's rating as a number");
+	// The parent shows up as a way back.
+	await expect(page.locator('[data-ref-in="consensus-grade"]')).toBeVisible();
+});

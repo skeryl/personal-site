@@ -2,6 +2,7 @@
 	import SlotMenu from './SlotMenu.svelte';
 	import SlotOrNode from './SlotOrNode.svelte';
 	import { pathKey, typeClass, type CalcNode, type NodePath } from './ast';
+	import { printCalc } from './dsl';
 	import { OPERATOR_BY_ID, type OperatorId } from './operators';
 	import type { CalcStore } from './state.svelte';
 	import { effectiveVersion } from './library';
@@ -21,6 +22,14 @@
 	const labelOf = (calcId: string): string => {
 		const def = store.library.find((entry) => entry.id === calcId);
 		return def ? effectiveVersion(def).label : `@${calcId}`;
+	};
+
+	/** Hovering a reference shows what it computes, not just its name. */
+	const calcPreview = (calcId: string): string => {
+		const def = store.library.find((entry) => entry.id === calcId);
+		if (!def) return `@${calcId} (missing from the library)`;
+		const version = effectiveVersion(def);
+		return `${version.label} = ${printCalc(version.root)}`;
 	};
 
 	const leafLabel = (leaf: CalcNode): string => {
@@ -96,7 +105,11 @@
 		ondrop={onDrop}
 		role="listitem"
 	>
-		<button class="leaf-btn" onclick={() => store.openMenu(path)} title="Click to replace">
+		<button
+			class="leaf-btn"
+			onclick={() => store.openMenu(path)}
+			title={node.kind === 'calc' ? calcPreview(node.calcId) : 'Click to replace'}
+		>
 			{#if node.kind === 'calc'}<span class="calc-mark">ƒ</span>{/if}
 			<span class="leaf-label">{leafLabel(node)}</span>
 			{#if resultType !== null}
@@ -105,6 +118,16 @@
 				</span>
 			{/if}
 		</button>
+		{#if node.kind === 'calc'}
+			<button
+				class="open-calc"
+				data-open-calc={node.calcId}
+				onclick={() => store.loadCalc(node.calcId)}
+				title="Open this calculation in the editor"
+			>
+				↗
+			</button>
+		{/if}
 		<button class="remove" data-remove={key} onclick={() => store.remove(path)} title="Remove">
 			×
 		</button>
@@ -413,5 +436,18 @@
 	}
 	.children :global(.tool-btn.dropover) {
 		background: color-mix(in srgb, var(--cb-accent) 14%, transparent);
+	}
+	.open-calc {
+		border: none;
+		background: none;
+		font: inherit;
+		font-size: 0.8rem;
+		line-height: 1;
+		padding: 0.1rem 0.25rem;
+		color: var(--color-text-muted);
+		cursor: pointer;
+	}
+	.open-calc:hover {
+		color: var(--cb-accent);
 	}
 </style>
