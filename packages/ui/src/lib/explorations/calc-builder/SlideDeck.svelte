@@ -15,10 +15,12 @@
 	/* Static, self-authored markup; rendered via {@html} so the formatter
 	   cannot collapse the pre's line breaks. */
 	const javaSnippet = [
+		'<span class="kw">import static</span> attributes.<span class="ty">Nodes</span>.data;',
+		'',
 		'<span class="cm">// engineers define the same attributes in code</span>',
 		'<span class="ty">DerivedAttribute</span>&lt;<span class="ty">Position</span>&gt; notional =',
 		'    <span class="ty">DerivedAttribute</span>.of(<span class="ty">Position</span>.class)',
-		'        .mult(data(<span class="st">&quot;price&quot;</span>), data(<span class="st">&quot;quantity&quot;</span>))',
+		'        .mult(data(<span class="ty">Position</span>::price), data(<span class="ty">Position</span>::quantity))',
 		'        .as(<span class="st">&quot;notional&quot;</span>);',
 		'',
 		'<span class="cm">// a consuming app, at runtime</span>',
@@ -248,9 +250,9 @@
 					<div class="code-wrap">
 						<pre class="code-block"><code>{@html javaSnippet}</code></pre>
 						<p class="code-note">
-							The same AST underneath as the UI. Field references are checked against the class's
-							data model at compile time, so a mistyped field is a build failure, not a support
-							call.
+							The same AST underneath as the UI. data() comes from the Nodes builder and takes a
+							method reference (a Function from the base type to a value), so field access is
+							compile-checked: a mistyped field is a build failure, not a support call.
 						</p>
 					</div>
 				{:else if current === 9}
