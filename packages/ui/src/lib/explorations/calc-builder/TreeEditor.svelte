@@ -40,7 +40,7 @@
 				class="tool-btn"
 				data-save-calc
 				onclick={() => store.saveToLibrary()}
-				disabled={!store.checkResult.complete}
+				disabled={!store.checkResult.complete || store.checkResult.issues.length > 0}
 				title="Append a new draft version to the library; publish it from the History tab"
 			>
 				<Icon type="device-floppy" size="xs" className="!text-inherit hover:!text-inherit" />

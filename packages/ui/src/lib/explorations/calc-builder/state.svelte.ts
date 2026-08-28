@@ -313,7 +313,9 @@ export class CalcStore {
 	 * repeated saves cannot pile up duplicate versions.
 	 */
 	saveToLibrary() {
+		// Loose editing states are fine to work in, but not to save.
 		if (this.root === null || !this.checkResult.complete) return;
+		if (this.checkResult.issues.length > 0) return;
 		const label = this.calcName.trim() || 'Untitled calc';
 		const existing = this.loadedCalc;
 		if (existing) {
@@ -458,26 +460,34 @@ export class CalcStore {
 	}
 
 	/**
-	 * A drop may fill an empty slot or replace a whole subtree. Dropping a
-	 * node onto its own ancestor collapses the tree around it; dropping a
-	 * node inside its own subtree is rejected.
+	 * Drop rules are structural only, like an editor that lets you type code
+	 * before it compiles: anything can drop anywhere sensible, and the
+	 * typechecker surfaces mismatches as issues afterward. The only hard
+	 * rejections are dropping a node onto itself or inside its own subtree.
 	 */
 	canDropAt(path: NodePath): boolean {
 		if (this.drag === null) return false;
 		const from = this.drag.from;
 		if (from !== null && (pathKey(from) === pathKey(path) || pathInside(path, from))) return false;
-		const expected = expectedTypeAt(this.root, path, this.model, this.library);
-		if (expected === null) return false;
-		return this.drag.produces === null || accepts(expected, this.drag.produces);
+		return expectedTypeAt(this.root, path, this.model, this.library) !== null;
 	}
 
 	dropAt(path: NodePath) {
 		const drag = this.drag;
 		if (drag === null || !this.canDropAt(path)) return;
-		this.root = setAt(this.root, path, drag.node);
-		// A move from elsewhere empties its origin; a move from inside the
-		// replaced subtree is already gone with it.
-		if (drag.from !== null && !pathInside(drag.from, path)) {
+		const target = getAt(this.root, path);
+		const fromInsideTarget = drag.from !== null && pathInside(drag.from, path);
+		const emptySlot = childSlots(drag.node).find((slot) => slot.child === null);
+		if (target !== null && emptySlot !== undefined && !fromInsideTarget) {
+			// The dropped node has room, so it wraps the target instead of
+			// destroying it: avg(...) with ">" dropped on it becomes avg(...) > _.
+			this.root = setAt(this.root, path, setAt(drag.node, [emptySlot.step], target));
+		} else {
+			// Leaves and full subtrees replace; dropping onto an ancestor
+			// collapses the tree around the dragged node.
+			this.root = setAt(this.root, path, drag.node);
+		}
+		if (drag.from !== null && !fromInsideTarget) {
 			this.root = setAt(this.root, drag.from, null);
 		}
 		this.selectedPath = firstEmptyPath(this.root);
@@ -489,11 +499,9 @@ export class CalcStore {
 		if (this.drag === null) return false;
 		const node = getAt(this.root, path);
 		if (node === null || node.kind !== 'op') return false;
-		const def = OPERATOR_BY_ID[node.op];
-		if (def.arity.kind !== 'variadic') return false;
+		if (OPERATOR_BY_ID[node.op].arity.kind !== 'variadic') return false;
 		const from = this.drag.from;
-		if (from !== null && (pathKey(from) === pathKey(path) || pathInside(path, from))) return false;
-		return this.drag.produces === null || accepts(def.arity.param, this.drag.produces);
+		return from === null || (pathKey(from) !== pathKey(path) && !pathInside(path, from));
 	}
 
 	/** Drop onto "+ input": append a fresh input and place the payload there. */

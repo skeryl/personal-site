@@ -798,3 +798,26 @@ test('a dragged node cannot drop inside its own subtree', async ({ page }) => {
 	await dragTo(page, '[data-node-path="root"]', '[data-node-path="input.0"]');
 	await expect(dsl).toHaveValue('(@moodys-grade + @sp-grade) / 2');
 });
+
+test('dropping an operator onto a filled node wraps it as an input', async ({ page }) => {
+	const dsl = page.getByLabel('Calculation expression');
+	await dsl.fill('avg(@moodys-grade, @sp-grade)');
+	await dsl.press('Enter');
+
+	// "Greater than" wraps the avg: it becomes the comparison's first input.
+	await dragTo(page, '[data-op-id="gt"]', '[data-node-path="root"]');
+	await expect(dsl).toHaveValue('avg(@moodys-grade, @sp-grade) > _');
+
+	// And an "and" wraps the whole condition in turn.
+	await dragTo(page, '[data-op-id="and"]', '[data-node-path="root"]');
+	await expect(page.locator('[data-op-select="root"]')).toHaveValue('and');
+	await expect(dsl).toHaveValue(/ and _$/);
+});
+
+test('type-loose drops are allowed but block saving via issues', async ({ page }) => {
+	await op(page, 'mul').click();
+	// A boolean op lands in a number slot: allowed, flagged, unsaveable.
+	await dragTo(page, '[data-op-id="and"]', '[data-slot-path="input.0"]');
+	await expect(page.locator('[data-issue]').first()).toBeVisible();
+	await expect(page.locator('[data-save-calc]')).toBeDisabled();
+});
