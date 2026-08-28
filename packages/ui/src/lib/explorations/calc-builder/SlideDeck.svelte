@@ -17,15 +17,16 @@
 	const javaSnippet = [
 		'<span class="kw">import static</span> attributes.<span class="ty">Nodes</span>.data;',
 		'',
-		'<span class="cm">// engineers define the same attributes in code</span>',
-		'<span class="ty">DerivedAttribute</span>&lt;<span class="ty">Position</span>&gt; notional =',
-		'    <span class="ty">DerivedAttribute</span>.of(<span class="ty">Position</span>.class)',
-		'        .mult(data(<span class="ty">Position</span>::price), data(<span class="ty">Position</span>::quantity))',
-		'        .as(<span class="st">&quot;notional&quot;</span>);',
+		'<span class="cm">// engineers declare attributes directly in code</span>',
+		'<span class="ty">DerivedAttribute</span>&lt;<span class="ty">Position</span>, <span class="ty">BigDecimal</span>&gt; notional =',
+		'    <span class="ty">DerivedAttribute</span>.of(<span class="ty">Position</span>.class, <span class="st">&quot;notional&quot;</span>)',
+		'        .mult(data(<span class="ty">Position</span>::price), data(<span class="ty">Position</span>::quantity));',
+		'<span class="ty">BigDecimal</span> value = notional.evaluate(position);  <span class="cm">// strong typing in the Java API</span>',
 		'',
-		'<span class="cm">// a consuming app, at runtime</span>',
-		'<span class="ty">DerivedAttribute</span>&lt;<span class="ty">Position</span>&gt; attr = attributes.fetch(<span class="st">&quot;notional&quot;</span>);',
-		'<span class="kw">double</span> value = attr.evaluate(position);  <span class="cm">// compiled: 2-6 ms</span>'
+		'<span class="cm">// UI-authored attributes are fetched by unique ID, injected via app config</span>',
+		'<span class="ty">DerivedAttribute</span>&lt;<span class="ty">Position</span>, <span class="ty">BigDecimal</span>&gt; liquidity =',
+		'    attributes.fetch(config.get(<span class="st">&quot;surveillance.liquidity-attr-id&quot;</span>));',
+		'<span class="ty">BigDecimal</span> score = liquidity.evaluate(position);  <span class="cm">// compiled: 2-6 ms</span>'
 	].join('\n');
 
 	const TOTAL = 16;
