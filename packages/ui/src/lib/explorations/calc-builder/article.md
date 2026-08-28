@@ -1,7 +1,8 @@
 <!--
-Draft v2 of the calc-builder article (post tone revision: technical-writing
-register; Shane will add voice himself). This file mirrors the prose in
-Article.svelte; edit either, keep both in sync.
+NOTE (v3): Article.svelte is now the CANONICAL prose source; Shane edits it
+directly (his section 1 rewrite lives there, and sections 2-7 were revised in
+his voice). This file is kept as the outline/spec archive and is NOT synced
+paragraph-for-paragraph anymore.
 
 Anonymization rules (do not violate anywhere in this file or the built page):
 - Employer is never named; it is "a large asset manager".
