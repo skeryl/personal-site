@@ -15,6 +15,7 @@
 	<button
 		class="slot"
 		class:selected={store.selectedKey === key}
+		class:debug={store.debugKey === key}
 		data-slot-path={key}
 		onclick={() => store.openMenu(path)}
 		title="Click to fill this slot"
@@ -58,5 +59,9 @@
 		to {
 			box-shadow: 0 0 0 2px color-mix(in srgb, var(--cb-accent) 30%, transparent);
 		}
+	}
+	.slot.debug {
+		border-color: var(--cb-accent);
+		box-shadow: 0 0 0 2px color-mix(in srgb, var(--cb-accent) 45%, transparent);
 	}
 </style>

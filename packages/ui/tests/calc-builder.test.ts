@@ -672,3 +672,33 @@ test('java api and architecture slides render', async ({ page }) => {
 	await page.keyboard.press('ArrowRight');
 	await expect(page.locator('[data-figure-arch]')).toBeVisible();
 });
+
+test('debugger steps through evaluation and highlights the tree', async ({ page }) => {
+	await op(page, 'mul').click();
+	await field(page, 'price').click();
+	await field(page, 'quantity').click();
+
+	await page.locator('[data-tab="debug"]').click();
+	await expect(page.locator('[data-debug-counter]')).toHaveText('0 / 3');
+
+	// Step 1: the first input (price) evaluates and lights up in the tree.
+	await page.locator('[data-debug-next]').click();
+	await expect(page.locator('[data-debug-counter]')).toHaveText('1 / 3');
+	await expect(page.locator('[data-node-path="input.0"]')).toHaveClass(/debug/);
+	await expect(page.locator('[data-debug-step]').last()).toContainText('187.5');
+
+	// Run to the end: the root op computes and the verdict reports it.
+	await page.locator('[data-debug-finish]').click();
+	await expect(page.locator('[data-debug-counter]')).toHaveText('3 / 3');
+	await expect(page.locator('[data-debug-done]')).toContainText('7500');
+
+	// Switching records restarts the walkthrough with that record's values.
+	await page.locator('[data-debug-record="TSLA"]').click();
+	await expect(page.locator('[data-debug-counter]')).toHaveText('0 / 3');
+	await page.locator('[data-debug-finish]').click();
+	await expect(page.locator('[data-debug-done]')).toContainText('2500');
+
+	// Leaving the debugger clears the tree highlight.
+	await page.locator('[data-tab="results"]').click();
+	await expect(page.locator('[data-node-path="input.0"]')).not.toHaveClass(/debug/);
+});

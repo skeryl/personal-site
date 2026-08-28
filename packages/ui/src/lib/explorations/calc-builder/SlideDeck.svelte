@@ -199,22 +199,60 @@
 				{:else if current === 4}
 					<span class="kicker">discovery</span>
 					<h2>What the interviews surfaced</h2>
-					<ul class="points">
-						<li>
-							Spent the discovery phase with stakeholders: engineers, desk heads, portfolio
-							managers, traders
-						</li>
-						<li>
-							The common thread: understanding any calculation meant
-							<strong>pulling an engineer into the loop</strong>
-						</li>
-						<li>The ask: discover and debug calculation definitions self-service</li>
-						<li>
-							That became a core feature: search an instrument, then step through a rule's
-							evaluation in the UI, node by node
-						</li>
-						<li>A critical need we would not have found without the interviews</li>
-					</ul>
+					<p class="needs-lead">
+						Weeks with engineers, desk heads, portfolio managers, traders, and compliance. Every
+						facet of the design traces to something we heard:
+					</p>
+					<div class="needs">
+						<div class="need">
+							<span class="ask">"Why is my trade blocked?"<em>traders</em></span>
+							<span class="need-arrow">→</span>
+							<span class="answer">
+								<strong>Step-through debugger</strong>: pick an instrument, watch any rule evaluate
+								node by node
+							</span>
+						</div>
+						<div class="need">
+							<span class="ask">"Where does this number come from?"<em>portfolio managers</em></span
+							>
+							<span class="need-arrow">→</span>
+							<span class="answer">
+								Definitions as <strong>graphs</strong>: every value explains itself, and
+								documentation stays current for free
+							</span>
+						</div>
+						<div class="need">
+							<span class="ask"
+								>"We each equalize ratings our own way"<em>engineering teams</em></span
+							>
+							<span class="need-arrow">→</span>
+							<span class="answer">
+								<strong>One shared data model</strong> and a single definition store, referenced by unique
+								ID
+							</span>
+						</div>
+						<div class="need">
+							<span class="ask">"Nothing can slow the trade path"<em>desk systems</em></span>
+							<span class="need-arrow">→</span>
+							<span class="answer">
+								Compiled definitions evaluated <strong>in-process</strong>: 2-6 ms per attribute
+							</span>
+						</div>
+						<div class="need">
+							<span class="ask">"Who changed this, and who approved it?"<em>compliance</em></span>
+							<span class="need-arrow">→</span>
+							<span class="answer">
+								Immutable versions, approver ≠ author, a complete <strong>audit trail</strong>
+							</span>
+						</div>
+						<div class="need">
+							<span class="ask">"We won't give up types and code review"<em>engineers</em></span>
+							<span class="need-arrow">→</span>
+							<span class="answer">
+								A fluent, compile-checked <strong>Java API</strong> over the same ASTs
+							</span>
+						</div>
+					</div>
 				{:else if current === 5}
 					<span class="kicker">the idea</span>
 					<h2>Calculations as graphs!</h2>
@@ -600,5 +638,49 @@
 			overflow: auto;
 			align-items: start;
 		}
+	}
+	.needs-lead {
+		max-width: 56rem;
+		margin: 0 0 1.5rem;
+		font-size: clamp(0.95rem, 1.4vw, 1.15rem);
+		color: var(--color-text-secondary);
+	}
+	.needs {
+		display: flex;
+		flex-direction: column;
+		gap: 0.9rem;
+		max-width: 64rem;
+	}
+	.need {
+		display: grid;
+		grid-template-columns: minmax(0, 5fr) auto minmax(0, 7fr);
+		gap: 1.25rem;
+		align-items: baseline;
+	}
+	.ask {
+		font-size: clamp(0.95rem, 1.4vw, 1.2rem);
+		color: var(--color-text-strong);
+	}
+	.ask em {
+		display: block;
+		font-style: normal;
+		font-size: 0.7rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--color-text-muted);
+		margin-top: 0.15rem;
+	}
+	.need-arrow {
+		color: var(--cb-accent);
+		font-size: 1.1rem;
+	}
+	.answer {
+		font-size: clamp(0.9rem, 1.3vw, 1.1rem);
+		line-height: 1.5;
+		color: var(--color-text-secondary);
+	}
+	.answer strong {
+		color: var(--color-text-strong);
 	}
 </style>

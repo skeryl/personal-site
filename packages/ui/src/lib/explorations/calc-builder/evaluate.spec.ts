@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import type { CalcNode, Literal, MapNode, OpNode, SwitchNode } from './ast';
+import {
+	pathKey,
+	type CalcNode,
+	type Literal,
+	type MapNode,
+	type OpNode,
+	type SwitchNode
+} from './ast';
 import { MODEL_BY_ID } from './datamodels';
-import { evaluate } from './evaluate';
+import { evaluate, traceEvaluate, type TraceStep } from './evaluate';
+import { LIBRARY } from './library';
 import type { OperatorId } from './operators';
 
 const num = (value: number): Literal => ({ kind: 'literal', type: 'number', value });
@@ -323,5 +331,66 @@ describe('switch', () => {
 			fallback: num(0)
 		};
 		expect(evaluate(tree, aapl)).toEqual({ ok: false, error: 'type-mismatch' });
+	});
+});
+
+describe('traceEvaluate', () => {
+	const keys = (steps: TraceStep[]) => steps.map((step) => pathKey(step.path));
+
+	it('records visits post-order: inputs before their operator', () => {
+		const { result, steps } = traceEvaluate(op('mul', field('price'), field('quantity')), aapl);
+		expect(result).toEqual({ ok: true, value: 7500 });
+		expect(keys(steps)).toEqual(['input.0', 'input.1', 'root']);
+		expect(steps[0].result).toEqual({ ok: true, value: 187.5 });
+		expect(steps[2].result).toEqual({ ok: true, value: 7500 });
+	});
+
+	it('omits short-circuited inputs and unmatched switch branches', () => {
+		const or: OpNode = op('or', bool(true), bool(false));
+		expect(keys(traceEvaluate(or, aapl).steps)).toEqual(['input.0', 'root']);
+
+		const sw: SwitchNode = {
+			kind: 'switch',
+			on: field('symbol'),
+			cases: [
+				{ when: str('AAPL'), then: num(1) },
+				{ when: str('TSLA'), then: num(2) }
+			],
+			fallback: num(0)
+		};
+		// AAPL matches the first case; the second when and fallback never run.
+		expect(keys(traceEvaluate(sw, aapl).steps)).toEqual([
+			'on',
+			'case-when.0',
+			'case-then.0',
+			'root'
+		]);
+	});
+
+	it('replays map bodies once per element with a note', () => {
+		const mapNode: MapNode = {
+			kind: 'map',
+			source: field('dailyReturns'),
+			body: op('mul', { kind: 'field', field: 'item' }, num(10))
+		};
+		const { steps } = traceEvaluate(mapNode, aapl);
+		const bodySteps = steps.filter((step) => pathKey(step.path) === 'body');
+		const elements = (aapl.dailyReturns as number[]).length;
+		expect(bodySteps).toHaveLength(elements);
+		expect(bodySteps[0].note).toBe(`element 1 of ${elements}`);
+	});
+
+	it('treats referenced calcs as a single step with no foreign paths', () => {
+		const ref: CalcNode = { kind: 'calc', calcId: 'market-value' };
+		const { steps } = traceEvaluate(op('add', ref, num(1)), aapl, LIBRARY);
+		expect(keys(steps)).toEqual(['input.0', 'input.1', 'root']);
+		expect(steps[0].result).toEqual({ ok: true, value: 7500 });
+	});
+
+	it('traces up to and including the failing node', () => {
+		const { result, steps } = traceEvaluate(op('mul', field('price'), null), aapl);
+		expect(result).toEqual({ ok: false, error: 'incomplete' });
+		expect(keys(steps)).toEqual(['input.0', 'input.1', 'root']);
+		expect(steps[1].result).toEqual({ ok: false, error: 'incomplete' });
 	});
 });

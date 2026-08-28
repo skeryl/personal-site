@@ -1,4 +1,5 @@
 <script lang="ts">
+	import DebuggerPanel from './DebuggerPanel.svelte';
 	import DefinitionPanel from './DefinitionPanel.svelte';
 	import DslBar from './DslBar.svelte';
 	import HistoryPanel from './HistoryPanel.svelte';
@@ -66,6 +67,14 @@
 				>
 					History
 				</button>
+				<button
+					class="tab"
+					class:active={store.sideTab === 'debug'}
+					data-tab="debug"
+					onclick={() => (store.sideTab = 'debug')}
+				>
+					Debugger
+				</button>
 			</div>
 			{#if store.sideTab === 'results'}
 				<ResultsPanel {store} />
@@ -73,6 +82,8 @@
 				<LibraryPanel {store} />
 			{:else if store.sideTab === 'definition'}
 				<DefinitionPanel {store} />
+			{:else if store.sideTab === 'debug'}
+				<DebuggerPanel {store} />
 			{:else}
 				<HistoryPanel {store} />
 			{/if}
@@ -167,7 +178,8 @@
 
 	.side-tabs {
 		display: flex;
-		gap: 1.1rem;
+		flex-wrap: wrap;
+		gap: 0 1.1rem;
 		border-bottom: 1px solid var(--color-border-subtle);
 		margin-bottom: 0.85rem;
 	}

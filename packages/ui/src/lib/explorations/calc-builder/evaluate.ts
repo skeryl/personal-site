@@ -3,9 +3,14 @@
  * short-circuiting logic ops and evaluating only the matched switch branch.
  * Referenced library calcs evaluate against the record with a fresh scope;
  * an active-set guards against circular references.
+ *
+ * traceEvaluate records every visit post-order (children before parents),
+ * which is what the step-through debugger plays back. Short-circuited
+ * inputs and unmatched switch branches never appear in the trace because
+ * they are never evaluated; referenced calcs appear as a single step.
  */
 
-import type { CalcNode, MapNode, OpNode, SwitchNode } from './ast';
+import type { CalcNode, MapNode, NodePath, OpNode, SwitchNode } from './ast';
 import { effectiveVersion, type CalcDef } from './library';
 import {
 	OPERATOR_BY_ID,
@@ -27,6 +32,12 @@ export type EvalError =
 	| 'type-mismatch';
 
 export type EvalResult = { ok: true; value: Value } | { ok: false; error: EvalError };
+
+export interface TraceStep {
+	path: NodePath;
+	result: EvalResult;
+	note?: string;
+}
 
 const ok = (value: Value): EvalResult => ({ ok: true, value });
 const fail = (error: EvalError): EvalResult => ({ ok: false, error });
@@ -60,14 +71,21 @@ interface EvalContext {
 	library: CalcDef[];
 	/** Calc ids currently being evaluated, to catch circular references. */
 	active: Set<string>;
+	/** When present, every visit is recorded post-order for the debugger. */
+	trace?: TraceStep[];
 }
 
-const walkOp = (node: OpNode, ctx: EvalContext, scope?: RecordValue): EvalResult => {
+const walkOp = (
+	node: OpNode,
+	ctx: EvalContext,
+	scope: RecordValue | undefined,
+	path: NodePath
+): EvalResult => {
 	const def = OPERATOR_BY_ID[node.op];
 	if (node.op === 'and' || node.op === 'or') {
 		const decides = node.op === 'or';
-		for (const input of node.inputs) {
-			const result = walk(input, ctx, scope);
+		for (const [index, input] of node.inputs.entries()) {
+			const result = walk(input, ctx, scope, [...path, { part: 'input', index }]);
 			if (!result.ok) return result;
 			if (typeof result.value !== 'boolean') return fail('type-mismatch');
 			if (result.value === decides) return ok(decides);
@@ -76,7 +94,7 @@ const walkOp = (node: OpNode, ctx: EvalContext, scope?: RecordValue): EvalResult
 	}
 	const args: Value[] = [];
 	for (const [index, input] of node.inputs.entries()) {
-		const result = walk(input, ctx, scope);
+		const result = walk(input, ctx, scope, [...path, { part: 'input', index }]);
 		if (!result.ok) return result;
 		const expected = def.arity.kind === 'fixed' ? def.arity.params[index] : def.arity.param;
 		if (!matchesType(result.value, expected)) return fail('type-mismatch');
@@ -86,30 +104,50 @@ const walkOp = (node: OpNode, ctx: EvalContext, scope?: RecordValue): EvalResult
 	return isApplyError(applied) ? fail(applied.error) : ok(applied);
 };
 
-const walkSwitch = (node: SwitchNode, ctx: EvalContext, scope?: RecordValue): EvalResult => {
-	const on = walk(node.on, ctx, scope);
+const walkSwitch = (
+	node: SwitchNode,
+	ctx: EvalContext,
+	scope: RecordValue | undefined,
+	path: NodePath
+): EvalResult => {
+	const on = walk(node.on, ctx, scope, [...path, { part: 'on' }]);
 	if (!on.ok) return on;
 	if (typeof on.value === 'object') return fail('type-mismatch');
-	for (const branch of node.cases) {
-		const when = walk(branch.when, ctx, scope);
+	for (const [index, branch] of node.cases.entries()) {
+		const when = walk(branch.when, ctx, scope, [...path, { part: 'case-when', index }]);
 		if (!when.ok) return when;
 		if (typeof when.value === 'object') return fail('type-mismatch');
-		if (when.value === on.value) return walk(branch.then, ctx, scope);
+		if (when.value === on.value) {
+			return walk(branch.then, ctx, scope, [...path, { part: 'case-then', index }]);
+		}
 	}
-	return node.fallback === null ? fail('no-case-match') : walk(node.fallback, ctx, scope);
+	return node.fallback === null
+		? fail('no-case-match')
+		: walk(node.fallback, ctx, scope, [...path, { part: 'fallback' }]);
 };
 
 /** Body runs once per element with that element's fields (or `item`) in scope. */
-const walkMap = (node: MapNode, ctx: EvalContext, scope?: RecordValue): EvalResult => {
-	const source = walk(node.source, ctx, scope);
+const walkMap = (
+	node: MapNode,
+	ctx: EvalContext,
+	scope: RecordValue | undefined,
+	path: NodePath
+): EvalResult => {
+	const source = walk(node.source, ctx, scope, [...path, { part: 'source' }]);
 	if (!source.ok) return source;
 	if (node.body === null) return fail('incomplete');
 	if (!Array.isArray(source.value)) return fail('type-mismatch');
 	const mapped: number[] = [];
-	for (const element of source.value) {
+	for (const [index, element] of source.value.entries()) {
 		const elementScope: RecordValue =
 			typeof element === 'number' ? { ...scope, item: element } : { ...scope, ...element };
-		const result = walk(node.body, ctx, elementScope);
+		const result = walk(
+			node.body,
+			ctx,
+			elementScope,
+			[...path, { part: 'body' }],
+			`element ${index + 1} of ${source.value.length}`
+		);
 		if (!result.ok) return result;
 		if (typeof result.value !== 'number') return fail('type-mismatch');
 		mapped.push(result.value);
@@ -117,7 +155,24 @@ const walkMap = (node: MapNode, ctx: EvalContext, scope?: RecordValue): EvalResu
 	return ok(mapped);
 };
 
-const walk = (node: CalcNode | null, ctx: EvalContext, scope?: RecordValue): EvalResult => {
+const walk = (
+	node: CalcNode | null,
+	ctx: EvalContext,
+	scope: RecordValue | undefined,
+	path: NodePath,
+	note?: string
+): EvalResult => {
+	const result = visit(node, ctx, scope, path);
+	ctx.trace?.push(note === undefined ? { path, result } : { path, result, note });
+	return result;
+};
+
+const visit = (
+	node: CalcNode | null,
+	ctx: EvalContext,
+	scope: RecordValue | undefined,
+	path: NodePath
+): EvalResult => {
 	if (node === null) return fail('incomplete');
 	switch (node.kind) {
 		case 'literal':
@@ -134,17 +189,18 @@ const walk = (node: CalcNode | null, ctx: EvalContext, scope?: RecordValue): Eva
 			if (ctx.active.has(def.id)) return fail('circular');
 			ctx.active.add(def.id);
 			// References resolve to the published version (drafts stay private)
-			// and see the record, never the local map scope.
-			const result = walk(effectiveVersion(def).root, ctx, undefined);
+			// and see the record, never the local map scope. Their internal
+			// steps belong to a different tree, so tracing pauses inside.
+			const result = walk(effectiveVersion(def).root, { ...ctx, trace: undefined }, undefined, []);
 			ctx.active.delete(def.id);
 			return result;
 		}
 		case 'op':
-			return walkOp(node, ctx, scope);
+			return walkOp(node, ctx, scope, path);
 		case 'switch':
-			return walkSwitch(node, ctx, scope);
+			return walkSwitch(node, ctx, scope, path);
 		case 'map':
-			return walkMap(node, ctx, scope);
+			return walkMap(node, ctx, scope, path);
 	}
 };
 
@@ -152,4 +208,15 @@ export const evaluate = (
 	root: CalcNode | null,
 	record: Record<string, Value>,
 	library: CalcDef[] = []
-): EvalResult => walk(root, { record, library, active: new Set() });
+): EvalResult => walk(root, { record, library, active: new Set() }, undefined, []);
+
+/** Evaluate while recording each visit post-order, for the step debugger. */
+export const traceEvaluate = (
+	root: CalcNode | null,
+	record: Record<string, Value>,
+	library: CalcDef[] = []
+): { result: EvalResult; steps: TraceStep[] } => {
+	const trace: TraceStep[] = [];
+	const result = walk(root, { record, library, active: new Set(), trace }, undefined, []);
+	return { result, steps: trace };
+};

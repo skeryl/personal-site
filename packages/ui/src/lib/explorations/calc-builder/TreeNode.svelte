@@ -39,6 +39,7 @@
 	<span
 		class="leaf"
 		class:selected={store.selectedKey === key}
+		class:debug={store.debugKey === key}
 		class:calc={node.kind === 'calc'}
 		style="border-left-color: {accent}"
 		data-node-path={key}
@@ -63,7 +64,12 @@
 	{@const def = OPERATOR_BY_ID[node.op]}
 	{@const variadic = def.arity.kind === 'variadic' ? def.arity : null}
 	{@const swappable = compatibleOperators(store.root, path, store.model, store.library)}
-	<div class="node" style="border-left-color: {accent}" data-node-path={key}>
+	<div
+		class="node"
+		class:debug={store.debugKey === key}
+		style="border-left-color: {accent}"
+		data-node-path={key}
+	>
 		<div class="node-head">
 			{#if swappable.length > 1}
 				<select
@@ -112,7 +118,12 @@
 		</div>
 	</div>
 {:else if node.kind === 'map'}
-	<div class="node" style="border-left-color: {accent}" data-node-path={key}>
+	<div
+		class="node"
+		class:debug={store.debugKey === key}
+		style="border-left-color: {accent}"
+		data-node-path={key}
+	>
 		<div class="node-head">
 			<span class="op-symbol">map</span>
 			<span class="op-name">Map each</span>
@@ -132,7 +143,12 @@
 		</div>
 	</div>
 {:else}
-	<div class="node" style="border-left-color: {accent}" data-node-path={key}>
+	<div
+		class="node"
+		class:debug={store.debugKey === key}
+		style="border-left-color: {accent}"
+		data-node-path={key}
+	>
 		<div class="node-head">
 			<span class="op-symbol">switch</span>
 			<button class="remove" data-remove={key} onclick={() => store.remove(path)} title="Remove">
@@ -288,5 +304,10 @@
 	}
 	.tool-btn {
 		align-self: flex-start;
+	}
+	.node.debug,
+	.leaf.debug {
+		box-shadow: 0 0 0 2px var(--cb-accent);
+		background: color-mix(in srgb, var(--cb-accent) 8%, transparent);
 	}
 </style>

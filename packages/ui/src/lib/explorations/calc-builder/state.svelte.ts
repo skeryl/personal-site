@@ -67,7 +67,9 @@ export class CalcStore {
 	/** The tree as last loaded, saved, or cleared; divergence means unsaved work. */
 	private baseline = $state<CalcNode | null>(null);
 	/** Which panel the right column shows. */
-	sideTab = $state<'results' | 'library' | 'definition' | 'history'>('library');
+	sideTab = $state<'results' | 'library' | 'definition' | 'history' | 'debug'>('library');
+	/** pathKey of the debugger's current step; the tree highlights it. */
+	debugKey = $state<string | null>(null);
 	/** Display name of the calculation being edited. */
 	calcName = $state('');
 	/** Library id this tree was loaded from or saved as, for in-place updates. */
