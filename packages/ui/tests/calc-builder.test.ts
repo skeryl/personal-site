@@ -821,3 +821,19 @@ test('type-loose drops are allowed but block saving via issues', async ({ page }
 	await expect(page.locator('[data-issue]').first()).toBeVisible();
 	await expect(page.locator('[data-save-calc]')).toBeDisabled();
 });
+
+test('the slide position rides in the url and survives reloads', async ({ page }) => {
+	await page.goto('about:blank');
+	await page.goto(ROUTE + '#slides-5');
+	await expect(page.locator('[data-deck-counter]')).toHaveText('5 / 16');
+
+	await page.keyboard.press('ArrowRight');
+	await expect(page.locator('[data-deck-counter]')).toHaveText('6 / 16');
+	await page.reload();
+	await expect(page.locator('[data-deck-counter]')).toHaveText('6 / 16');
+
+	// Leaving the deck clears the hash.
+	await page.keyboard.press('Escape');
+	await expect(page.locator('.hero h1')).toBeVisible();
+	expect(new URL(page.url()).hash).toBe('');
+});

@@ -10,7 +10,7 @@
 	import FigLifecycle from './FigLifecycle.svelte';
 	import FigPipelines from './FigPipelines.svelte';
 
-	let { onexit }: { onexit: () => void } = $props();
+	let { onexit, initial = 0 }: { onexit: () => void; initial?: number } = $props();
 
 	/* Static, self-authored markup; rendered via {@html} so the formatter
 	   cannot collapse the pre's line breaks. */
@@ -31,7 +31,8 @@
 
 	const TOTAL = 16;
 	const DEMO_SLIDE = 7;
-	let current = $state(0);
+	// svelte-ignore state_referenced_locally -- the prop seeds the state once
+	let current = $state(Math.min(TOTAL - 1, Math.max(0, initial)));
 	let direction = $state(1);
 	let deckEl = $state<HTMLDivElement>();
 
@@ -43,6 +44,11 @@
 		direction = -1;
 		current = Math.max(0, current - 1);
 	};
+
+	/* The slide number rides in the hash so a reload resumes in place. */
+	$effect(() => {
+		history.replaceState(null, '', `#slides-${current + 1}`);
+	});
 
 	/* The deck owns the viewport while presenting. */
 	$effect(() => {

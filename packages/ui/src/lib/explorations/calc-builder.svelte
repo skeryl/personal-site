@@ -4,14 +4,20 @@
 	import SlideDeck from './calc-builder/SlideDeck.svelte';
 
 	let presenting = $state(false);
+	let initialSlide = $state(0);
 
 	onMount(() => {
-		if (location.hash === '#slides') presenting = true;
+		// #slides or #slides-N (1-based) survives reloads mid-presentation.
+		const match = location.hash.match(/^#slides(?:-(\d+))?$/);
+		if (match) {
+			initialSlide = match[1] ? Number(match[1]) - 1 : 0;
+			presenting = true;
+		}
 	});
 
 	const enterSlides = () => {
+		initialSlide = 0;
 		presenting = true;
-		history.replaceState(null, '', '#slides');
 	};
 	const exitSlides = () => {
 		presenting = false;
@@ -20,7 +26,7 @@
 </script>
 
 {#if presenting}
-	<SlideDeck onexit={exitSlides} />
+	<SlideDeck initial={initialSlide} onexit={exitSlides} />
 {:else}
 	<Article onpresent={enterSlides} />
 {/if}
