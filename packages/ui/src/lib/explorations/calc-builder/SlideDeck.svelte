@@ -1,6 +1,8 @@
 <script lang="ts">
-	import { fade } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
+	import { fly } from 'svelte/transition';
 	import CalcBuilder from './CalcBuilder.svelte';
+	import FigArchitecture from './FigArchitecture.svelte';
 	import FigAst from './FigAst.svelte';
 	import FigCodegen from './FigCodegen.svelte';
 	import FigIncident from './FigIncident.svelte';
@@ -10,11 +12,34 @@
 
 	let { onexit }: { onexit: () => void } = $props();
 
-	const TOTAL = 13;
-	let current = $state(0);
+	/* Static, self-authored markup; rendered via {@html} so the formatter
+	   cannot collapse the pre's line breaks. */
+	const javaSnippet = [
+		'<span class="cm">// engineers define the same attributes in code</span>',
+		'<span class="ty">DerivedAttribute</span>&lt;<span class="ty">Position</span>&gt; notional =',
+		'    <span class="ty">DerivedAttribute</span>.of(<span class="ty">Position</span>.class)',
+		'        .mult(data(<span class="st">&quot;price&quot;</span>), data(<span class="st">&quot;quantity&quot;</span>))',
+		'        .as(<span class="st">&quot;notional&quot;</span>);',
+		'',
+		'<span class="cm">// a consuming app, at runtime</span>',
+		'<span class="ty">DerivedAttribute</span>&lt;<span class="ty">Position</span>&gt; attr = attributes.fetch(<span class="st">&quot;notional&quot;</span>);',
+		'<span class="kw">double</span> value = attr.evaluate(position);  <span class="cm">// compiled: 2-6 ms</span>'
+	].join('\n');
 
-	const next = () => (current = Math.min(TOTAL - 1, current + 1));
-	const prev = () => (current = Math.max(0, current - 1));
+	const TOTAL = 15;
+	const DEMO_SLIDE = 6;
+	let current = $state(0);
+	let direction = $state(1);
+	let deckEl = $state<HTMLDivElement>();
+
+	const next = () => {
+		direction = 1;
+		current = Math.min(TOTAL - 1, current + 1);
+	};
+	const prev = () => {
+		direction = -1;
+		current = Math.max(0, current - 1);
+	};
 
 	/* The deck owns the viewport while presenting. */
 	$effect(() => {
@@ -48,187 +73,262 @@
 			e.preventDefault();
 			prev();
 		} else if (e.key === 'Home') {
+			direction = -1;
 			current = 0;
 		} else if (e.key === 'End') {
+			direction = 1;
 			current = TOTAL - 1;
 		}
 	};
+
+	/* Wheel navigation: a deliberate flick advances one slide, then a short
+	   cooldown swallows trackpad inertia. Skipped on the demo slide so the
+	   embedded tool keeps its own scrolling. */
+	let wheelLockUntil = 0;
+	let wheelAcc = 0;
+	let wheelReset: ReturnType<typeof setTimeout> | undefined;
+
+	const canScrollFurther = (start: EventTarget | null, dy: number) => {
+		let el = start instanceof Element ? start : null;
+		while (el && el !== deckEl) {
+			if (el instanceof HTMLElement && el.scrollHeight > el.clientHeight + 1) {
+				const overflowY = getComputedStyle(el).overflowY;
+				if (overflowY === 'auto' || overflowY === 'scroll') {
+					if (dy > 0 && el.scrollTop + el.clientHeight < el.scrollHeight - 1) return true;
+					if (dy < 0 && el.scrollTop > 0) return true;
+				}
+			}
+			el = el.parentElement;
+		}
+		return false;
+	};
+
+	const onWheel = (e: WheelEvent) => {
+		if (current === DEMO_SLIDE) return;
+		if (document.querySelector('[data-slot-menu]')) return;
+		if (canScrollFurther(e.target, e.deltaY)) return;
+		e.preventDefault();
+		const now = performance.now();
+		if (now < wheelLockUntil) return;
+		wheelAcc += e.deltaY;
+		clearTimeout(wheelReset);
+		wheelReset = setTimeout(() => (wheelAcc = 0), 200);
+		if (Math.abs(wheelAcc) >= 60) {
+			const dir = wheelAcc > 0 ? 1 : -1;
+			wheelAcc = 0;
+			wheelLockUntil = now + 700;
+			if (dir > 0) next();
+			else prev();
+		}
+	};
+
+	$effect(() => {
+		const el = deckEl;
+		if (!el) return;
+		el.addEventListener('wheel', onWheel, { passive: false });
+		return () => el.removeEventListener('wheel', onWheel);
+	});
 </script>
 
 <svelte:window onkeydown={onKeydown} />
 
-<div class="deck" data-slide-deck>
-	{#key current}
-		<div class="slide" data-slide={current} in:fade={{ duration: 150 }}>
-			{#if current === 0}
-				<div class="center">
-					<h1 class="deck-title">Same word, different numbers</h1>
-					<p class="deck-sub">A calculation platform for a large asset manager</p>
-					<p class="deck-byline">Shane Carroll</p>
-				</div>
-			{:else if current === 1}
-				<span class="kicker">context</span>
-				<h2>The setting</h2>
-				<ul class="points">
-					<li>
-						Pre-trade surveillance engine at a large asset manager: <strong
-							>the final gate before trade execution</strong
-						>
-					</li>
-					<li>
-						Every trade checked against regulatory, firm-wide, and client-specific rules (pension
-						and retirement accounts, 1940 Act)
-					</li>
-					<li>
-						Rules defined by administrators over trade + account data: liquidity, credit quality,
-						concentration
-					</li>
-					<li>High correctness bar: a wrong answer blocks real trades</li>
-				</ul>
-			{:else if current === 2}
-				<span class="kicker">the problem</span>
-				<h2>The support call</h2>
-				<div class="split">
-					<ul class="points">
-						<li>Recurring case: "why is my trade blocked?"</li>
-						<li>Debugging spans two systems' data, rules, and calculations</li>
-						<li>Usually <strong>nothing was broken</strong>; both systems working as designed</li>
-						<li>They disagreed on the definition of "liquidity"</li>
-					</ul>
-					<div class="fig-wrap"><FigIncident /></div>
-				</div>
-			{:else if current === 3}
-				<span class="kicker">the problem</span>
-				<h2>Why definitions diverge</h2>
-				<div class="split">
-					<ul class="points">
-						<li>"Liquidity" = many dependent calculations over many data points</li>
-						<li>Agencies rate on different scales; every team equalizes them differently</li>
-						<li>Same rating, different reference databases</li>
-						<li>Small divergences compound into <strong>opposite verdicts</strong></li>
-						<li>Same pattern across the division: shared terms, divergent definitions</li>
-					</ul>
-					<div class="fig-wrap"><FigPipelines /></div>
-				</div>
-			{:else if current === 4}
-				<span class="kicker">the idea</span>
-				<h2>Calculations as data</h2>
-				<div class="split">
+<div class="deck" data-slide-deck bind:this={deckEl}>
+	<div class="stage">
+		{#key current}
+			<div
+				class="slide"
+				data-slide={current}
+				in:fly={{ y: 42 * direction, duration: 340, easing: cubicOut }}
+				out:fly={{ y: -42 * direction, duration: 340, easing: cubicOut }}
+			>
+				{#if current === 0}
+					<div class="center">
+						<h1 class="deck-title">Same word, different numbers</h1>
+						<p class="deck-sub">A calculation platform for a large asset manager</p>
+						<p class="deck-byline">Shane Carroll</p>
+					</div>
+				{:else if current === 1}
+					<span class="kicker">context</span>
+					<h2>The setting</h2>
 					<ul class="points">
 						<li>
-							Model every calculation as an <strong>abstract syntax tree</strong>: leaves are
-							data-model fields or constants; nodes are operations
+							Pre-trade surveillance engine at a large asset manager: <strong
+								>the final gate before trade execution</strong
+							>
 						</li>
-						<li>Displayable, diffable, traversable</li>
-						<li>Lineage for free: "what depends on this field?" is a tree traversal</li>
-						<li>One shared data model underneath (the hardest negotiation)</li>
+						<li>
+							Every trade checked against regulatory, firm-wide, and client-specific rules (pension
+							and retirement accounts, 1940 Act)
+						</li>
+						<li>
+							Rules defined by administrators over trade + account data: liquidity, credit quality,
+							concentration
+						</li>
+						<li>High correctness bar: a wrong answer blocks real trades</li>
 					</ul>
-					<div class="fig-wrap shrink"><FigAst /></div>
-				</div>
-			{:else if current === 5}
-				<span class="kicker">making it real</span>
-				<h2>Getting buy-in</h2>
-				<ul class="points">
-					<li>Verified the problem across teams: engineers, desk heads, PMs, traders</li>
-					<li>Pitched the division executive; got one month, solo, for a proof of concept</li>
-					<li>Architecture review: division head + senior leads, an hour of probing</li>
-					<li>
-						Their hardest question was <strong>audit</strong>; the design already answered it
-					</li>
-					<li>Approved</li>
-				</ul>
-			{:else if current === 6}
-				<div class="demo-head">
-					<span class="kicker">live</span>
-					<h2>The reconstruction</h2>
-				</div>
-				<div class="demo-fill"><CalcBuilder /></div>
-			{:else if current === 7}
-				<span class="kicker">trust</span>
-				<h2>Definitions are code</h2>
-				<div class="stack">
+				{:else if current === 2}
+					<span class="kicker">the problem</span>
+					<h2>The support call</h2>
+					<div class="split">
+						<ul class="points">
+							<li>Recurring case: "why is my trade blocked?"</li>
+							<li>Debugging spans two systems' data, rules, and calculations</li>
+							<li>Usually <strong>nothing was broken</strong>; both systems working as designed</li>
+							<li>They disagreed on the definition of "liquidity"</li>
+						</ul>
+						<div class="fig-wrap"><FigIncident /></div>
+					</div>
+				{:else if current === 3}
+					<span class="kicker">the problem</span>
+					<h2>Why definitions diverge</h2>
+					<div class="split">
+						<ul class="points">
+							<li>"Liquidity" = many dependent calculations over many data points</li>
+							<li>Agencies rate on different scales; every team equalizes them differently</li>
+							<li>Same rating, different reference databases</li>
+							<li>Small divergences compound into <strong>opposite verdicts</strong></li>
+							<li>Same pattern across the division: shared terms, divergent definitions</li>
+						</ul>
+						<div class="fig-wrap"><FigPipelines /></div>
+					</div>
+				{:else if current === 4}
+					<span class="kicker">the idea</span>
+					<h2>Calculations as data</h2>
+					<div class="split">
+						<ul class="points">
+							<li>
+								Model every calculation as an <strong>abstract syntax tree</strong>: leaves are
+								data-model fields or constants; nodes are operations
+							</li>
+							<li>Displayable, diffable, traversable</li>
+							<li>Lineage for free: "what depends on this field?" is a tree traversal</li>
+							<li>One shared data model underneath (the hardest negotiation)</li>
+						</ul>
+						<div class="fig-wrap shrink"><FigAst /></div>
+					</div>
+				{:else if current === 5}
+					<span class="kicker">making it real</span>
+					<h2>Getting buy-in</h2>
 					<ul class="points">
-						<li>Every save appends an <strong>immutable version</strong>; drafts → published</li>
-						<li>Approver must differ from author; promotion through environments</li>
-						<li>Test suites pinned to expected outputs, run on every change</li>
-						<li>Complete audit trail: who, what, when</li>
+						<li>Verified the problem across teams: engineers, desk heads, PMs, traders</li>
+						<li>Pitched the division executive; got one month, solo, for a proof of concept</li>
+						<li>Architecture review: division head + senior leads, an hour of probing</li>
+						<li>
+							Their hardest question was <strong>audit</strong>; the design already answered it
+						</li>
+						<li>Approved</li>
 					</ul>
-					<div class="fig-wrap"><FigLifecycle /></div>
-				</div>
-			{:else if current === 8}
-				<span class="kicker">performance</span>
-				<h2>The compiler turn</h2>
-				<div class="stack">
+				{:else if current === 6}
+					<div class="demo-head">
+						<span class="kicker">live</span>
+						<h2>The reconstruction</h2>
+					</div>
+					<div class="demo-fill"><CalcBuilder /></div>
+				{:else if current === 7}
+					<span class="kicker">engineers</span>
+					<h2>The fluent Java API</h2>
+					<div class="code-wrap">
+						<pre class="code-block"><code>{@html javaSnippet}</code></pre>
+						<p class="code-note">
+							The same AST underneath as the UI. Field references are checked against the class's
+							data model at compile time, so a mistyped field is a build failure, not a support
+							call.
+						</p>
+					</div>
+				{:else if current === 8}
+					<span class="kicker">architecture</span>
+					<h2>The shape of the system</h2>
+					<div class="stack">
+						<div class="fig-wrap"><FigArchitecture /></div>
+					</div>
+				{:else if current === 9}
+					<span class="kicker">trust</span>
+					<h2>Definitions are code</h2>
+					<div class="stack">
+						<ul class="points">
+							<li>Every save appends an <strong>immutable version</strong>; drafts → published</li>
+							<li>Approver must differ from author; promotion through environments</li>
+							<li>Test suites pinned to expected outputs, run on every change</li>
+							<li>Complete audit trail: who, what, when</li>
+						</ul>
+						<div class="fig-wrap"><FigLifecycle /></div>
+					</div>
+				{:else if current === 10}
+					<span class="kicker">performance</span>
+					<h2>The compiler turn</h2>
+					<div class="stack">
+						<ul class="points">
+							<li>
+								v1: recursive interpreter, ~250ms per attribute per row; too slow for portfolios
+							</li>
+							<li>
+								Wanted constant folding, caching, dead branches; that list is
+								<strong>compiler work</strong>
+							</li>
+							<li>
+								Codegen: AST → Java source → in-memory compile → classloader → <strong>2-6ms</strong
+								>
+							</li>
+							<li>Consumers pin an attribute ID, hydrate at startup, refresh on publish</li>
+						</ul>
+						<div class="fig-wrap"><FigCodegen /></div>
+					</div>
+				{:else if current === 11}
+					<span class="kicker">people</span>
+					<h2>Team and responsibilities</h2>
 					<ul class="points">
 						<li>
-							v1: recursive interpreter, ~250ms per attribute per row; too slow for portfolios
+							Me: problem discovery, architecture, POC, and <strong>accountable engineer</strong> end
+							to end
+						</li>
+						<li>Senior leadership: sponsorship and design review</li>
+						<li>
+							Then: four interns for a summer; eight first-year analysts for an 8-week build-out
 						</li>
 						<li>
-							Wanted constant folding, caching, dead branches; that list is
-							<strong>compiler work</strong>
+							My job shifted: requirements gathering, stakeholder alignment, keeping new engineers
+							productive under a strict correctness bar
 						</li>
-						<li>
-							Codegen: AST → Java source → in-memory compile → classloader → <strong>2-6ms</strong>
-						</li>
-						<li>Consumers pin an attribute ID, hydrate at startup, refresh on publish</li>
 					</ul>
-					<div class="fig-wrap"><FigCodegen /></div>
-				</div>
-			{:else if current === 9}
-				<span class="kicker">people</span>
-				<h2>Team and responsibilities</h2>
-				<ul class="points">
-					<li>
-						Me: problem discovery, architecture, POC, and <strong>accountable engineer</strong> end to
-						end
-					</li>
-					<li>Senior leadership: sponsorship and design review</li>
-					<li>
-						Then: four interns for a summer; eight first-year analysts for an 8-week build-out
-					</li>
-					<li>
-						My job shifted: requirements gathering, stakeholder alignment, keeping new engineers
-						productive under a strict correctness bar
-					</li>
-				</ul>
-			{:else if current === 10}
-				<span class="kicker">impact</span>
-				<h2>Where it landed</h2>
-				<div class="split">
+				{:else if current === 12}
+					<span class="kicker">impact</span>
+					<h2>Where it landed</h2>
+					<div class="split">
+						<ul class="points">
+							<li>Deep adoption in fixed income</li>
+							<li>
+								PMs found an unplanned use case: <strong>classification</strong>; bucketing
+								portfolios by region, segment, or both
+							</li>
+							<li>Traceable definitions addressed the support noise at its source</li>
+							<li>In production for years after I moved on</li>
+						</ul>
+						<div class="fig-wrap shrink"><FigLenses /></div>
+					</div>
+				{:else if current === 13}
+					<span class="kicker">reflection</span>
+					<h2>Tradeoffs and what I'd change</h2>
 					<ul class="points">
-						<li>Deep adoption in fixed income</li>
 						<li>
-							PMs found an unplanned use case: <strong>classification</strong>; bucketing portfolios
-							by region, segment, or both
+							<strong>Build vs buy</strong>: rejected rules engines; the API was the adoption
+							strategy, and we needed control of evaluation
 						</li>
-						<li>Traceable definitions addressed the support noise at its source</li>
-						<li>In production for years after I moved on</li>
+						<li>Interpreter first for correctness, compiler later for speed: right order</li>
+						<li>Versioning and audit before UI polish: right priority for trading</li>
+						<li>
+							What I'd change: sell to the people who set roadmaps, not only to engineers; broad
+							adoption is a prioritization problem
+						</li>
 					</ul>
-					<div class="fig-wrap shrink"><FigLenses /></div>
-				</div>
-			{:else if current === 11}
-				<span class="kicker">reflection</span>
-				<h2>Tradeoffs and what I'd change</h2>
-				<ul class="points">
-					<li>
-						<strong>Build vs buy</strong>: rejected rules engines; the API was the adoption
-						strategy, and we needed control of evaluation
-					</li>
-					<li>Interpreter first for correctness, compiler later for speed: right order</li>
-					<li>Versioning and audit before UI polish: right priority for trading</li>
-					<li>
-						What I'd change: sell to the people who set roadmaps, not only to engineers; broad
-						adoption is a prioritization problem
-					</li>
-				</ul>
-			{:else}
-				<div class="center">
-					<code class="closing-expr">avg(@moodys-grade, @sp-grade)</code>
-					<h2 class="closing">Questions?</h2>
-				</div>
-			{/if}
-		</div>
-	{/key}
+				{:else}
+					<div class="center">
+						<code class="closing-expr">avg(@moodys-grade, @sp-grade)</code>
+						<h2 class="closing">Questions?</h2>
+					</div>
+				{/if}
+			</div>
+		{/key}
+	</div>
 
 	<div class="deck-chrome">
 		<button class="chrome-btn" data-deck-exit onclick={onexit} title="Back to the article (Esc)">
@@ -263,9 +363,14 @@
 		display: flex;
 		flex-direction: column;
 	}
-	.slide {
+	.stage {
 		flex: 1;
+		position: relative;
 		min-height: 0;
+	}
+	.slide {
+		position: absolute;
+		inset: 0;
 		display: flex;
 		flex-direction: column;
 		padding: 3.5rem 4.5rem 4rem;
@@ -313,13 +418,17 @@
 	}
 	.points {
 		margin: 0;
-		padding-left: 1.4rem;
+		list-style: disc;
+		padding-left: 1.6rem;
 		font-size: clamp(1.05rem, 1.6vw, 1.35rem);
 		line-height: 1.55;
 		max-width: 46rem;
 	}
 	.points li {
 		margin-bottom: 1rem;
+	}
+	.points li::marker {
+		color: var(--cb-accent);
 	}
 	.points strong {
 		color: var(--color-text-strong);
@@ -368,6 +477,50 @@
 		margin-top: 0.75rem;
 		border: 1px solid var(--color-border-subtle);
 		border-radius: 0.5rem;
+	}
+	.code-wrap {
+		flex: 1;
+		min-height: 0;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		gap: 1.75rem;
+	}
+	.code-block {
+		margin: 0;
+		max-width: 100%;
+		overflow: auto;
+		border: 1px solid var(--color-border-subtle);
+		border-left: 3px solid var(--cb-accent);
+		border-radius: 0.5rem;
+		padding: 1.5rem 2.25rem;
+		background: var(--color-bg);
+		font-family: var(--font-mono, monospace);
+		font-size: clamp(0.85rem, 1.5vw, 1.1rem);
+		line-height: 1.75;
+		color: var(--color-text-secondary);
+	}
+	.code-block :global(.ty) {
+		color: var(--cb-type-number);
+	}
+	.code-block :global(.st) {
+		color: var(--cb-type-string);
+	}
+	.code-block :global(.kw) {
+		color: var(--cb-type-array);
+	}
+	.code-block :global(.cm) {
+		color: var(--color-text-muted);
+		font-style: italic;
+	}
+	.code-note {
+		max-width: 40rem;
+		margin: 0;
+		font-size: 0.95rem;
+		line-height: 1.6;
+		color: var(--color-text-muted);
+		text-align: center;
 	}
 	.closing-expr {
 		font-family: var(--font-mono, monospace);
