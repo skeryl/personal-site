@@ -149,7 +149,7 @@
 					</div>
 				{:else if current === 1}
 					<span class="kicker">context</span>
-					<h2>The setting</h2>
+					<h2>Background</h2>
 					<ul class="points">
 						<li>
 							Pre-trade surveillance engine at a large asset manager: <strong
@@ -373,6 +373,9 @@
 		inset: 0;
 		display: flex;
 		flex-direction: column;
+		/* Header and body center together as one block; the title rides just
+		   above its content instead of pinning to the top of tall screens. */
+		justify-content: center;
 		padding: 3.5rem 4.5rem 4rem;
 		max-width: 90rem;
 		width: 100%;
@@ -434,7 +437,6 @@
 		color: var(--color-text-strong);
 	}
 	.split {
-		flex: 1;
 		min-height: 0;
 		display: grid;
 		grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
@@ -442,11 +444,9 @@
 		align-items: center;
 	}
 	.stack {
-		flex: 1;
 		min-height: 0;
 		display: flex;
 		flex-direction: column;
-		justify-content: center;
 		gap: 2.5rem;
 	}
 	.fig-wrap {
@@ -457,10 +457,6 @@
 	   them whole instead of clipping the centered overflow. */
 	.fig-wrap.shrink {
 		zoom: 0.8;
-	}
-	.slide > .points {
-		margin-top: auto;
-		margin-bottom: auto;
 	}
 	.demo-head {
 		display: flex;
@@ -479,11 +475,9 @@
 		border-radius: 0.5rem;
 	}
 	.code-wrap {
-		flex: 1;
 		min-height: 0;
 		display: flex;
 		flex-direction: column;
-		justify-content: center;
 		align-items: center;
 		gap: 1.75rem;
 	}
