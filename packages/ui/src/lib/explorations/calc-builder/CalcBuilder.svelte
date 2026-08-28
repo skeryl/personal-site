@@ -102,7 +102,7 @@
 		--cb-type-array: #9333ea;
 		--cb-type-objects: #0d9488;
 
-		max-width: 1400px;
+		max-width: 1600px;
 		margin: 0 auto;
 		padding: 1.25rem 1.25rem 2rem;
 		color: var(--color-text);

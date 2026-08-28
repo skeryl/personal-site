@@ -146,6 +146,7 @@
 		{#key current}
 			<div
 				class="slide"
+				class:demo={current === DEMO_SLIDE}
 				data-slide={current}
 				in:fly={{ y: 42 * direction, duration: 340, easing: cubicOut }}
 				out:fly={{ y: -42 * direction, duration: 340, easing: cubicOut }}
@@ -541,6 +542,31 @@
 		margin-top: 0.75rem;
 		border: 1px solid var(--color-border-subtle);
 		border-radius: 0.5rem;
+	}
+	.slide.demo {
+		max-width: 104rem;
+		padding: 1.5rem 2rem 1.75rem;
+	}
+	/* The tool fills the pane and each column scrolls itself, so the pane
+	   itself never grows a second scrollbar. */
+	.demo-fill :global(.exploration) {
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+		padding-bottom: 1rem;
+	}
+	.demo-fill :global(.tool-grid) {
+		flex: 1;
+		min-height: 0;
+		align-items: stretch;
+	}
+	.demo-fill :global(.tool-grid > *) {
+		min-height: 0;
+		overflow-y: auto;
+	}
+	.demo-fill :global(.palette) {
+		position: static;
+		max-height: none;
 	}
 	.code-wrap {
 		min-height: 0;

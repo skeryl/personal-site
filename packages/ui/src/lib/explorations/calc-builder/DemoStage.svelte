@@ -109,4 +109,23 @@
 		overflow: auto;
 		container-type: size;
 	}
+	.demo-stage.expanded .stage-body :global(.exploration) {
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+		padding-bottom: 1rem;
+	}
+	.demo-stage.expanded .stage-body :global(.tool-grid) {
+		flex: 1;
+		min-height: 0;
+		align-items: stretch;
+	}
+	.demo-stage.expanded .stage-body :global(.tool-grid > *) {
+		min-height: 0;
+		overflow-y: auto;
+	}
+	.demo-stage.expanded .stage-body :global(.palette) {
+		position: static;
+		max-height: none;
+	}
 </style>
