@@ -77,8 +77,8 @@
 		{/each}
 	</div>
 	<figcaption>
-		The same positions, read through three lenses. Each grouping on this page is computed live by
-		the same evaluator that powers the demo above; the classifiers are just more derived attributes.
+		The same positions grouped three ways. Each grouping is computed by the evaluator that powers
+		the demo above; each classifier is itself a derived attribute.
 	</figcaption>
 </figure>
 

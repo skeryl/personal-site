@@ -32,8 +32,8 @@
 	<header class="hero">
 		<h1>Same word, different numbers</h1>
 		<p class="deck">
-			The story of my favorite project: a calculation platform born from an angry phone call,
-			rebuilt here from memory.
+			A calculation platform built at a large asset manager: the problem that motivated it, the
+			architecture, and a working reconstruction of its core.
 		</p>
 	</header>
 
@@ -41,30 +41,23 @@
 	<section class="prose" data-article-section="the-call" use:reveal>
 		<h2>The call</h2>
 		<p>
-			The bad afternoons all started the same way. I'd be at my desk and the phone would ring, and
-			on the other end was someone with a lot of a client's money to move and no patience, because
-			our system had just blocked their trade.
+			I worked on a pre-trade surveillance engine at a large asset manager. It was the final check
+			before execution: every trade was evaluated against regulatory constraints (many accounts were
+			pension or retirement funds, subject to rules like the 1940 Act), firm-wide limits, and
+			client-specific restrictions. Administrators encoded these as rules over trade and account
+			data, covering liquidity, credit quality, concentration, and anything else computable from the
+			inputs.
 		</p>
 		<p>
-			I worked on a trade surveillance engine at a large asset manager: a real-time final check that
-			trades had to pass before execution. The accounts we protected were things like pension funds
-			and retirement funds, and different kinds of accounts carry different regulatory constraints
-			(the 1940 Act, among others), on top of firm-wide rules and client-specific ones. Admins
-			encoded all of that into rules, and our engine evaluated every trade against them: liquidity,
-			credit quality, concentration, really anything you could compute from the trade and the
-			account.
+			The recurring support case looked like this: a portfolio manager or trader calls because the
+			engine has blocked a trade, usually with client money waiting on the outcome. Diagnosis meant
+			pulling data from their system and from ours, walking the rule, then walking the calculation
+			under the rule until the input that tripped the threshold surfaced.
 		</p>
 		<p>
-			So when the phone rang, the question was always the same: <em
-				>why won't this trade go through?</em
-			> And answering it was miserable. Pull the data on their side. Pull the data on our side. Walk the
-			rule. Walk the calculation under the rule. Find the exact input that tipped the value over the line,
-			while someone waits, angrily, for you to justify a number.
-		</p>
-		<p>
-			The worst part was what I usually found: nothing was broken. The trading desk's system had
-			computed that the position was liquid enough. Ours had computed that it wasn't. Both systems
-			were working exactly as designed. They just disagreed about what the word "liquidity" meant.
+			In most of these cases nothing was broken. The desk's system had computed the position as
+			liquid; ours had computed it as illiquid. Both were working as designed. They disagreed about
+			the definition of liquidity.
 		</p>
 	</section>
 
@@ -75,19 +68,17 @@
 	<section class="prose" data-article-section="divergence" use:reveal>
 		<h2>Same word, different numbers</h2>
 		<p>
-			Liquidity wasn't one formula. It was a calculation with something like forty rules, some
-			nested inside others, and several of them depended on credit ratings. Credit ratings are their
-			own mess: multiple agencies rate the same instrument on slightly different letter scales, so
-			before you can use ratings in a calculation you have to <em>equalize</em> them onto one scale. And
-			it got worse below that: the same rating could come from two different reference databases with
-			slightly different formats and values.
+			Liquidity was not a single formula. Our definition was built from roughly forty rules, some
+			nested, several dependent on credit ratings. Ratings introduce two independent sources of
+			divergence. Agencies rate the same instrument on different letter scales, so ratings must be
+			<em>equalized</em> onto a common scale before use, and each team had implemented its own equalization.
+			Below that, the ratings themselves could come from different reference databases, with slightly
+			different formats and values.
 		</p>
 		<p>
-			Every one of those layers was a place for two teams to quietly diverge. One team equalized
-			agencies one way; another team did it differently. One system read ratings from one database;
-			another read them from its sibling. Forty rules deep, the drift compounded, and two systems
-			that both said "liquidity" produced two different numbers. Someone's trade got blocked in the
-			gap between them.
+			Each layer was an opportunity for two implementations to diverge. Compounded across forty
+			rules, two systems that both reported "liquidity" produced different numbers, and trades were
+			blocked in the gap between them.
 		</p>
 	</section>
 
@@ -96,14 +87,12 @@
 
 	<section class="prose" data-article-section="divergence-2" use:reveal>
 		<p>
-			This became my white whale. Partly because the support noise was drowning us, but mostly
-			because once I saw the shape of the problem I couldn't stop seeing it. I started asking
-			around: reading other teams' code, talking to their engineers (the firm was huge, but the
-			engineering floor is a small world), then to the people who ran desks, to portfolio managers,
-			to traders. Everyone had a version of the same story. Different teams, different definitions,
-			same words. And the people consuming these numbers had a version of it too: a score would say
-			0.4 and they'd ask "what does that mean? where did it come from?", and nobody could answer
-			without an archaeology project.
+			The support load made this worth fixing, and it clearly was not specific to our team. I read
+			other teams' code and talked with their engineers, then with desk heads, portfolio managers,
+			and traders. The same pattern appeared across the division: shared terms, divergent
+			definitions. The consumers of these numbers had a related complaint: a liquidity score of 0.4
+			was not explainable. There was no way to answer "where does this number come from?" without
+			reading source code.
 		</p>
 	</section>
 
@@ -111,22 +100,18 @@
 	<section class="prose" data-article-section="calculations-as-data" use:reveal>
 		<h2>Calculations as data</h2>
 		<p>
-			The idea, when it finally arrived, was almost annoyingly simple: a calculation shouldn't be
-			code buried in some team's service. It should be <em>data</em>: a tree.
+			The approach: represent a calculation as data rather than as code inside one team's service.
+			Concretely, as an abstract syntax tree. Leaves are either fields from a shared data model or
+			constants; interior nodes are operations applied to their inputs (arithmetic, comparison,
+			conditional logic, aggregation over lists). The structure is recursive and expresses
+			essentially any calculation we needed.
 		</p>
 		<p>
-			Model any calculation as an abstract syntax tree. The leaves are either raw fields from a
-			shared data model or constants. Every other node is an operation applied to its inputs:
-			arithmetic, comparisons, conditional logic, aggregations over lists. It's a recursive
-			structure, and it can express essentially any calculation you'd want.
-		</p>
-		<p>
-			What made this exciting wasn't the tree itself; it's what the representation buys you for
-			free. If a calculation is data, you can display it. You can diff two versions of it. And
-			because every leaf names a field, you get lineage without doing any extra work: ask "what
-			depends on this field?" and the answer is a query, not an archaeology project. That was the
-			answer to the angry phone call: when a number needs justifying, the definition is right there,
-			every input traceable to its source.
+			The value is in what the representation provides. A calculation that is data can be displayed,
+			diffed between versions, and traversed. Because every leaf names a field, lineage is a
+			traversal: "what depends on this field" becomes a query. The same property addresses the
+			support problem: when a number needs justification, the definition and all of its inputs are
+			inspectable.
 		</p>
 	</section>
 
@@ -135,28 +120,24 @@
 
 	<section class="prose" data-article-section="calculations-as-data-2" use:reveal>
 		<p>
-			I called these things <em>derived attributes</em>, and I deliberately started with the least
-			glamorous surface: a clean Java API. My theory of adoption was that engineers don't adopt
-			mandates, they adopt pleasant libraries. Give every team one well-designed way to define
-			calculations over plain objects from a shared data model (agreeing on that shared model was
-			its own long negotiation, and probably the hardest non-technical work of the project), with no
-			runtime dependency on my systems, and the definitions come along for free.
+			I called these <em>derived attributes</em> and started with a Java API rather than a UI. The working
+			assumption was that engineers adopt good libraries more readily than mandates: one well-designed
+			way to define calculations over plain objects from a shared data model, with no runtime dependency
+			on any central service. Agreeing on that shared data model took sustained negotiation across teams
+			and was the hardest non-engineering part of the project.
 		</p>
 		<p>
-			People ask why I didn't use an off-the-shelf rules engine; they existed, and I knew them. But
-			nothing did exactly this, and the hard part was never evaluating a tree: it was the clean API
-			that engineers would <em>want</em> to use, and keeping full control of the evaluation so we could
-			make it fast later. A tailored core was worth more than an adapted generic one.
+			Off-the-shelf rules engines existed and were considered. Two requirements ruled them out: an
+			API we controlled end to end, since the API was the adoption strategy, and full control over
+			evaluation for later performance work. Evaluating a tree was never the difficult part.
 		</p>
 		<p>
-			I pitched the executive who ran the division: here's the problem, here's the shape of the fix,
-			give me time to prove it. He did. About a month later, working solo, I had a proof of concept,
-			and then came the meeting I still remember: an office with the division head and all of his
-			senior leads, and an hour of them trying to pull the architecture apart. The question they
-			pressed hardest was the one I'd prepared for most carefully: if business users define
-			calculations that gate trades, those definitions have to be treated like code: versioned,
-			reviewed, auditable, all the way down. We had that answer ready (more on it below). The
-			project got its green light.
+			I proposed the project to the executive running the division and was given time for a proof of
+			concept, which took about a month, solo. The review that followed was an hour with the
+			division head and his senior leads examining the architecture. The area they pressed hardest
+			was audit: if business users define calculations that gate trades, the definitions need
+			version control, review, and a complete audit trail. That requirement had already surfaced in
+			stakeholder interviews, so the design covered it. The project was approved.
 		</p>
 	</section>
 
@@ -164,16 +145,16 @@
 	<section class="prose" data-article-section="demo-intro" use:reveal>
 		<h2>The demo</h2>
 		<p>
-			Years later, the system is still the piece of work I'm proudest of, so I rebuilt its heart
-			from memory: the tree editor, the type system, the library of composable definitions, the
-			versioning. It's below, and it's real: everything computes live against sample records.
+			Below is a reconstruction of the system's core, built from memory for this write-up: the tree
+			editor, the type system, the definition library, and versioning. The calculations evaluate
+			live against sample records.
 		</p>
 		<p>
-			If you want the full effect, build the calculation this article is about: use
-			<code>lookup</code> to pull one agency's letter rating off an instrument's reference data,
-			<code>switch</code> to map letters onto numbers, then average the agencies. Or load "Consensus grade"
-			from the library and inspect it; the expression bar, the tree, and the JSON view are three faces
-			of the same structure.
+			A concrete exercise: build the calculation from the previous sections. Use
+			<code>lookup</code> to read one agency's letter rating from an instrument's reference data,
+			<code>switch</code> to map letters onto numbers, then average across agencies. Alternatively, load
+			"Consensus grade" from the library and inspect it; the expression bar, the tree, and the JSON view
+			are three representations of the same structure.
 		</p>
 	</section>
 
@@ -183,11 +164,11 @@
 
 	<!-- ═══════════════ SECTION 5 · TRUST · text (edit here) ═══════════════ -->
 	<section class="prose" data-article-section="trust" use:reveal>
-		<h2>Trust, or: definitions are code</h2>
+		<h2>Definitions are code</h2>
 		<p>
-			The senior leads were right to press on audit, because these numbers gated trades; the
-			correctness bar was as high as it gets. So from the first version, definitions got the full
-			software treatment, and we designed it in before writing the UI:
+			The audit questions from the review were the right ones: these numbers gated trades, so the
+			correctness requirements matched those of production code. From the first version, definitions
+			received the same lifecycle controls as code, designed in before any UI existed:
 		</p>
 		<ul>
 			<li>Every save created a new <strong>version</strong>; nothing was ever edited in place.</li>
@@ -209,14 +190,14 @@
 			</li>
 		</ul>
 		<p>
-			The demo above carries the core of this: append-only versions, drafts, publishing, and a
-			history view. The environment promotion and four-eyes review lived in the real system; I've
-			narrated them here rather than rebuilding the whole approval workflow.
+			The demo above implements the core of this: append-only versions, drafts, publishing, and a
+			history view. Environment promotion and the separate-approver rule existed in the original
+			system and are described here rather than rebuilt.
 		</p>
 		<p>
-			The payoff was bigger than compliance. Once definitions were versioned data with lineage,
-			changing a field's meaning stopped being scary: you could enumerate every calculation that
-			referenced it before you touched anything.
+			The benefit extended beyond compliance. With definitions as versioned data with lineage,
+			changing a field's meaning became a bounded operation: every calculation referencing the field
+			could be enumerated before making the change.
 		</p>
 	</section>
 
@@ -227,29 +208,25 @@
 	<section class="prose" data-article-section="compiler" use:reveal>
 		<h2>The compiler turn</h2>
 		<p>
-			The first evaluator was exactly what you'd expect: a recursive walk in Java. Look at a node;
-			if it's a leaf, fetch the value; otherwise evaluate the children and apply the operator.
-			Simple, correct, easy to reason about.
+			The first evaluator was a recursive interpreter in Java: for each node, either fetch a leaf
+			value or evaluate the children and apply the operator. It was simple and correct, and it was
+			slow: roughly 250 milliseconds to evaluate one derived attribute against one input item.
+			Pre-trade checks evaluate portfolios of thousands of rows, so this did not scale.
 		</p>
 		<p>
-			And slow. Something like 250 milliseconds to evaluate one derived attribute against one input
-			item, which is fine right up until you're evaluating portfolios of thousands of rows inside a
-			pre-trade check. I kept a list of optimizations I wanted: constant folding, caching, skipping
-			dead branches. Then it clicked that I was maintaining a to-do list of things compilers already
-			do. I had a tree. Compilers eat trees.
+			The optimizations on my list (constant folding, caching, dead-branch elimination) are standard
+			compiler work, which pointed at a simpler approach: stop interpreting and compile. The
+			evaluator was replaced with code generation. Java source is generated from the AST, compiled
+			in memory inside the running process, loaded through an in-memory classloader, and invoked
+			like any other class. Evaluation time dropped from roughly 250ms to between 2 and 6
+			milliseconds, with the JVM's JIT providing the optimization work.
 		</p>
 		<p>
-			So instead of interpreting the AST, I generated Java source from it, compiled it in memory
-			inside the running process, loaded it through an in-memory classloader, and invoked it like
-			any other class. Evaluation went from ~250ms to somewhere between 2 and 6 milliseconds: two
-			orders of magnitude, essentially for free, courtesy of the JIT and every compiler optimization
-			I no longer had to write myself.
-		</p>
-		<p>
-			Distribution fell out of the same design. A consuming service pinned the ID of a derived
-			attribute, hydrated the compiled class at startup, and refreshed when a new revision was
-			published (definitions changed rarely, so startup or polling was plenty; no pub/sub required).
-			Teams kept their independence; the definitions stayed centralized, versioned, and shared.
+			Distribution followed the same design. A consuming service pins the ID of a derived attribute,
+			hydrates the compiled class at startup, and refreshes when a new revision is published.
+			Definitions changed infrequently, so polling or refresh-on-restart was sufficient; no pub/sub
+			was required. Teams kept operational independence while definitions remained centralized,
+			versioned, and shared.
 		</p>
 	</section>
 
@@ -260,19 +237,18 @@
 	<section class="prose" data-article-section="landing" use:reveal>
 		<h2>Where it landed</h2>
 		<p>
-			After the green light the project stopped being just me: a summer with four interns, then an
-			eight-week push with eight analysts fresh out of college, with me still the one name
-			accountable for the whole thing. That stretch taught me as much as the architecture did:
-			gathering requirements across teams, turning skeptics into stakeholders, keeping a crew of
-			brand-new engineers productive on something with a very high correctness bar.
+			After approval the team grew: four interns over a summer, then eight new analysts for an
+			eight-week build-out, with me as the accountable engineer throughout. Much of what that phase
+			required was not architectural: requirements gathering across teams, working through
+			skepticism with stakeholders, and keeping first-year engineers productive on a system with
+			strict correctness requirements.
 		</p>
 		<p>
-			The adoption story is the honest part. I wanted this to unify calculations across the whole
-			division. It didn't get there. Where it landed instead was fixed income, where portfolio
-			managers found a use I hadn't predicted: they used derived attributes to
-			<em>classify</em> positions, bucketing portfolios by region, market segment, or whatever combination
-			they found meaningful, and then read their portfolios through those lenses. The tool I built to
-			stop trades from being wrongly blocked became, in their hands, a way to see.
+			Adoption was narrower than the goal. The aim was division-wide unification of calculations;
+			the result was deep adoption within fixed income. Portfolio managers there applied derived
+			attributes to a use case I had not designed for: classification. They defined attributes that
+			bucketed positions by region, market segment, or combinations of both, and analyzed portfolios
+			through those groupings.
 		</p>
 	</section>
 
@@ -281,18 +257,16 @@
 
 	<section class="prose" data-article-section="landing-2" use:reveal>
 		<p>
-			If I could redo one thing, it's this: I sold the idea to engineers, and engineers loved it. I
-			didn't spend nearly enough time selling it to the people who set those engineers' roadmaps.
-			Broad adoption is not an engineering problem; it's a prioritization problem, and mid-level me
-			was too deep in the joy of the engineering to work the other half. The system was still in
-			use, in its niche, years after I left. I've made peace with the difference between successful
-			and finished.
+			The main thing I would do differently is organizational. I made the case to engineers, and it
+			worked with engineers; I under-invested in the people who set those engineers' roadmaps. Broad
+			adoption is a prioritization problem before it is an engineering problem. The system remained
+			in production use within fixed income for years after I left the team.
 		</p>
 		<p>
-			One more thing. Everything you scrolled past above, the editor, the type gating, the library,
-			the versions, I rebuilt recently from nothing but memory, and it came back almost without
-			effort. I think that's the real evidence for the idea at the center of this story: pick the
-			right representation and everything else follows. I never stopped thinking in trees.
+			The demo embedded above was reconstructed from memory, years later, without reference
+			material. The reconstruction was straightforward because the design is small: a recursive data
+			structure, a type system over it, and everything else (the editor, lineage, versioning, the
+			expression language) derived from that representation.
 		</p>
 	</section>
 </article>

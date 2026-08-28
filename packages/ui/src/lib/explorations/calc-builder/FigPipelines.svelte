@@ -39,8 +39,8 @@
 		{/each}
 	</div>
 	<figcaption>
-		The same instrument through two pipelines. The tinted stages are where definitions quietly
-		diverge; forty rules later, the drift has compounded into opposite answers, and both systems are
+		The same instrument evaluated by two systems. The tinted stages are where the implementations
+		diverge; across forty rules the differences compound into opposite outcomes, with both systems
 		working as designed.
 	</figcaption>
 </figure>

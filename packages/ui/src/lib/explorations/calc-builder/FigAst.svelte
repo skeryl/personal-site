@@ -66,9 +66,9 @@
 		</div>
 	</div>
 	<figcaption>
-		One derived attribute: agency ratings equalized onto a shared scale, then averaged. Hover (or
-		tap) the reference-data field: everything that depends on it lights up. Lineage is a query, not
-		an archaeology project.
+		One derived attribute: agency ratings equalized onto a shared scale, then averaged. Hover or tap
+		the reference-data field: every node that depends on it highlights. Dependency lookup is a tree
+		traversal.
 	</figcaption>
 </figure>
 
