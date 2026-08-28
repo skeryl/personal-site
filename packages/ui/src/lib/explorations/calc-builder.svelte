@@ -1,5 +1,5 @@
 <script lang="ts">
-	import CalcBuilder from './calc-builder/CalcBuilder.svelte';
+	import Article from './calc-builder/Article.svelte';
 </script>
 
-<CalcBuilder />
+<Article />

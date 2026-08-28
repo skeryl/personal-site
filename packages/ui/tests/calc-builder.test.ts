@@ -586,6 +586,23 @@ test('New starts a fresh calc; Clear keeps the identity', async ({ page }) => {
 	await expect(page.locator('[data-version-row]')).toHaveCount(0);
 });
 
+test('the article embeds the demo in an expandable stage', async ({ page }) => {
+	await expect(page.locator('.article .hero h1')).toContainText('Same word, different numbers');
+	await expect(page.locator('[data-article-section="compiler"]')).toContainText('250');
+
+	const stage = page.locator('[data-demo-stage]');
+	await expect(stage).not.toHaveClass(/expanded/);
+	await page.locator('[data-expand-demo]').click();
+	await expect(stage).toHaveClass(/expanded/);
+	await page.keyboard.press('Escape');
+	await expect(stage).not.toHaveClass(/expanded/);
+
+	// The lenses figure computes its groupings with the real evaluator.
+	await expect(page.locator('[data-figure-lenses] .chip')).toHaveCount(9);
+	await expect(page.locator('[data-figure-pipelines]')).toBeVisible();
+	await expect(page.locator('[data-figure-ast]')).toBeVisible();
+});
+
 test('clear resets to an empty, selected root slot', async ({ page }) => {
 	await op(page, 'mul').click();
 	await field(page, 'price').click();

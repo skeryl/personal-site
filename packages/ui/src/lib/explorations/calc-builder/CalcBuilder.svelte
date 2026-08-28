@@ -26,15 +26,6 @@
 />
 
 <div class="exploration">
-	<header class="hero">
-		<h1>Calc Builder</h1>
-		<p class="subtitle">
-			Rebuilding an old work project: define a calculation as an expression tree over a data model,
-			then watch it evaluate live against sample records. Pick a slot, fill it from the palette,
-			repeat.
-		</p>
-	</header>
-
 	<DslBar {store} />
 
 	<section class="tool-grid">
@@ -102,25 +93,9 @@
 
 		max-width: 1400px;
 		margin: 0 auto;
-		padding: 3rem 1.25rem 6rem;
+		padding: 1.25rem 1.25rem 2rem;
 		color: var(--color-text);
 		line-height: 1.6;
-	}
-	.hero {
-		text-align: center;
-		margin-bottom: 2.5rem;
-	}
-	.hero h1 {
-		font-size: clamp(2rem, 5vw, 3rem);
-		letter-spacing: -0.02em;
-		margin: 0 0 1rem;
-		color: var(--color-text-strong);
-	}
-	.subtitle {
-		font-size: 1.05rem;
-		color: var(--color-text-secondary);
-		max-width: 62ch;
-		margin: 0 auto;
 	}
 
 	.tool-grid {

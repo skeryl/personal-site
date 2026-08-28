@@ -7,7 +7,7 @@ const post: Post = {
 		tags: ['finance', 'ast', 'no-code', 'sandbox'],
 		title: 'Calc Builder',
 		subtitle:
-			'Rebuilding a no-code calculation designer: expression trees over a data model, evaluated live',
+			'The story of a calculation platform born from an angry phone call, rebuilt from memory with a live demo',
 		timestamp: new Date(2026, 7, 27),
 		type: PostType.exploration,
 		isHidden: false
