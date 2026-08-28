@@ -111,8 +111,8 @@
 				class="tooltip"
 				title="e.g. Moody's or S&P">ratings agencies</span
 			>
-			rate the same instrument on different letter scales, so before you can use ratings in a calculation
-			you have to
+			rate the same instrument on different letter scales, so before you can use ratings in a
+			calculation you have to
 			<em>equalize</em> them onto one common scale, and each team had (naturally) implemented its own
 			equalization. Beneath that sits a quieter problem still: the ratings themselves could be sourced
 			from different reference databases, with slightly different formats and values.

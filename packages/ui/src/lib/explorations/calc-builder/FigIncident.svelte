@@ -6,7 +6,7 @@
 		{ label: 'avg daily volume', desk: '8,400,000', ours: '8,400,000', match: true },
 		{ label: 'rating source', desk: 'refdata-1', ours: 'refdata-2', match: false },
 		{ label: 'equalized rating', desk: 'AA', ours: 'A', match: false },
-		{ label: 'liquidity score', desk: '0.62', ours: '0.48', match: false },
+		{ label: 'liquidity score', desk: '0.62', ours: '0.58', match: false },
 		{ label: 'verdict', desk: 'proceed', ours: 'BLOCKED', match: false }
 	];
 </script>

@@ -13,7 +13,7 @@
 			name: 'Trade surveillance',
 			db: 'ratings from reference DB-2',
 			eq: 'equalization, our way',
-			value: '0.48',
+			value: '0.58',
 			verdict: 'illiquid · blocked',
 			ok: false
 		}
