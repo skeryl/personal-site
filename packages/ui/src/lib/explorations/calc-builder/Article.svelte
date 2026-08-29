@@ -9,6 +9,23 @@
 
 	let { onpresent = undefined }: { onpresent?: () => void } = $props();
 
+	/* Number the footnotes: a superscript marker lands at each anchor and the
+	   matching number is stamped onto the margin note, with no markup burden
+	   when writing new notes. */
+	function numberFootnotes(node: HTMLElement) {
+		const refs: HTMLElement[] = [];
+		node.querySelectorAll('.footnote').forEach((note, index) => {
+			const n = String(index + 1);
+			const ref = document.createElement('sup');
+			ref.className = 'fn-ref';
+			ref.textContent = n;
+			note.before(ref);
+			note.setAttribute('data-fn', n);
+			refs.push(ref);
+		});
+		return { destroy: () => refs.forEach((ref) => ref.remove()) };
+	}
+
 	/* Gentle reveal for sections; decorative only, content visible without JS. */
 	function reveal(node: HTMLElement) {
 		node.style.opacity = '0';
@@ -29,7 +46,7 @@
 	}
 </script>
 
-<article class="article">
+<article class="article" use:numberFootnotes>
 	<!-- ═══════════════ HERO · text (edit here) ═══════════════ -->
 	<header class="hero">
 		<h1>computed attributes</h1>
@@ -458,8 +475,15 @@
 		color: var(--color-text-muted);
 	}
 	.prose .footnote::before {
-		content: '※ ';
+		content: attr(data-fn) '. ';
 		font-style: normal;
+		font-weight: 600;
+		color: var(--cb-accent);
+	}
+	.prose :global(.fn-ref) {
+		font-size: 0.7em;
+		line-height: 0;
+		font-weight: 600;
 		color: var(--cb-accent);
 	}
 	@media (max-width: 1280px) {

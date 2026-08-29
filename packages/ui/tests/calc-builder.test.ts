@@ -607,6 +607,10 @@ test('the article embeds the demo in an expandable stage', async ({ page }) => {
 	await page.keyboard.press('Escape');
 	await expect(stage).not.toHaveClass(/expanded/);
 
+	// Footnotes are auto-numbered, tying each anchor to its margin note.
+	await expect(page.locator('.fn-ref')).toHaveCount(2);
+	await expect(page.locator('[data-fn="2"]')).toContainText('foreshadowing');
+
 	// The lenses figure computes its groupings with the real evaluator.
 	await expect(page.locator('[data-figure-lenses] .chip')).toHaveCount(9);
 	await expect(page.locator('[data-figure-pipelines]')).toBeVisible();
