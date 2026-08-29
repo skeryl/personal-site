@@ -443,6 +443,35 @@
 		margin: 2rem 0 0.75rem;
 		color: var(--color-text-strong);
 	}
+	/* Sidenotes: floated into the right margin when there is room for one,
+	   otherwise a small bordered aside inside the column. */
+	.prose .footnote {
+		float: right;
+		clear: right;
+		width: 15rem;
+		margin-right: -18rem;
+		margin-top: 0.35rem;
+		margin-bottom: 0.5rem;
+		font-size: 0.78rem;
+		line-height: 1.55;
+		font-style: italic;
+		color: var(--color-text-muted);
+	}
+	.prose .footnote::before {
+		content: '※ ';
+		font-style: normal;
+		color: var(--cb-accent);
+	}
+	@media (max-width: 1280px) {
+		.prose .footnote {
+			float: none;
+			display: block;
+			width: auto;
+			margin: 0.75rem 0;
+			padding-left: 0.75rem;
+			border-left: 2px solid var(--color-border-subtle);
+		}
+	}
 	.prose .strike {
 		text-decoration: line-through;
 		color: var(--color-text-muted);
