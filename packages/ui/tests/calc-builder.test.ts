@@ -597,7 +597,7 @@ test('New starts a fresh calc; Clear keeps the identity', async ({ page }) => {
 });
 
 test('the article embeds the demo in an expandable stage', async ({ page }) => {
-	await expect(page.locator('.article .hero h1')).toContainText('Derived Attributes');
+	await expect(page.locator('.article .hero h1')).toContainText('computed attributes');
 	await expect(page.locator('[data-article-section="compiler"]')).toContainText('200');
 
 	const stage = page.locator('[data-demo-stage]');

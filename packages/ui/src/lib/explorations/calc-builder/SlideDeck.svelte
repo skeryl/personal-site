@@ -153,7 +153,7 @@
 			>
 				{#if current === 0}
 					<div class="center">
-						<h1 class="deck-title">Derived Attributes</h1>
+						<h1 class="deck-title">Computed Attributes</h1>
 						<p class="deck-sub">
 							How treating calculations as graphs unified definitions at a large asset manager
 						</p>
@@ -200,7 +200,7 @@
 					<div class="split">
 						<ul class="points">
 							<li>"Liquidity" = many dependent calculations over many data points</li>
-							<li>Agencies rate on different scales; every team equalizes them differently</li>
+							<li>Agencies rate on different scales; every team normalizes them differently</li>
 							<li>Same rating, different reference databases</li>
 							<li>Small divergences compound into <strong>opposite verdicts</strong></li>
 							<li>Same pattern across the division: shared terms, divergent definitions</li>
@@ -234,7 +234,7 @@
 						</div>
 						<div class="need">
 							<span class="ask"
-								>"We each equalize ratings our own way"<em>engineering teams</em></span
+								>"We each normalize ratings our own way"<em>engineering teams</em></span
 							>
 							<span class="need-arrow">→</span>
 							<span class="answer">

@@ -32,7 +32,7 @@
 <article class="article">
 	<!-- ═══════════════ HERO · text (edit here) ═══════════════ -->
 	<header class="hero">
-		<h1>Derived Attributes</h1>
+		<h1>computed attributes</h1>
 		<p class="deck">
 			How treating calculations as graphs unified definitions at a large asset manager: the problem,
 			the architecture, and a working reconstruction of the core.
@@ -44,21 +44,29 @@
 
 	<!-- ═══════════════ SECTION 1 · THE CALL · text (edit here) ═══════════════ -->
 	<section class="prose" data-article-section="the-call" use:reveal>
-		<h2>The call</h2>
+		<h2>Randomness</h2>
 		<p>
-			Once upon a time I had just started working at a large asset management firm on a pre-trade
-			surveillance engine.
+			One of the best things about being a software engineer is that you get to embed yourself
+			deeply into other industries; you need to have empathy for the users of your software. You
+			have to put yourself into the mindset of the people making the industry work. Sometimes the
+			specific industry is a choice, or a calling, but often it's as random as a recruiter reaching
+			out to you on LinkedIn asking if you've ever thought about moving to New York City. This
+			randomness is what inspired the move I made in 2015 and launched me into the next phase of my
+			career. I didn't know it at the time, but I would spend the next 11 years (so far) in the
+			finance industry.
 		</p>
 		<p>
-			When I started I didn't fully understand the specific, unique level of urgency and stress that
-			accompanies being a required step prior to trade execution. At this point in my career I had
-			worked in a variety of industries: telecommunications, food technology, healthcare; each with
-			their own unique challenges and stakes. This was my first role in the finance industry and my
-			first glimpse into what it's like to support a trading system: to tend to it with utmost care
-			and hold it to the highest standards of correctness and operational reliability,
-			<strong>or else deal with the dreaded support call</strong>.
+			At this point in my career I had worked in a variety of industries: telecommunications, food
+			technology, healthcare; each with their own unique challenges, joys, and stakes. My first role
+			in the finance industry turned out to be working on an investment guidelines surveillance
+			engine. To translate for my non-finance friends: we were the final guardrail protecting our
+			customers and the firm from a "bad trade" (a trade that may violate one of the myriad rules
+			governing portfolio balances, restricted securities, or any other criteria our operations
+			users entered into the system). It was an eye-opening shift in the standards of correctness
+			and operational reliability required to keep things going well. Because when things stop going
+			well, that's when you get <strong>the much-dreaded support call</strong>.
 		</p>
-		<h3>The dreaded support call</h3>
+		<h3>The much-dreaded support call</h3>
 		<p>
 			Anyone who works in the software business knows them well, and dreads them. You're supporting
 			a system that needs to be used by people to do their jobs. When the rubber of software meets
@@ -97,30 +105,30 @@
 		<p>
 			One day it dawned on me... what I really needed to do was to convince everyone to simply use
 			the same data model and define the same calculations! For everything! It was clearly a problem
-			above my pay-grade, but I knew what needed to be done.
+			above my pay-grade, but I knew what needed to be done. Simple, right?!
 		</p>
 	</section>
 
 	<!-- ═══════════════ SECTION 2 · SAME WORD, DIFFERENT NUMBERS · text (edit here) ═══════════════ -->
 	<section class="prose" data-article-section="divergence" use:reveal>
-		<h2>Same word, different numbers</h2>
+		<h2>Disagreeing about reality</h2>
 		<p>
 			Before I could convince anyone of anything, I needed to understand the disagreement myself.
 			Why would two systems, built by two competent teams, disagree about something as fundamental
 			as liquidity?
 		</p>
 		<p>
-			Because liquidity wasn't a single formula. Our definition was built from many dependent
-			calculations over many data points. Some of these were dependent on credit ratings. And credit
-			ratings introduce two subtle sources of divergence on their own. Different <span
+			The problem was that liquidity wasn't a single formula. Our definition was actually built from
+			several dependent calculations over many data points. Some of these were dependent on credit
+			ratings. And credit ratings introduce two subtle sources of divergence on their own. Different <span
 				class="tooltip"
 				title="e.g. Moody's or S&P">ratings agencies</span
 			>
 			rate the same instrument on different letter scales, so before you can use ratings in a calculation
 			you have to
-			<em>equalize</em> them onto one common scale, and each team had (naturally) implemented its own
-			equalization. Beneath that sits a quieter problem still: the ratings themselves could be sourced
-			from different reference databases, with slightly different formats and values.
+			<em>normalize</em> them onto one common scale, and each team had (naturally) implemented its own
+			normalization calculation. Not to mention that the ratings data itself could be sourced from different
+			reference databases, with slightly different formats and values.
 		</p>
 
 		<!-- FIGURE S2: two pipelines, one word -->
@@ -146,10 +154,9 @@
 	<section class="prose" data-article-section="calculations-as-data" use:reveal>
 		<h2>Calculations as graphs</h2>
 		<p>
-			The more I thought about it, and began diagramming calculation definitions, the more I
-			realized that all of these calculations could be described in a tree structure! After all,
-			isn't that how I modeled them in documentation? So I decided to start modeling the
-			calculations as graphs.
+			As I began reflecting on the problem and diagramming calculation definitions, I realized that
+			all of these calculations could be described in a tree structure! After all, isn't that how I
+			modeled them in documentation? So, I decided to start modeling the calculations as graphs.
 		</p>
 		<p>
 			More specifically, I designed a model that allowed me to define each calculation as an
@@ -159,39 +166,51 @@
 			express essentially any calculation we needed.
 		</p>
 		<p>
-			The tree itself isn't the interesting part. The interesting part is that we were now capable
-			of defining a calculation which could not only be evaluated to provide a value, but it could
-			also explain to an end-user, step by step, how that value was arrived at. A calculation that
-			is a graph can be displayed as easily as calculated. It could give business users the same
-			tools as engineers without needing to read the code. And because every leaf names a field,
-			answering "what depends on this field?" stops being an archaeology project and becomes a
-			query: a simple tree traversal.
+			The built-in "side-effect" of modeling calculations this way is that it could not only be
+			evaluated to provide a value, but it could also explain to an end user, step by step, how that
+			value was arrived at. A calculation that is a graph can be displayed as easily as calculated.
+			It could give business users the same tools as engineers without needing to read the code. And
+			because every leaf names a field, answering "what depends on this field?" stops being an
+			archaeology project and becomes a query: a simple tree traversal. Then I realized that you
+			could even take this a step further and have the business users, the experts on these
+			calculation definitions, define the calcs themselves in a UI! But first, I needed to prove the
+			basics.
 		</p>
 
-		<!-- FIGURE S3: a derived attribute is a tree, hover lineage -->
+		<!-- FIGURE S3: a computed attribute is a tree, hover lineage -->
 		<div class="fig-embed wide" use:reveal><FigAst /></div>
 
 		<p>
-			I called these <em>derived attributes</em>, and I deliberately started with a Java API rather
-			than a UI. My working theory of adoption: engineers don't adopt mandates, they adopt good
-			libraries. Give every team one well-designed way to define calculations over plain objects
-			from a shared data model, with no runtime dependency on any central service, and the
-			definitions come along for free. (Agreeing on that shared data model took sustained
-			negotiation across teams; easily the hardest non-engineering work of the whole project.)
+			Let's call these <em>computed attributes</em>. I deliberately started with a Java API. Our
+			theory of adoption: engineers don't adopt mandates; they adopt good libraries. Give every team
+			one well-designed way to define calculations over plain objects from a shared data model, with
+			no runtime dependency on any central service, and the definitions come along for free.<span
+				class="footnote"
+				>Agreeing on that shared data model took sustained negotiation across teams and wasn't fully
+				realized in my time there; easily the hardest non-engineering work of the whole project.</span
+			>
 		</p>
 		<p>
 			What about off-the-shelf rules engines? They existed, and we evaluated them. Two requirements
-			ruled them out. The API <em>was</em> the adoption strategy, so we needed to control it end to end;
-			and we wanted full control over evaluation, because I already suspected performance would matter
-			later. (It did. More on that soon.)
+			ruled them out. The API <em>was</em> the adoption strategy, so we needed to control it end to
+			end; and we wanted full control over evaluation, because I already suspected performance would
+			matter later.<span class="footnote">foreshadowing</span> Not to mention, Drools was the biggest
+			library in this space (and still kind of is). Once I had the nice API, I didn't want to spend time
+			code-generating Drools DSL.
 		</p>
 		<h3>The pitch</h3>
 		<p>
-			I brought the problem and the proposed shape of the solution to the executive running our
-			division and asked for time to prove it out. I got it: roughly a month, solo, to build a proof
-			of concept. What followed was one of the more memorable meetings of my career: an office with
-			the division head and all of his senior leads, and an hour of them probing the architecture
-			for weak points. The area they pressed hardest was audit: if business users can define
+			With the help of my mentors, I brought the problem and the proposed shape of the solution to
+			the executive running our division and asked for time to prove it out. To my surprise, he said
+			yes! They gave me roughly a month, solo, to build a proof of concept. That's when I got to
+			work on discovery, API design, discussions, and testing.
+		</p>
+		<p>
+			Presenting this POC to the executive and his senior leadership team became one of the more
+			memorable meetings of my career: we all gathered around a conference room table where the
+			senior-most technology group in our company spent an hour grilling me about the problem and
+			the proposed solution, looking for architectural issues or any risk at all that this project
+			might pose. One area they pressed me on particularly was audit: if business users can define
 			calculations that gate trades, those definitions need version control, review, and a complete
 			audit trail. That exact requirement had already surfaced in my stakeholder interviews, so the
 			design had an answer ready. <strong>The project was approved.</strong>
@@ -272,7 +291,7 @@
 		<p>
 			The first evaluator was a straightforward recursive interpreter in Java: for each node, either
 			fetch a leaf value or evaluate the children and apply the operator. Simple, correct, easy to
-			reason about. Also slow: roughly 200 milliseconds to evaluate one derived attribute against
+			reason about. Also slow: roughly 200 milliseconds to evaluate one computed attribute against
 			one input item, and pre-trade checks evaluate portfolios of thousands of rows. The math does
 			not work out.
 		</p>
@@ -291,7 +310,7 @@
 		<div class="fig-embed wide" use:reveal><FigCodegen /></div>
 
 		<p>
-			Distribution fell out of the same design. A consuming service pins the ID of a derived
+			Distribution fell out of the same design. A consuming service pins the ID of a computed
 			attribute, hydrates the compiled class at startup, and refreshes whenever a new revision is
 			published. Definitions changed infrequently, so polling (or simply restarting) was plenty; no
 			pub/sub required. Teams kept their operational independence; definitions stayed centralized,

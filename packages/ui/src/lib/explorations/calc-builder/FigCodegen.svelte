@@ -38,7 +38,7 @@
 	</div>
 	<figcaption>
 		From definition to machine code. The bars are approximate timings from the original Java system:
-		one derived attribute, one input item, drawn to scale.
+		one computed attribute, one input item, drawn to scale.
 	</figcaption>
 </figure>
 

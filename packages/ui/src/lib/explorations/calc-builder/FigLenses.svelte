@@ -78,7 +78,7 @@
 	</div>
 	<figcaption>
 		The same positions grouped three ways. Each grouping is computed by the evaluator that powers
-		the demo above; each classifier is itself a derived attribute.
+		the demo above; each classifier is itself a computed attribute.
 	</figcaption>
 </figure>
 

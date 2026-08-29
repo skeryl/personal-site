@@ -163,11 +163,11 @@
 			query: a simple tree traversal.
 		</p>
 
-		<!-- FIGURE S3: a derived attribute is a tree, hover lineage -->
+		<!-- FIGURE S3: a computed attribute is a tree, hover lineage -->
 		<div class="fig-embed wide" use:reveal><FigAst /></div>
 
 		<p>
-			I called these <em>derived attributes</em>, and I deliberately started with a Java API rather
+			I called these <em>computed attributes</em>, and I deliberately started with a Java API rather
 			than a UI. My working theory of adoption: engineers don't adopt mandates, they adopt good
 			libraries. Give every team one well-designed way to define calculations over plain objects
 			from a shared data model, with no runtime dependency on any central service, and the
@@ -267,7 +267,7 @@
 		<p>
 			The first evaluator was a straightforward recursive interpreter in Java: for each node, either
 			fetch a leaf value or evaluate the children and apply the operator. Simple, correct, easy to
-			reason about. Also slow: roughly 200 milliseconds to evaluate one derived attribute against
+			reason about. Also slow: roughly 200 milliseconds to evaluate one computed attribute against
 			one input item, and pre-trade checks evaluate portfolios of thousands of rows. The math does
 			not work out.
 		</p>

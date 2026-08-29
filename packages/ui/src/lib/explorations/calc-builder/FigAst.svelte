@@ -1,5 +1,5 @@
 <script lang="ts">
-	/* Figure: the rating-equalization calc as a tree, with hover lineage. */
+	/* Figure: the rating-normalization calc as a tree, with hover lineage. */
 	let lineage = $state(false);
 
 	const AGENCIES = [
@@ -66,9 +66,9 @@
 		</div>
 	</div>
 	<figcaption>
-		One derived attribute: agency ratings equalized onto a shared scale, then averaged. Hover or tap
-		the reference-data field: every node that depends on it highlights. Dependency lookup is a tree
-		traversal.
+		One computed attribute: agency ratings normalized onto a shared scale, then averaged. Hover or
+		tap the reference-data field: every node that depends on it highlights. Dependency lookup is a
+		tree traversal.
 	</figcaption>
 </figure>
 

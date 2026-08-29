@@ -4,7 +4,7 @@
 		{
 			name: 'The trading desk',
 			db: 'ratings from reference DB-1',
-			eq: 'equalization, their way',
+			eq: 'normalization, their way',
 			value: '0.62',
 			verdict: 'liquid · proceed',
 			ok: true
@@ -12,7 +12,7 @@
 		{
 			name: 'Trade surveillance',
 			db: 'ratings from reference DB-2',
-			eq: 'equalization, our way',
+			eq: 'normalization, our way',
 			value: '0.58',
 			verdict: 'illiquid · blocked',
 			ok: false
