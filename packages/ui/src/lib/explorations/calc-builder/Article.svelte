@@ -124,7 +124,7 @@
 			>. The desk's system had computed the position as liquid and ours decided it was illiquid (or
 			similar). Both were "working as designed" and as far as these systems knew, they were just
 			reporting their own truth. They simply disagreed about the very definition of
-			<span class="strike">reality</span> liquidity itself. This is one of those moments where
+			<span class="strike">reality</span> liquidity itself. Confusing? Yes.
 		</p>
 	</section>
 
@@ -132,17 +132,22 @@
 	<section class="prose" data-article-section="divergence" use:reveal>
 		<h2>Disagreeing about reality</h2>
 		<p>
-			Before I could convince anyone of anything, I needed to understand the disagreement myself.
-			Why would two systems, built by two competent teams, disagree about something as fundamental
-			as liquidity?
+			This is one of those moments where a problem shifts from one class of problem to something
+			else entirely. Why would two systems, built by two competent teams, disagree about something
+			as fundamental as liquidity<span class="footnote"
+				>Liquidity is the concept of how easy it is to buy or sell something for cash. Cash is the
+				most liquid because... it's cash! Most publicly traded stock is fairly liquid and you
+				wouldn't struggle to find a buyer/seller under normal circumstances (for the right price).
+				Other assets behave differently and since there are regulations that require certain ratios
+				of a portfolio being "liquid" these definitions matter.</span
+			>?
 		</p>
 		<p>
 			The problem was that liquidity wasn't a single formula. Our definition was actually built from
 			several dependent calculations over many data points. Some of these were dependent on credit
-			ratings. And credit ratings introduce two subtle sources of divergence on their own. Different <span
-				class="tooltip"
-				title="e.g. Moody's or S&P">ratings agencies</span
-			>
+			ratings. And credit ratings introduce two subtle sources of divergence on their own. Different
+			<!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard users can reach the gloss) -->
+			<span class="tooltip" tabindex="0" data-tip="e.g. Moody's or S&P">ratings agencies</span>
 			rate the same instrument on different letter scales, so before we could use ratings in a calculation
 			we had to
 			<em>normalize</em> them onto one common scale, and each team had (naturally) implemented its own
@@ -510,9 +515,53 @@
 		color: var(--color-text-muted);
 	}
 	.prose .tooltip {
+		position: relative;
 		text-decoration: underline dotted;
 		text-underline-offset: 0.15em;
 		cursor: help;
+		outline: none;
+	}
+	.prose .tooltip::after {
+		content: attr(data-tip);
+		position: absolute;
+		left: 50%;
+		bottom: calc(100% + 0.5em);
+		transform: translateX(-50%) translateY(3px);
+		white-space: nowrap;
+		background: var(--color-text-strong);
+		color: var(--color-bg);
+		font-size: 0.78rem;
+		line-height: 1.3;
+		padding: 0.3rem 0.6rem;
+		border-radius: 0.375rem;
+		opacity: 0;
+		pointer-events: none;
+		transition:
+			opacity 0.12s ease,
+			transform 0.12s ease;
+		z-index: 5;
+	}
+	.prose .tooltip::before {
+		content: '';
+		position: absolute;
+		left: 50%;
+		bottom: calc(100% + 0.5em - 4px);
+		transform: translateX(-50%) translateY(3px);
+		border: 4px solid transparent;
+		border-top-color: var(--color-text-strong);
+		opacity: 0;
+		pointer-events: none;
+		transition:
+			opacity 0.12s ease,
+			transform 0.12s ease;
+		z-index: 5;
+	}
+	.prose .tooltip:hover::after,
+	.prose .tooltip:focus-visible::after,
+	.prose .tooltip:hover::before,
+	.prose .tooltip:focus-visible::before {
+		opacity: 1;
+		transform: translateX(-50%) translateY(0);
 	}
 	/* Figures woven into prose break out of the text measure. Centering is
 	 * margin-based because the reveal action animates inline transforms. */
