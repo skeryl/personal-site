@@ -4,6 +4,10 @@
 
 	let expanded = $state(false);
 
+	export function expand() {
+		expanded = true;
+	}
+
 	/* Lock the article scroll while the stage owns the viewport. */
 	$effect(() => {
 		if (!expanded) return;

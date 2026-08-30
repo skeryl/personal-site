@@ -915,3 +915,17 @@ test('the guided tour walks the tool and closes on escape', async ({ page }) => 
 	await page.keyboard.press('Escape');
 	await expect(popover).toHaveCount(0);
 });
+
+test('the article tour button expands the demo and starts the tour', async ({ page }) => {
+	await page.locator('[data-article-tour]').click();
+	await expect(page.locator('[data-demo-stage]')).toHaveClass(/expanded/);
+	await expect(page.locator('.driver-popover')).toContainText('Two views, one structure');
+
+	// First Escape closes the tour; the stage stays full screen.
+	await page.keyboard.press('Escape');
+	await expect(page.locator('.driver-popover')).toHaveCount(0);
+	await expect(page.locator('[data-demo-stage]')).toHaveClass(/expanded/);
+	// Second Escape collapses the stage.
+	await page.keyboard.press('Escape');
+	await expect(page.locator('[data-demo-stage]')).not.toHaveClass(/expanded/);
+});

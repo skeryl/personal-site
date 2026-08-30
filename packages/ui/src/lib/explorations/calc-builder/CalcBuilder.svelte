@@ -9,8 +9,11 @@
 	import ResultsPanel from './ResultsPanel.svelte';
 	import TreeEditor from './TreeEditor.svelte';
 	import { CalcStore } from './state.svelte';
+	import { registerTourStore } from './tour';
 
 	const store = new CalcStore();
+
+	$effect(() => registerTourStore(store));
 
 	/* Autosave the working state, debounced so bursts of edits are one write. */
 	const AUTOSAVE_MS = 250;

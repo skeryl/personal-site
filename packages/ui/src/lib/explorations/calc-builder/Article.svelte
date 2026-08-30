@@ -1,5 +1,6 @@
 <script lang="ts">
 	import DemoStage from './DemoStage.svelte';
+	import { startTour } from './tour';
 	import FigAst from './FigAst.svelte';
 	import FigCodegen from './FigCodegen.svelte';
 	import FigIncident from './FigIncident.svelte';
@@ -8,6 +9,15 @@
 	import FigPipelines from './FigPipelines.svelte';
 
 	let { onpresent = undefined }: { onpresent?: () => void } = $props();
+
+	let stage = $state<DemoStage>();
+
+	/* The CTA takes the demo full screen, then starts the tour once the
+	   stage has settled into its expanded layout. */
+	const tourDemo = () => {
+		stage?.expand();
+		setTimeout(() => startTour(), 250);
+	};
 
 	/* Number the footnotes: a superscript marker lands at each anchor and the
 	   matching number is stamped onto the margin note, with no markup burden
@@ -260,16 +270,14 @@
 			sample records.
 		</p>
 		<p>
-			If you want the guided tour, try building the very calculation this article is about. Use
-			<code>lookup</code> to read one agency's letter rating off an instrument's reference data,
-			<code>switch</code> to map letters onto numbers, then average across the agencies. Or load "Consensus
-			grade" from the library and inspect it: the expression bar, the tree, and the JSON view are three
-			representations of the same underlying structure.
+			<button class="tour-cta" data-article-tour onclick={tourDemo}>
+				✦ Click here if you want the guided tour.
+			</button>
 		</p>
 	</section>
 
 	<div class="breakout">
-		<DemoStage />
+		<DemoStage bind:this={stage} />
 	</div>
 
 	<!-- ═══════════════ SECTION 5 · TRUST · text (edit here) ═══════════════ -->
@@ -512,6 +520,18 @@
 			border-left: 2px solid var(--color-border-subtle);
 		}
 	}
+	.prose .tour-cta {
+		font: inherit;
+		padding: 0.45rem 1.1rem;
+		border: 1px solid var(--cb-accent);
+		border-radius: 999px;
+		background: none;
+		color: var(--cb-accent);
+		cursor: pointer;
+	}
+	.prose .tour-cta:hover {
+		background: color-mix(in srgb, var(--cb-accent) 10%, transparent);
+	}
 	.prose .strike {
 		text-decoration: line-through;
 		color: var(--color-text-muted);
@@ -587,13 +607,6 @@
 	}
 	.prose strong {
 		color: var(--color-text-strong);
-	}
-	.prose code {
-		font-family: var(--font-mono, monospace);
-		font-size: 0.9em;
-		background: var(--color-surface);
-		padding: 0.1em 0.35em;
-		border-radius: 0.25rem;
 	}
 	.figure-slot {
 		max-width: 52rem;

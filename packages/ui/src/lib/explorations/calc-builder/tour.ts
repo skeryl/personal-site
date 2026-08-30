@@ -8,12 +8,24 @@ import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
 import type { CalcStore } from './state.svelte';
 
+/* The mounted CalcBuilder registers its store so out-of-tree callers
+   (like the article's CTA) can start the tour without holding one. */
+let activeStore: CalcStore | null = null;
+export const registerTourStore = (store: CalcStore) => {
+	activeStore = store;
+	return () => {
+		if (activeStore === store) activeStore = null;
+	};
+};
+
 const rootNode = (): Element =>
 	document.querySelector('[data-node-path="root"]') ??
 	document.querySelector('[data-slot-path="root"]') ??
 	document.body;
 
-export const startTour = (store: CalcStore) => {
+export const startTour = (explicit?: CalcStore) => {
+	const store = explicit ?? activeStore;
+	if (store === null) return;
 	const tour = driver({
 		showProgress: true,
 		overlayOpacity: 0.55,
