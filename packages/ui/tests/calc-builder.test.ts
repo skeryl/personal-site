@@ -607,6 +607,10 @@ test('the article embeds the demo in an expandable stage', async ({ page }) => {
 	await page.keyboard.press('Escape');
 	await expect(stage).not.toHaveClass(/expanded/);
 
+	// The Java examples render as two separate highlighted blocks.
+	await expect(page.locator('.prose .code-block')).toHaveCount(2);
+	await expect(page.locator('.prose .code-block').first()).toContainText('ComputedAttribute');
+
 	// Footnotes are auto-numbered, tying each anchor to its margin note.
 	const noteCount = await page.locator('.footnote').count();
 	expect(noteCount).toBeGreaterThanOrEqual(2);

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import DemoStage from './DemoStage.svelte';
 	import { startTour } from './tour';
+	import { JAVA_DECLARED, JAVA_FETCHED } from './javaSnippets';
 	import FigAst from './FigAst.svelte';
 	import FigCodegen from './FigCodegen.svelte';
 	import FigIncident from './FigIncident.svelte';
@@ -232,6 +233,20 @@
 				realized in my time there; easily the hardest non-engineering work of the whole project.</span
 			>
 		</p>
+		<p>
+			Declaring an attribute in code looked roughly like this: name it with a slug, then compose it
+			from typed field references. <em>field()</em> takes a method reference, so the compiler checks every
+			field access against the shared data model; a mistyped field is a build failure. The result evaluates
+			directly, strongly typed end to end.
+		</p>
+		<pre class="code-block"><code>{@html JAVA_DECLARED}</code></pre>
+		<p>
+			Attributes authored in the UI travel a different path to the same place. They live in the
+			versioned store, and a consuming service fetches one by its unique ID, with the ID arriving
+			through application configuration rather than code. From there it behaves identically to the
+			declared kind: same tree underneath, same typed evaluate call.
+		</p>
+		<pre class="code-block"><code>{@html JAVA_FETCHED}</code></pre>
 		<p>
 			What about off-the-shelf rules engines? They existed, and we evaluated them. Two requirements
 			ruled them out. The API <em>was</em> the adoption strategy, so we needed to control it end to
@@ -519,6 +534,33 @@
 			padding-left: 0.75rem;
 			border-left: 2px solid var(--color-border-subtle);
 		}
+	}
+	.prose .code-block {
+		margin: 1.75rem 0;
+		max-width: 100%;
+		overflow-x: auto;
+		border: 1px solid var(--color-border-subtle);
+		border-left: 3px solid var(--cb-accent);
+		border-radius: 0.5rem;
+		padding: 1rem 1.25rem;
+		background: var(--color-bg);
+		font-family: var(--font-mono, monospace);
+		font-size: 0.78rem;
+		line-height: 1.7;
+		color: var(--color-text-secondary);
+	}
+	.prose .code-block :global(.ty) {
+		color: var(--cb-type-number);
+	}
+	.prose .code-block :global(.st) {
+		color: var(--cb-type-string);
+	}
+	.prose .code-block :global(.kw) {
+		color: var(--cb-type-array);
+	}
+	.prose .code-block :global(.cm) {
+		color: var(--color-text-muted);
+		font-style: italic;
 	}
 	.prose .tour-cta {
 		font: inherit;
