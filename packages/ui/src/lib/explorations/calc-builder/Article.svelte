@@ -49,11 +49,8 @@
 <article class="article" use:numberFootnotes>
 	<!-- ═══════════════ HERO · text (edit here) ═══════════════ -->
 	<header class="hero">
-		<h1>computed attributes</h1>
-		<p class="deck">
-			How treating calculations as graphs unified definitions at a large asset manager: the problem,
-			the architecture, and a working reconstruction of the core.
-		</p>
+		<h1>Computed Attributes</h1>
+		<p class="deck">What I learned (and built) when I</p>
 		{#if onpresent}
 			<button class="present-btn" data-present onclick={onpresent}>View as slides</button>
 		{/if}
@@ -63,14 +60,13 @@
 	<section class="prose" data-article-section="the-call" use:reveal>
 		<h2>Randomness</h2>
 		<p>
-			One of the best things about being a software engineer is that you get to embed yourself
-			deeply into other industries; you need to have empathy for the users of your software. You
-			have to put yourself into the mindset of the people making the industry work. Sometimes the
-			specific industry is a choice, or a calling, but often it's as random as a recruiter reaching
-			out to you on LinkedIn asking if you've ever thought about moving to New York City. This
-			randomness is what inspired the move I made in 2015 and launched me into the next phase of my
-			career. I didn't know it at the time, but I would spend the next 11 years (so far) in the
-			finance industry.
+			One of the things I like best about being a software engineer is that I get to embed myself
+			deeply into other industries; I try to have empathy for the users of my software. I have to
+			put myself into the mindset of the people making the industry work. Sometimes the specific
+			industry is a choice, or a calling, but often it's as random as a recruiter reaching out to me
+			on LinkedIn asking if I'd ever thought about moving to New York City. This randomness is what
+			inspired the move I made in 2015 and launched me into the next phase of my career. I didn't
+			know it at the time, but I would spend the next 11 years (so far) in the finance industry.
 		</p>
 		<p>
 			At this point in my career I had worked in a variety of industries: telecommunications, food
@@ -80,25 +76,25 @@
 			customers and the firm from a "bad trade" (a trade that may violate one of the myriad rules
 			governing portfolio balances, restricted securities, or any other criteria our operations
 			users entered into the system). It was an eye-opening shift in the standards of correctness
-			and operational reliability required to keep things going well. Because when things stop going
-			well, that's when you get <strong>the much-dreaded support call</strong>.
+			and operational reliability required to keep things going well. Because when things stopped
+			going well, that's when I'd get <strong>the much-dreaded support call</strong>.
 		</p>
 		<h3>The much-dreaded support call</h3>
 		<p>
-			Anyone who works in the software business knows them well, and dreads them. You're supporting
-			a system that needs to be used by people to do their jobs. When the rubber of software meets
-			the road of reality, the treads wear down and eventually burst to reveal a flaw that's been
-			waiting to be unearthed. If you're lucky you can catch and prevent this before it becomes a
-			widespread issue. If you're unlucky you will receive an angry call from someone. Suddenly your
-			system (and by extension, you) is preventing them from doing their time-critical job, from
-			executing a timely portfolio rebalance. The firm's reputation (and money) is on the line.
+			Anyone who works in the software business knows them well, and dreads them. We were supporting
+			a system that people needed to do their jobs. When the rubber of software meets the road of
+			reality, the treads wear down and eventually burst to reveal a flaw that's been waiting to be
+			unearthed. If we were lucky, we caught the flaw before it became a widespread issue. If we
+			were unlucky, I'd receive an angry call from someone. Suddenly our system (and by extension,
+			me) was preventing them from doing their time-critical job, from executing a timely portfolio
+			rebalance. The firm's reputation (and money) was on the line.
 		</p>
 		<p>
-			So, while the trader breathes down your neck (sometimes literally), you get to work
-			diagnosing. Sweatily pulling data from the trading system, and from the surveillance engine,
-			and then carefully walking the rules down their various paths and branches, and diving deep
-			into the calculations underlying the rule's logic until you find the root cause of the
-			discrepancy. It takes time when there's no real time to be given.
+			So, while the trader breathed down my neck (sometimes literally), I got to work diagnosing.
+			Sweatily pulling data from the trading system, and from the surveillance engine, and then
+			carefully walking the rules down their various paths and branches, and diving deep into the
+			calculations underlying the rule's logic until I found the root cause of the discrepancy. It
+			took time when there was no real time to be given.
 		</p>
 
 		<!-- FIGURE S1: incident card -->
@@ -106,9 +102,9 @@
 
 		<p>
 			It didn't take me long to realize: the fastest path to <strong>living a sane existence</strong
-			> while helping to support a global trading operation is to get to the bottom of each incident and
-			solve things systematically. What are the patterns arising and how can we ensure we don't have any
-			repeat issues?
+			> while helping to support a global trading operation was to get to the bottom of each incident
+			and solve things systematically. What are the patterns arising and how can we ensure we don't have
+			any repeat issues?
 		</p>
 		<p>
 			Over my first several months on the job I realized there was a common thread weaving the
@@ -141,8 +137,8 @@
 				class="tooltip"
 				title="e.g. Moody's or S&P">ratings agencies</span
 			>
-			rate the same instrument on different letter scales, so before you can use ratings in a calculation
-			you have to
+			rate the same instrument on different letter scales, so before we could use ratings in a calculation
+			we had to
 			<em>normalize</em> them onto one common scale, and each team had (naturally) implemented its own
 			normalization calculation. Not to mention that the ratings data itself could be sourced from different
 			reference databases, with slightly different formats and values.
@@ -188,7 +184,7 @@
 			value was arrived at. A calculation that is a graph can be displayed as easily as calculated.
 			It could give business users the same tools as engineers without needing to read the code. And
 			because every leaf names a field, answering "what depends on this field?" stops being an
-			archaeology project and becomes a query: a simple tree traversal. Then I realized that you
+			archaeology project and becomes a query: a simple tree traversal. Then I realized that we
 			could even take this a step further and have the business users, the experts on these
 			calculation definitions, define the calcs themselves in a UI! But first, I needed to prove the
 			basics.
@@ -232,16 +228,16 @@
 			audit trail. That exact requirement had already surfaced in my stakeholder interviews, so the
 			design had an answer ready. <strong>The project was approved.</strong>
 		</p>
-		<p>What we built from there is easier to show than to describe.</p>
+		<p>What we ended up building may be easier to show than to describe.</p>
 	</section>
 
 	<!-- ═══════════════ SECTION 4 · THE DEMO · text (edit here) ═══════════════ -->
 	<section class="prose" data-article-section="demo-intro" use:reveal>
-		<h2>The demo</h2>
+		<h2>What we built</h2>
 		<p>
 			Below is a reconstruction of the system's core, built from memory for this write-up: the tree
 			editor, the type system, the definition library, versioning. Everything evaluates live against
-			sample records; nothing is mocked.
+			sample records.
 		</p>
 		<p>
 			If you want the guided tour, try building the very calculation this article is about. Use
@@ -293,7 +289,7 @@
 		</p>
 		<p>
 			The quieter benefit reached beyond compliance. Once definitions were versioned data with
-			lineage, changing a field's meaning became a bounded operation: you could enumerate every
+			lineage, changing a field's meaning became a bounded operation: we could enumerate every
 			calculation that referenced it <em>before</em> touching anything.
 		</p>
 		<p>
