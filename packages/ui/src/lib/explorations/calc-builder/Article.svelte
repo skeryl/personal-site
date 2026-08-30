@@ -2,6 +2,7 @@
 	import DemoStage from './DemoStage.svelte';
 	import { startTour } from './tour';
 	import { JAVA_DECLARED, JAVA_FETCHED } from './javaSnippets';
+	import FigArchitecture from './FigArchitecture.svelte';
 	import FigAst from './FigAst.svelte';
 	import FigCodegen from './FigCodegen.svelte';
 	import FigIncident from './FigIncident.svelte';
@@ -215,9 +216,8 @@
 			value was arrived at. A calculation that is a graph can be displayed as easily as calculated.
 			It could give business users the same tools as engineers without needing to read the code. And
 			because every leaf names a field, answering "what depends on this field?" stops being an
-			archaeology project and becomes a query: a simple tree traversal. This model would also allow
-			us to take this a step further and have the business users, the experts on these calculation
-			definitions, define the calcs themselves in a UI! But first, I needed to prove the basics.
+			archaeology project and becomes a query: a simple tree traversal. But first, I needed to prove
+			the basics.
 		</p>
 
 		<!-- FIGURE S3: a computed attribute is a tree, hover lineage -->
@@ -253,8 +253,8 @@
 			end; and we wanted full control over evaluation, because I already suspected performance would
 			matter later.<span class="footnote">foreshadowing</span> Not to mention, Drools was the biggest
 			library in this space (and still kind of is). Once I had the nice API, I didn't want to spend time
-			code-generating Drools DSL. Not to mention, with a good clean API to serve as an abstraction layer,
-			we could always change the evaluation engine behind the scenes one day if that really proved best.
+			code-generating Drools DSL. And with a good clean API serving as an abstraction layer, we could
+			always change the evaluation engine behind the scenes one day if that proved best.
 		</p>
 		<h3>The pitch</h3>
 		<p>
@@ -364,6 +364,9 @@
 
 		<!-- FIGURE S6: definition-to-machine-code flow + historical timing bars -->
 		<div class="fig-embed wide" use:reveal><FigCodegen /></div>
+
+		<!-- FIGURE: the shape of the system, authoring to runtime -->
+		<div class="fig-embed wide" use:reveal><FigArchitecture /></div>
 
 		<p>
 			Distribution fell out of the same design. A consuming service pins the ID of a computed
