@@ -22,6 +22,9 @@
 			note.before(ref);
 			note.setAttribute('data-fn', n);
 			refs.push(ref);
+			// The note itself renders at the end of its paragraph, so the
+			// narrow-screen inline fallback cannot split a sentence.
+			note.closest('p')?.append(note);
 		});
 		return { destroy: () => refs.forEach((ref) => ref.remove()) };
 	}
@@ -61,36 +64,40 @@
 		<h2>Randomness</h2>
 		<p>
 			One of the things I like best about being a software engineer is that I get to embed myself
-			deeply into other industries; I try to have empathy for the users of my software. I have to
-			put myself into the mindset of the people making the industry work. Sometimes the specific
-			industry is a choice, or a calling, but often it's as random as a recruiter reaching out to me
-			on LinkedIn asking if I'd ever thought about moving to New York City. This randomness is what
-			inspired the move I made in 2015 and launched me into the next phase of my career. I didn't
-			know it at the time, but I would spend the next 11 years (so far) in the finance industry.
+			deeply into other industries. I believe you have to have empathy for the users of your
+			software; that you have to put yourself into the mindset of the people making the industry
+			work. Sometimes the specific industry you work in is a choice, or a calling, but often it's as
+			random as a recruiter reaching out on LinkedIn asking if you've ever thought about moving to
+			New York City. This randomness is what inspired the move I made in 2015 and launched me into
+			the next phase of my career. I didn't know it at the time, but I would spend the next 11 years
+			(so far) in the finance industry.
 		</p>
 		<p>
 			At this point in my career I had worked in a variety of industries: telecommunications, food
-			technology, healthcare; each with their own unique challenges, joys, and stakes. My first role
-			in the finance industry turned out to be working on an investment guidelines surveillance
-			engine. To translate for my non-finance friends: we were the final guardrail protecting our
-			customers and the firm from a "bad trade" (a trade that may violate one of the myriad rules
-			governing portfolio balances, restricted securities, or any other criteria our operations
-			users entered into the system). It was an eye-opening shift in the standards of correctness
-			and operational reliability required to keep things going well. Because when things stopped
-			going well, that's when I'd get <strong>the much-dreaded support call</strong>.
+			technology, healthcare; each with their own unique challenges, joys<span class="footnote"
+				>my favorite joy of the food industry was visiting the Dunkin Brands headquarters in Canton,
+				MA and sampling their experimental ice cream and doughnut flavors 🤤</span
+			>, and stakes. My first role in the finance industry turned out to be working on an investment
+			guidelines surveillance engine. To translate for my non-finance friends: we were the final
+			guardrail protecting our customers and the firm from a "bad trade" (a trade that may violate
+			one of the myriad rules governing portfolio balances, restricted securities, or any other
+			criteria our operations users entered into the system). It was an eye-opening shift in the
+			standards of correctness and operational reliability required to keep things going well.
+			Because when things stopped going well, that's when I'd get
+			<strong>the much-dreaded support call</strong>.
 		</p>
 		<h3>The much-dreaded support call</h3>
 		<p>
-			Anyone who works in the software business knows them well, and dreads them. We were supporting
-			a system that people needed to do their jobs. When the rubber of software meets the road of
-			reality, the treads wear down and eventually burst to reveal a flaw that's been waiting to be
-			unearthed. If we were lucky, we caught the flaw before it became a widespread issue. If we
-			were unlucky, I'd receive an angry call from someone. Suddenly our system (and by extension,
-			me) was preventing them from doing their time-critical job, from executing a timely portfolio
-			rebalance. The firm's reputation (and money) was on the line.
+			Anyone who works in the software business knows them well. We were supporting a system that
+			people relied on to do their jobs. When the rubber of software meets the road of reality, the
+			treads wear down and eventually burst to reveal a flaw that's been waiting to be unearthed. If
+			we were lucky, we caught the flaw before it became a widespread issue. If we were unlucky, I'd
+			receive an angry call from someone. Suddenly our system (and by extension, me) was preventing
+			them from doing their time-critical job, from executing a timely portfolio rebalance. The
+			firm's reputation (and money) was on the line.
 		</p>
 		<p>
-			So, while the trader breathed down my neck (sometimes literally), I got to work diagnosing.
+			So, with the trader breathing down my neck (sometimes literally), I got to work diagnosing.
 			Sweatily pulling data from the trading system, and from the surveillance engine, and then
 			carefully walking the rules down their various paths and branches, and diving deep into the
 			calculations underlying the rule's logic until I found the root cause of the discrepancy. It
@@ -101,28 +108,23 @@
 		<div class="figure-slot" use:reveal><FigIncident /></div>
 
 		<p>
-			It didn't take me long to realize that the support calls were a <strong
-				>symptom, not the problem</strong
-			>. Each call ended the same way: trade unblocked, caller placated, root cause still in place.
-			A system that gates trades owes its users a defensible answer every time, whether or not
-			anyone calls to complain. So I started treating incidents as data rather than interruptions:
-			what patterns kept appearing, and how could we prevent the whole class of problem instead of
-			the individual complaint? (That this also promised a saner on-call existence was a happy
-			bonus.)
+			Each call ended the same way: trade unblocked, caller placated, root cause still in place. A
+			system that has the power to prevent trades owes its users a defensible answer every time,
+			whether or not anyone calls to complain. So I decided to treat the incidents as data rather
+			than interruptions: what patterns kept appearing, and how could we prevent the whole class of
+			problem instead of the individual complaint? (That this also promised a saner on-call
+			existence was a happy bonus.)
 		</p>
 		<p>
 			Over my first several months on the job I realized there was a common thread weaving the
 			incidents together: it's not that there's a runtime error or an NPE; it's simply that a rule
 			has tripped unexpectedly and prevented a trade from executing. Surprisingly, in most of these
-			cases <strong>nothing was even broken</strong>. The desk's system had computed the position as
-			liquid and ours decided it was illiquid (or similar). Both were "working as designed" and as
-			far as these systems knew, they were just reporting their own truth. They simply disagreed
-			about the very definition of <span class="strike">reality</span> liquidity itself.
-		</p>
-		<p>
-			One day it dawned on me... what I really needed to do was to convince everyone to simply use
-			the same data model and define the same calculations! For everything! It was clearly a problem
-			above my pay-grade, but I knew what needed to be done. Simple, right?!
+			cases <strong>nothing was even "broken"</strong><span class="footnote"
+				>in the traditional, "oh no! this code has a bug", sense of the word</span
+			>. The desk's system had computed the position as liquid and ours decided it was illiquid (or
+			similar). Both were "working as designed" and as far as these systems knew, they were just
+			reporting their own truth. They simply disagreed about the very definition of
+			<span class="strike">reality</span> liquidity itself. This is one of those moments where
 		</p>
 	</section>
 
@@ -152,10 +154,17 @@
 		<div class="fig-embed" use:reveal><FigPipelines /></div>
 
 		<p>Every layer is another opportunity for two implementations to drift apart!</p>
+
 		<p>
-			The more I looked, the more obvious it became that this wasn't specific to our team. I read
-			other teams' code and talked with their engineers, then with desk heads, portfolio managers,
-			traders. The same pattern was everywhere: <strong>shared terms, divergent definitions</strong
+			This is when I started to realize that what I really needed to do was to convince everyone to
+			use the same data model and define calculations the same way! For everything! Definitely
+			easier said than done; it was clearly a problem above my pay-grade, but I knew what needed to
+			be done so I began to ask around.
+		</p>
+		<p>
+			I read other teams' code and talked with their engineers, then with desk heads, portfolio
+			managers, traders. The same pattern was everywhere: <strong
+				>shared terms, but divergent definitions</strong
 			>. And the people consuming these numbers had their own version of the complaint: a liquidity
 			score taken by itself is very abstract. There was no easy answer to "where does this number
 			come from?" that didn't involve having an engineer go back to read the source code.

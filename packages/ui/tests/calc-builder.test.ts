@@ -608,8 +608,15 @@ test('the article embeds the demo in an expandable stage', async ({ page }) => {
 	await expect(stage).not.toHaveClass(/expanded/);
 
 	// Footnotes are auto-numbered, tying each anchor to its margin note.
-	await expect(page.locator('.fn-ref')).toHaveCount(2);
-	await expect(page.locator('[data-fn="2"]')).toContainText('foreshadowing');
+	const noteCount = await page.locator('.footnote').count();
+	expect(noteCount).toBeGreaterThanOrEqual(2);
+	await expect(page.locator('.fn-ref')).toHaveCount(noteCount);
+	await expect(page.locator('.fn-ref').last()).toHaveText(String(noteCount));
+	// Notes move to the end of their paragraph so they cannot split a sentence.
+	const atParagraphEnd = await page
+		.locator('.footnote')
+		.evaluateAll((notes) => notes.every((note) => note.parentElement?.lastElementChild === note));
+	expect(atParagraphEnd).toBe(true);
 
 	// The lenses figure computes its groupings with the real evaluator.
 	await expect(page.locator('[data-figure-lenses] .chip')).toHaveCount(9);
