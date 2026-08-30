@@ -16,7 +16,7 @@
 	   stage has settled into its expanded layout. */
 	const tourDemo = () => {
 		stage?.expand();
-		setTimeout(() => startTour(), 250);
+		setTimeout(() => startTour(), 420);
 	};
 
 	/* Number the footnotes: a superscript marker lands at each anchor and the

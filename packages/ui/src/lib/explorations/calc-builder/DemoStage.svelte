@@ -2,10 +2,45 @@
 	import Icon from '$lib/components/icons/Icon.svelte';
 	import CalcBuilder from './CalcBuilder.svelte';
 
+	import { tick } from 'svelte';
+
 	let expanded = $state(false);
+	let stageEl = $state<HTMLDivElement>();
+	/* Holds the article's layout while the stage owns the viewport. */
+	let placeholderHeight = $state(0);
+
+	/* FLIP: the stage snaps between in-flow and fixed layouts, then a
+	   transform animates from where it was to where it landed. */
+	const animateFlip = (first: DOMRect) => {
+		const el = stageEl;
+		if (!el || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		const last = el.getBoundingClientRect();
+		if (last.width === 0 || last.height === 0) return;
+		el.animate(
+			[
+				{
+					transform: `translate(${first.left - last.left}px, ${first.top - last.top}px) scale(${first.width / last.width}, ${first.height / last.height})`,
+					transformOrigin: 'top left'
+				},
+				{ transform: 'none', transformOrigin: 'top left' }
+			],
+			{ duration: 320, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+		);
+	};
 
 	export function expand() {
+		if (expanded) return;
+		const first = stageEl?.getBoundingClientRect();
+		if (first) placeholderHeight = first.height;
 		expanded = true;
+		if (first) tick().then(() => animateFlip(first));
+	}
+
+	function collapse() {
+		if (!expanded) return;
+		const first = stageEl?.getBoundingClientRect();
+		expanded = false;
+		if (first) tick().then(() => animateFlip(first));
 	}
 
 	/* Lock the article scroll while the stage owns the viewport. */
@@ -23,19 +58,26 @@
 		// Slot popovers and the guided tour get first claim on Escape.
 		if (document.querySelector('[data-slot-menu], .driver-popover')) return;
 		if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-		expanded = false;
+		collapse();
 	};
 </script>
 
 <svelte:window onkeydown={onKeydown} />
 
-<div class="demo-stage" class:expanded data-demo-stage>
+{#if expanded}
+	<div class="stage-placeholder" style="height: {placeholderHeight}px"></div>
+{/if}
+<div class="demo-stage" class:expanded data-demo-stage bind:this={stageEl}>
 	<div class="stage-bar">
 		<span class="stage-title"><span class="calc-mark">ƒ</span> calc builder</span>
 		<span class="stage-hint">
 			{expanded ? 'Esc to return to the article' : 'live demo; expand for the full tool'}
 		</span>
-		<button class="stage-toggle" data-expand-demo onclick={() => (expanded = !expanded)}>
+		<button
+			class="stage-toggle"
+			data-expand-demo
+			onclick={() => (expanded ? collapse() : expand())}
+		>
 			<Icon
 				type={expanded ? 'arrows-minimize' : 'arrows-maximize'}
 				size="xs"
@@ -50,6 +92,9 @@
 </div>
 
 <style>
+	.stage-placeholder {
+		border-radius: 0.75rem;
+	}
 	.demo-stage {
 		border: 1px solid var(--color-border-strong);
 		border-radius: 0.75rem;
