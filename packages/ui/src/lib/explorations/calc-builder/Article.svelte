@@ -101,10 +101,14 @@
 		<div class="figure-slot" use:reveal><FigIncident /></div>
 
 		<p>
-			It didn't take me long to realize: the fastest path to <strong>living a sane existence</strong
-			> while helping to support a global trading operation was to get to the bottom of each incident
-			and solve things systematically. What are the patterns arising and how can we ensure we don't have
-			any repeat issues?
+			It didn't take me long to realize that the support calls were a <strong
+				>symptom, not the problem</strong
+			>. Each call ended the same way: trade unblocked, caller placated, root cause still in place.
+			A system that gates trades owes its users a defensible answer every time, whether or not
+			anyone calls to complain. So I started treating incidents as data rather than interruptions:
+			what patterns kept appearing, and how could we prevent the whole class of problem instead of
+			the individual complaint? (That this also promised a saner on-call existence was a happy
+			bonus.)
 		</p>
 		<p>
 			Over my first several months on the job I realized there was a common thread weaving the
