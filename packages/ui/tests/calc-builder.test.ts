@@ -897,3 +897,21 @@ test('debugger steps into referenced calculations and back out', async ({ page }
 	await page.locator('[data-debug-finish]').click();
 	await expect(page.locator('[data-debug-done]')).toContainText('true');
 });
+
+test('the guided tour walks the tool and closes on escape', async ({ page }) => {
+	await page.locator('[data-start-tour]').click();
+	const popover = page.locator('.driver-popover');
+	await expect(popover).toBeVisible();
+	await expect(popover).toContainText('Two views, one structure');
+
+	await page.locator('.driver-popover-next-btn').click();
+	await expect(popover).toContainText('The palette');
+
+	// Walk to the audit-trail step: the tour opens the matching tab itself.
+	for (let i = 0; i < 4; i++) await page.locator('.driver-popover-next-btn').click();
+	await expect(popover).toContainText('The audit trail');
+	await expect(page.locator('[data-tab="history"]')).toHaveClass(/active/);
+
+	await page.keyboard.press('Escape');
+	await expect(popover).toHaveCount(0);
+});

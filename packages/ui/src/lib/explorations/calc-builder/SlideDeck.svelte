@@ -69,8 +69,8 @@
 			return;
 		}
 		if (e.key === 'Escape') {
-			// A slot popover in the embedded demo gets first claim on Escape.
-			if (document.querySelector('[data-slot-menu]')) return;
+			// Slot popovers and the guided tour get first claim on Escape.
+			if (document.querySelector('[data-slot-menu], .driver-popover')) return;
 			onexit();
 			return;
 		}

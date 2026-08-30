@@ -16,8 +16,8 @@
 
 	const onKeydown = (e: KeyboardEvent) => {
 		if (e.key !== 'Escape' || !expanded) return;
-		// A slot popover gets first claim on Escape.
-		if (document.querySelector('[data-slot-menu]')) return;
+		// Slot popovers and the guided tour get first claim on Escape.
+		if (document.querySelector('[data-slot-menu], .driver-popover')) return;
 		if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 		expanded = false;
 	};

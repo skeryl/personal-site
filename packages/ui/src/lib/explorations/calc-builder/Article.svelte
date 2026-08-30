@@ -150,7 +150,7 @@
 			<span class="tooltip" tabindex="0" data-tip="e.g. Moody's or S&P">ratings agencies</span>
 			rate the same instrument on different letter scales, so before we could use ratings in a calculation
 			we had to
-			<em>normalize</em> them onto one common scale, and each team had (naturally) implemented its own
+			<em>normalize</em> them onto one common scale, and each team had (naturally) implemented their own
 			normalization calculation. Not to mention that the ratings data itself could be sourced from different
 			reference databases, with slightly different formats and values.
 		</p>
@@ -169,15 +169,17 @@
 		<p>
 			I read other teams' code and talked with their engineers, then with desk heads, portfolio
 			managers, traders. The same pattern was everywhere: <strong
-				>shared terms, but divergent definitions</strong
+				>shared calculations, but with divergent definitions</strong
 			>. And the people consuming these numbers had their own version of the complaint: a liquidity
 			score taken by itself is very abstract. There was no easy answer to "where does this number
 			come from?" that didn't involve having an engineer go back to read the source code.
 		</p>
 		<p>
-			To me, the picture of what we needed as a company was solidifying. Wouldn't it be great if we
-			had a way to not only unify our calculation definitions, but to also get automatically
-			updating documentation "for free" as well?
+			The more I interviewed the different stakeholders across the company, the picture of what we
+			needed as a company was taking shape. Wouldn't it be great if we had a way to not only unify
+			our calculation definitions, but to also get automatically updating documentation "for free"
+			as well? Wouldn't it also be great if our business users who <em>thoroughly</em> understood these
+			calculations could simply define the calculations themselves?
 		</p>
 	</section>
 
@@ -202,10 +204,9 @@
 			value was arrived at. A calculation that is a graph can be displayed as easily as calculated.
 			It could give business users the same tools as engineers without needing to read the code. And
 			because every leaf names a field, answering "what depends on this field?" stops being an
-			archaeology project and becomes a query: a simple tree traversal. Then I realized that we
-			could even take this a step further and have the business users, the experts on these
-			calculation definitions, define the calcs themselves in a UI! But first, I needed to prove the
-			basics.
+			archaeology project and becomes a query: a simple tree traversal. This model would also allow
+			us to take this a step further and have the business users, the experts on these calculation
+			definitions, define the calcs themselves in a UI! But first, I needed to prove the basics.
 		</p>
 
 		<!-- FIGURE S3: a computed attribute is a tree, hover lineage -->
@@ -227,7 +228,8 @@
 			end; and we wanted full control over evaluation, because I already suspected performance would
 			matter later.<span class="footnote">foreshadowing</span> Not to mention, Drools was the biggest
 			library in this space (and still kind of is). Once I had the nice API, I didn't want to spend time
-			code-generating Drools DSL.
+			code-generating Drools DSL. Not to mention, with a good clean API to serve as an abstraction layer,
+			we could always change the evaluation engine behind the scenes one day if that really proved best.
 		</p>
 		<h3>The pitch</h3>
 		<p>
