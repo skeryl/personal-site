@@ -33,7 +33,7 @@
 		<div class="bar-row">
 			<span class="bar-label">compiled</span>
 			<div class="bar fast"></div>
-			<span class="bar-value">~10 ms</span>
+			<span class="bar-value">~6 ms</span>
 		</div>
 	</div>
 	<figcaption>
@@ -153,7 +153,7 @@
 		color: var(--color-text-strong);
 	}
 	.bar.fast {
-		width: 5%;
+		width: 3%;
 		min-width: 4px;
 		background: var(--cb-type-boolean);
 	}

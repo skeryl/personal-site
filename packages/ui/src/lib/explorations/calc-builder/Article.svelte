@@ -65,7 +65,10 @@
 	<!-- ═══════════════ HERO · text (edit here) ═══════════════ -->
 	<header class="hero">
 		<h1>Computed Attributes</h1>
-		<p class="deck">What I learned (and built) when I</p>
+		<p class="deck">
+			How one calculation problem spiraled into a company-wide initiative (and what it taught me
+			about big problems)
+		</p>
 		{#if onpresent}
 			<button class="present-btn" data-present onclick={onpresent}>View as slides</button>
 		{/if}
@@ -78,11 +81,10 @@
 			One of the things I like best about being a software engineer is that I get to embed myself
 			deeply into other industries. I believe you have to have empathy for the users of your
 			software; that you have to put yourself into the mindset of the people making the industry
-			work. Sometimes the specific industry you work in is a choice, or a calling, but often it's as
-			random as a recruiter reaching out on LinkedIn asking if you've ever thought about moving to
-			New York City. This randomness is what inspired the move I made in 2015 and launched me into
-			the next phase of my career. I didn't know it at the time, but I would spend the next 11 years
-			(so far) in the finance industry.
+			work. Sometimes the specific industry you work in is a choice, or a calling, but it can also
+			be as random as a recruiter reaching out on LinkedIn asking if you've ever thought about
+			moving to New York City. This randomness is what inspired the move I made in 2015; I didn't
+			know it at the time, but I would spend the next 11 years (so far) in the finance industry.
 		</p>
 		<p>
 			At this point in my career I had worked in a variety of industries: telecommunications, food
@@ -90,12 +92,12 @@
 				>my favorite joy of the food industry was visiting the Dunkin Brands headquarters in Canton,
 				MA and sampling their experimental ice cream and doughnut flavors 🤤</span
 			>, and stakes. My first role in the finance industry turned out to be working on an investment
-			guidelines surveillance engine. To translate for my non-finance friends: we were the final
-			guardrail protecting our customers and the firm from a "bad trade" (a trade that may violate
-			one of the myriad rules governing portfolio balances, restricted securities, or any other
-			criteria our operations users entered into the system). It was an eye-opening shift in the
-			standards of correctness and operational reliability required to keep things going well.
-			Because when things stopped going well, that's when I'd get
+			guidelines surveillance engine at an asset management firm. To translate for my non-finance
+			friends: we were the final guardrail protecting our customers and the firm from a "bad trade"
+			(a trade that may violate one of the myriad rules governing portfolio balances, restricted
+			securities, or any other criteria our operations users entered into the system). It was an
+			eye-opening shift in the standards of correctness and operational reliability required to keep
+			things going well. Because when things stopped going well, that's when I'd get
 			<strong>the much-dreaded support call</strong>.
 		</p>
 		<h3>The much-dreaded support call</h3>
@@ -187,11 +189,13 @@
 			come from?" that didn't involve having an engineer go back to read the source code.
 		</p>
 		<p>
-			The more I interviewed the different stakeholders across the company, the picture of what we
-			needed as a company was taking shape. Wouldn't it be great if we had a way to not only unify
-			our calculation definitions, but to also get automatically updating documentation "for free"
-			as well? Wouldn't it also be great if our business users who <em>thoroughly</em> understood these
-			calculations could simply define the calculations themselves?
+			The more I interviewed the different stakeholders across the company, the more the picture of
+			what we needed took shape. Wouldn't it be great if we had a way to not only unify our
+			calculation definitions, but to also get automatically updating documentation "for free" as
+			well? What if anyone at the company could search in a UI for the calculations and debug them
+			step by step for any given instrument/position/etc? Wouldn't it also be great if our business
+			users who <em>thoroughly</em> understood these calculations could simply define the calculations
+			themselves?
 		</p>
 	</section>
 
@@ -299,9 +303,8 @@
 	<section class="prose" data-article-section="trust" use:reveal>
 		<h2>Definitions are code</h2>
 		<p>
-			If you found the History tab in the demo, you've already met this section. The senior leads
-			pressed on audit for good reason: these numbers gated real trades, so the definitions deserved
-			the same rigor as production code. From the very first version, they got it:
+			As seen on the "History" tab in the demo above, calculations defined in the UI were saved in
+			immutable versions for audit reasons:
 		</p>
 		<ul>
 			<li>Every save created a new <strong>version</strong>; nothing was ever edited in place.</li>
@@ -324,42 +327,35 @@
 		</ul>
 		<!-- FIGURE S5: lifecycle rail -->
 		<div class="fig-embed wide" use:reveal><FigLifecycle /></div>
-
 		<p>
-			The demo above implements the core of this: append-only versions, drafts, publishing, and a
-			history view. Environment promotion and the separate-approver rule existed in the original
-			system; I've described them here rather than rebuilding a full approval workflow.
+			Another benefit of carefully versioning attributes in this way was that it preserved data
+			lineage: before changing a field's meaning, we could enumerate every calculation that
+			referenced it <em>before</em> touching production code.
 		</p>
 		<p>
-			The quieter benefit reached beyond compliance. Once definitions were versioned data with
-			lineage, changing a field's meaning became a bounded operation: we could enumerate every
-			calculation that referenced it <em>before</em> touching anything.
-		</p>
-		<p>
-			Correct and auditable, though, is only half of trustworthy. The other half is being fast
-			enough that nobody routes around you.
+			Being correct and auditable, though nice, isn't everything. We also needed the calculation
+			evaluations to be fast enough to be used in practical settings.
 		</p>
 	</section>
 
 	<!-- ═══════════════ SECTION 6 · THE COMPILER TURN · text (edit here) ═══════════════ -->
 	<section class="prose" data-article-section="compiler" use:reveal>
-		<h2>The compiler turn</h2>
+		<h2>But is it fast?</h2>
 		<p>
 			The first evaluator was a straightforward recursive interpreter in Java: for each node, either
-			fetch a leaf value or evaluate the children and apply the operator. Simple, correct, easy to
-			reason about. Also slow: roughly 200 milliseconds to evaluate one computed attribute against
-			one input item, and pre-trade checks evaluate portfolios of thousands of rows. The math does
-			not work out.
+			read the leaf value from data or evaluate the children and apply the operator. Simple,
+			correct, easy to reason about. Also a little slow: I recall a benchmark of roughly 200
+			milliseconds to evaluate one large-ish computed attribute against one input item. Portfolios
+			vary in size, but with many customers, each with varied (and some very large) portfolios, we
+			needed to do better.
 		</p>
 		<p>
-			I kept a running list of the optimizations I wanted: constant folding, caching, dead-branch
-			elimination. At some point I noticed that my list was really a description of standard
-			compiler work, which suggested a much simpler path: <strong
-				>stop interpreting and compile</strong
-			>. Generate Java source from the AST, compile it in memory inside the running process, load it
-			through an in-memory classloader, and invoke it like any other class. Evaluation dropped from
-			roughly 200ms to roughly 10 milliseconds, with the JVM's JIT doing the optimization work I had
-			been planning to do by hand.
+			I thought about the kinds of optimizations I could implement: caching, dead-branch elimination
+			and so on. At some point I noticed that my list was kind of a description of standard compiler
+			work, which made me wonder: <strong>what if I stopped interpreting and just compiled?</strong> Was
+			it possible to generate Java source code from the AST, compile it in memory inside the running process,
+			load it through an in-memory classloader, and invoke it like any other class? After much trial and
+			error, it worked! Evaluation on the benchmark dropped from roughly 200ms to ~6ms for the same work.
 		</p>
 
 		<!-- FIGURE S6: definition-to-machine-code flow + historical timing bars -->
@@ -383,38 +379,38 @@
 
 	<!-- ═══════════════ SECTION 7 · WHERE IT LANDED · text (edit here) ═══════════════ -->
 	<section class="prose" data-article-section="landing" use:reveal>
-		<h2>Where it landed</h2>
+		<h2>Retrospective</h2>
 		<p>
-			After the approval, the project stopped being a solo effort: four interns joined for a summer,
-			then eight new analysts for an eight-week build-out, with me as the accountable engineer
-			throughout. Much of what that phase demanded wasn't architecture at all: gathering
-			requirements across teams, converting skeptics into stakeholders, and keeping brand-new
-			engineers productive on a system with strict correctness requirements.
+			Shortly after the approval, the project stopped being a solo effort: four interns joined for a
+			summer, then eight new analysts for an eight-week build-out, with me as the accountable
+			engineer throughout. With the extra help, we added some great features like attribute
+			deduplication<span class="footnote"
+				>detecting when you're defining an attribute that already exists by comparing the graph
+				structures</span
+			>
+			and the "preview" evaluation & debugger feature<span class="footnote"
+				>This allowed users to search for a record to use as the input data; then they could see the
+				evaluation and "debug" it by stepping into the graph as it's calculated (similar to
+				debugging an Excel calculation).</span
+			>.
 		</p>
 		<p>
-			Adoption was narrower than I'd hoped. The goal was division-wide unification; the result was
-			deep adoption within fixed income, where portfolio managers picked it up for a use case I
-			never designed: <strong>classification</strong>. They defined attributes that bucketed
-			positions by region, market segment, or combinations of both, then analyzed their portfolios
-			through those groupings.
+			In the end, adoption of the "computed attributes" was narrower than I'd hoped. Sure, we built
+			a working, complete product that met the needs of our users and provided real value in a
+			production environment. But the initial goal was company-wide unification; in reality there
+			was modest adoption within fixed income, where portfolio managers began creating their own
+			computed attributes to classify instruments in their portfolios.
 		</p>
 
 		<!-- FIGURE S7: three lenses -->
 		<div class="fig-embed" use:reveal><FigLenses /></div>
 
 		<p>
-			The honest retrospective: I made the case to engineers, and it worked on engineers. I
-			under-invested in the people who set those engineers' roadmaps, and broad adoption is a
-			prioritization problem before it's an engineering problem. That lesson cost the wider rollout;
-			the system itself remained in production use within fixed income for years after I left the
-			team.
-		</p>
-		<p>
-			One last observation, about the reconstruction embedded above: I built it from memory, years
-			later, without reference material, and it came together quickly. Not because the system was
-			simple, but because the design is small: a recursive data structure, a type system over it,
-			and everything else (the editor, lineage, versioning, the expression language) derived from
-			that one representation.
+			In retrospect, I can see that I made the case to engineers, and it worked on engineers. I
+			talked to the stakeholders and built something they actually needed. But what I under-invested
+			in was working with the people who set those engineers' roadmaps, to make sure capacity was
+			set aside for adoption. The biggest lesson from this project is that solving big problems
+			within a large organization is just as much a prioritization problem as an engineering one.
 		</p>
 	</section>
 	<!-- ═══════════════ COLOPHON · text (edit here) ═══════════════ -->
@@ -439,6 +435,9 @@
 		--cb-type-objects: #0d9488;
 
 		max-width: 1400px;
+		/* The article sits in a flex column; without this its min-content width
+		   (set by the widest figure) forces the page past small viewports. */
+		min-width: 0;
 		margin: 0 auto;
 		padding: 3rem 1.25rem 6rem;
 		color: var(--color-text);
@@ -635,6 +634,8 @@
 	.prose .fig-embed {
 		width: min(52rem, calc(100vw - 2.5rem));
 		margin: 2.25rem 0 2.5rem calc(50% - min(26rem, (100vw - 2.5rem) / 2));
+		/* Figures with a fixed minimum width scroll sideways on small screens. */
+		overflow-x: auto;
 	}
 	.prose .fig-embed.wide {
 		width: min(62rem, calc(100vw - 2.5rem));
@@ -656,6 +657,7 @@
 	.figure-slot {
 		max-width: 52rem;
 		margin: 0 auto 2.5rem;
+		overflow-x: auto;
 	}
 	.breakout {
 		margin: 2.5rem 0 3rem;

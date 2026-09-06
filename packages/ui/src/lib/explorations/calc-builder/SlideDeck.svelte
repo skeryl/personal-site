@@ -232,7 +232,7 @@
 							<span class="ask">"Nothing can slow the trade path"<em>desk systems</em></span>
 							<span class="need-arrow">→</span>
 							<span class="answer">
-								Compiled definitions evaluated <strong>in-process</strong>: ~10 ms per attribute
+								Compiled definitions evaluated <strong>in-process</strong>: ~6 ms per attribute
 							</span>
 						</div>
 						<div class="need">
@@ -324,8 +324,7 @@
 								<strong>compiler work</strong>
 							</li>
 							<li>
-								Codegen: AST → Java source → in-memory compile → classloader → <strong>~10ms</strong
-								>
+								Codegen: AST → Java source → in-memory compile → classloader → <strong>~6ms</strong>
 							</li>
 							<li>Consumers pin an attribute ID, hydrate at startup, refresh on publish</li>
 						</ul>

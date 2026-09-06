@@ -12,6 +12,7 @@ export const JAVA_DECLARED = [
 	'<span class="ty">ComputedAttribute</span>&lt;<span class="ty">Position</span>, <span class="ty">BigDecimal</span>&gt; notional =',
 	'    <span class="ty">ComputedAttribute</span>.of(<span class="ty">Position</span>.class, <span class="st">&quot;notional&quot;</span>)',
 	'        .mult(field(<span class="ty">Position</span>::price), field(<span class="ty">Position</span>::quantity));',
+	'',
 	'<span class="ty">BigDecimal</span> value = notional.evaluate(position);  <span class="cm">// strong typing in the Java API</span>'
 ].join('\n');
 
@@ -20,5 +21,6 @@ export const JAVA_FETCHED = [
 	'<span class="cm">// UI-authored attributes are fetched by unique ID, injected via app config</span>',
 	'<span class="ty">ComputedAttribute</span>&lt;<span class="ty">Position</span>, <span class="ty">BigDecimal</span>&gt; liquidity =',
 	'    attributes.fetch(config.get(<span class="st">&quot;surveillance.liquidity-attr-id&quot;</span>));',
-	'<span class="ty">BigDecimal</span> score = liquidity.evaluate(position);  <span class="cm">// compiled: ~10 ms</span>'
+	'',
+	'<span class="ty">BigDecimal</span> score = liquidity.evaluate(position);'
 ].join('\n');

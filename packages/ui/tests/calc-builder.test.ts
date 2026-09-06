@@ -617,9 +617,14 @@ test('the article embeds the demo in an expandable stage', async ({ page }) => {
 	await expect(page.locator('.fn-ref')).toHaveCount(noteCount);
 	await expect(page.locator('.fn-ref').last()).toHaveText(String(noteCount));
 	// Notes move to the end of their paragraph so they cannot split a sentence.
-	const atParagraphEnd = await page
-		.locator('.footnote')
-		.evaluateAll((notes) => notes.every((note) => note.parentElement?.lastElementChild === note));
+	// A paragraph may hold several notes, so each note is followed only by notes.
+	const atParagraphEnd = await page.locator('.footnote').evaluateAll((notes) =>
+		notes.every((note) => {
+			let el = note.nextElementSibling;
+			while (el && el.classList.contains('footnote')) el = el.nextElementSibling;
+			return el === null;
+		})
+	);
 	expect(atParagraphEnd).toBe(true);
 
 	// The lenses figure computes its groupings with the real evaluator.
