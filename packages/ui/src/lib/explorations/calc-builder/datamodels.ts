@@ -80,16 +80,16 @@ export const MODELS: DataModel[] = [
 				}
 			},
 			{
-				id: 'tsla',
-				label: 'TSLA',
+				id: 'f',
+				label: 'F',
 				values: {
-					symbol: 'TSLA',
-					price: 250,
-					quantity: 10,
-					costBasis: 300,
+					symbol: 'F',
+					price: 12.5,
+					quantity: 200,
+					costBasis: 15,
 					dailyReturns: [-2, -1, 0, 3],
 					instrument: {
-						name: 'Tesla Inc.',
+						name: 'Ford Motor Co.',
 						sector: 'auto',
 						couponRate: 0,
 						creditRatings: [
@@ -142,11 +142,11 @@ export const MODELS: DataModel[] = [
 				}
 			},
 			{
-				id: 'tsla-book',
-				label: 'TSLA book',
+				id: 'f-book',
+				label: 'F book',
 				values: {
-					symbol: 'TSLA',
-					midPrice: 250,
+					symbol: 'F',
+					midPrice: 12.5,
 					spread: 0.1,
 					bidSizes: [50, 50],
 					askSizes: [80, 120, 200]

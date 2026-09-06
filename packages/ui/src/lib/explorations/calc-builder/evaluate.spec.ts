@@ -292,7 +292,7 @@ describe('switch', () => {
 		on: field('symbol'),
 		cases: [
 			{ when: str('AAPL'), then: num(1) },
-			{ when: str('TSLA'), then: num(2) }
+			{ when: str('F'), then: num(2) }
 		],
 		fallback
 	});
@@ -316,7 +316,7 @@ describe('switch', () => {
 			on: str('AAPL'),
 			cases: [
 				{ when: str('AAPL'), then: num(1) },
-				{ when: str('TSLA'), then: explode }
+				{ when: str('F'), then: explode }
 			],
 			fallback: explode
 		};
@@ -354,7 +354,7 @@ describe('traceEvaluate', () => {
 			on: field('symbol'),
 			cases: [
 				{ when: str('AAPL'), then: num(1) },
-				{ when: str('TSLA'), then: num(2) }
+				{ when: str('F'), then: num(2) }
 			],
 			fallback: num(0)
 		};

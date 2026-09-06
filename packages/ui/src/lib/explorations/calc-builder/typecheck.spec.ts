@@ -309,7 +309,7 @@ describe('check', () => {
 			on: field('symbol'),
 			cases: [
 				{ when: num(1), then: num(1) },
-				{ when: str('TSLA'), then: str('two') }
+				{ when: str('F'), then: str('two') }
 			],
 			fallback: null
 		});

@@ -113,7 +113,7 @@ test('removing a node empties and reselects its slot for refilling', async ({ pa
 	await expect(resultValues(page)).toHaveText(['—', '—', '—']);
 
 	await field(page, 'costBasis').click();
-	await expect(resultValues(page)).toHaveText(['28125', '75000', '6400']);
+	await expect(resultValues(page)).toHaveText(['28125', '187.5', '6400']);
 });
 
 test('switching models swaps palette fields and flags stale refs', async ({ page }) => {
@@ -162,7 +162,7 @@ test('clicking a leaf selects it for in-place replacement', async ({ page }) => 
 	await page.locator('[data-node-path="input.1"] .leaf-btn').click();
 	await expect(page.locator('[data-node-path="input.1"]')).toHaveClass(/selected/);
 	await field(page, 'costBasis').click();
-	await expect(resultValues(page)).toHaveText(['28125', '75000', '6400']);
+	await expect(resultValues(page)).toHaveText(['28125', '187.5', '6400']);
 });
 
 test('removing a filled branch asks for confirmation', async ({ page }) => {
@@ -311,7 +311,7 @@ test('clicking a slot opens an in-place popover that fills it', async ({ page })
 	// Clicking a leaf pops the same menu for in-place replacement.
 	await page.locator('[data-node-path="input.1"] .leaf-btn').click();
 	await page.locator('[data-menu-field="costBasis"]').click();
-	await expect(resultValues(page)).toHaveText(['28125', '75000', '6400']);
+	await expect(resultValues(page)).toHaveText(['28125', '187.5', '6400']);
 });
 
 test('the popover filter narrows options and Enter picks the first match', async ({ page }) => {
@@ -723,7 +723,7 @@ test('debugger steps through evaluation and highlights the tree', async ({ page 
 	await expect(page.locator('[data-debug-done]')).toContainText('7500');
 
 	// Switching records restarts the walkthrough with that record's values.
-	await page.locator('[data-debug-record="TSLA"]').click();
+	await page.locator('[data-debug-record="F"]').click();
 	await expect(page.locator('[data-debug-counter]')).toHaveText('0 / 3');
 	await page.locator('[data-debug-finish]').click();
 	await expect(page.locator('[data-debug-done]')).toContainText('2500');
