@@ -12,7 +12,7 @@
     "@skeletonlabs/tw-plugin": "^0.4.0",
     "autoprefixer": "^10.4.17",
     "husky": "^9.1.7",
-    "postcss": "^8.4.35",
+    "postcss": "^8.5.28",
     "prettier": "^3.2.4",
     "tailwindcss": "^3.4.1"
   },
@@ -29,7 +29,6 @@
   },
   "overrides": {
     "cookie": "^0.7.0",
-    "picomatch": "^2.3.2",
-    "minimatch": "^9.0.7"
+    "@xmldom/xmldom": "^0.8.15"
   }
 }

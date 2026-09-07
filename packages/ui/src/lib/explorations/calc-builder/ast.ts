@@ -100,9 +100,10 @@ export interface ChildSlot {
 export const childSlots = (node: CalcNode): ChildSlot[] => {
 	switch (node.kind) {
 		case 'op':
-			return node.inputs.map(
-				(child, index): ChildSlot => ({ step: { part: 'input', index }, child })
-			);
+			return node.inputs.map((child, index): ChildSlot => ({
+				step: { part: 'input', index },
+				child
+			}));
 		case 'switch':
 			return [
 				{ step: { part: 'on' }, child: node.on },

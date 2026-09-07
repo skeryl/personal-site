@@ -2,13 +2,12 @@
   "name": "@sc/synth-builder",
   "version": "0.0.0",
   "dependencies": {
-    "uuid": "^9.0.1"
+    "uuid": "^14.0.2"
   },
   "devDependencies": {
-    "@types/uuid": "^9.0.8",
     "xsd2ts": "^0.9.17",
     "ts-node": "^10.9.2",
-    "vitest": "^3.0.2"
+    "vitest": "^5.0.0"
   },
   "scripts": {
     "generate-music-xml-types": "ts-node ./musicxml/generate-types.ts ./musicxml/schema/musicxml.xsd",

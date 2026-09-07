@@ -67,7 +67,7 @@
 			return undefined;
 		}
 
-		for (let ix = 0; ix < trackItems.length; ) {
+		for (let ix = 0; ix < trackItems.length;) {
 			const newOrderItem = trackItems[ix];
 			const prevOrderItem = playlistTracks[ix];
 

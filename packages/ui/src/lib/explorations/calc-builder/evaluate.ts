@@ -64,9 +64,10 @@ export const matchesType = (value: Value, type: ParamType): boolean => {
 export const resolveField = (record: RecordValue, path: string): Value | undefined =>
 	path
 		.split('.')
-		.reduce<
-			Value | undefined
-		>((value, part) => (value !== undefined && isRecord(value) ? value[part] : undefined), record);
+		.reduce<Value | undefined>(
+			(value, part) => (value !== undefined && isRecord(value) ? value[part] : undefined),
+			record
+		);
 
 interface EvalContext {
 	record: Record<string, Value>;
