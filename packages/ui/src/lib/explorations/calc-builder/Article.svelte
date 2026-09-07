@@ -10,9 +10,13 @@
 	import FigLifecycle from './FigLifecycle.svelte';
 	import FigPipelines from './FigPipelines.svelte';
 
-	let { onpresent = undefined }: { onpresent?: () => void } = $props();
-
 	let stage = $state<DemoStage>();
+
+	const jumpToDemo = () => {
+		document
+			.querySelector('[data-demo-stage]')
+			?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	};
 
 	/* The CTA takes the demo full screen, then starts the tour once the
 	   stage has settled into its expanded layout. */
@@ -69,9 +73,11 @@
 			How one calculation problem spiraled into a company-wide initiative (and what it taught me
 			about big problems)
 		</p>
-		{#if onpresent}
-			<button class="present-btn" data-present onclick={onpresent}>View as slides</button>
-		{/if}
+		<button class="hero-btn" data-jump-demo onclick={jumpToDemo}>Jump to the demo ↓</button>
+		<p class="mobile-note">
+			Small-screen note: everything here works on mobile, but this page (especially the interactive
+			demo) was designed for a larger screen.
+		</p>
 	</header>
 
 	<!-- ═══════════════ SECTION 1 · THE CALL · text (edit here) ═══════════════ -->
@@ -461,7 +467,7 @@
 		margin: 0 auto;
 		max-width: 40rem;
 	}
-	.present-btn {
+	.hero-btn {
 		margin-top: 1.5rem;
 		border: 1px solid var(--color-border-subtle);
 		border-radius: 999px;
@@ -472,9 +478,27 @@
 		color: var(--color-text-muted);
 		cursor: pointer;
 	}
-	.present-btn:hover {
+	.hero-btn:hover {
 		color: var(--color-text-strong);
 		border-color: var(--color-border-strong);
+	}
+	.mobile-note {
+		display: none;
+	}
+	@media (max-width: 820px) {
+		.mobile-note {
+			display: block;
+			margin: 1.5rem auto 0;
+			max-width: 26rem;
+			padding: 0.6rem 0.9rem;
+			border: 1px solid var(--color-border-subtle);
+			border-left: 3px solid var(--cb-accent);
+			border-radius: 0.4rem;
+			font-size: 0.82rem;
+			line-height: 1.5;
+			color: var(--color-text-muted);
+			text-align: left;
+		}
 	}
 	.colophon {
 		margin-top: 3.5rem;

@@ -15,10 +15,6 @@
 		}
 	});
 
-	const enterSlides = () => {
-		initialSlide = 0;
-		presenting = true;
-	};
 	const exitSlides = () => {
 		presenting = false;
 		history.replaceState(null, '', location.pathname);
@@ -28,5 +24,5 @@
 {#if presenting}
 	<SlideDeck initial={initialSlide} onexit={exitSlides} />
 {:else}
-	<Article onpresent={enterSlides} />
+	<Article />
 {/if}

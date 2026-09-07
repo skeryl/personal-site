@@ -27,6 +27,14 @@ const useString = async (page: Page, value: string) => {
 	await page.locator('[data-literal="string"]').click();
 };
 
+/** The deck has no article-side button; it is entered by URL hash. The
+ * about:blank hop forces a full load so the hash is read on mount. */
+const enterDeck = async (page: Page) => {
+	await page.goto('about:blank');
+	await page.goto(ROUTE + '#slides-1');
+	await page.waitForSelector('[data-slide-deck]');
+};
+
 /** Load a stored calc from the Library tab, then return to Results. */
 const loadFromLibrary = async (page: Page, id: string) => {
 	await page.locator('[data-tab="library"]').click();
@@ -202,15 +210,15 @@ test('variadic operators grow and shrink their inputs', async ({ page }) => {
 	await expect(status(page)).toContainText('2 empty slots');
 });
 
-test('composes stored calcs: the consensus example references two others', async ({ page }) => {
+test('composes stored calcs: the consensus example references three others', async ({ page }) => {
 	await loadFromLibrary(page, 'consensus-grade');
 	await expect(status(page)).toHaveAttribute('data-status', 'complete');
-	await expect(resultValues(page)).toHaveText(['19', '12.5', 'no match']);
+	await expect(resultValues(page)).toHaveText(['19', '12', 'no match']);
 	await expect(page.getByLabel('Calculation expression')).toHaveValue(
-		'(@moodys-grade + @sp-grade) / 2'
+		'avg(@moodys-grade, @sp-grade, @fitch-grade)'
 	);
 	// The references render as labeled calc chips.
-	await expect(page.locator('.leaf.calc')).toHaveCount(2);
+	await expect(page.locator('.leaf.calc')).toHaveCount(3);
 	await expect(page.locator('.leaf.calc').first()).toContainText("Moody's rating as a number");
 });
 
@@ -248,7 +256,7 @@ test('referenced-in chips navigate to the calcs using this one', async ({ page }
 	await chip.click();
 	await expect(page.getByLabel('Calculation name')).toHaveValue('Consensus grade');
 	await expect(page.getByLabel('Calculation expression')).toHaveValue(
-		'(@moodys-grade + @sp-grade) / 2'
+		'avg(@moodys-grade, @sp-grade, @fitch-grade)'
 	);
 	// The consensus calc itself has no referencers.
 	await expect(page.locator('[data-ref-in]')).toHaveCount(0);
@@ -434,7 +442,7 @@ test('maps number arrays with the item element field in scope', async ({ page })
 test('loads the mapped rating-grade example', async ({ page }) => {
 	await loadFromLibrary(page, 'avg-rating-grade');
 	await expect(status(page)).toHaveAttribute('data-status', 'complete');
-	await expect(resultValues(page)).toHaveText(['18.3333', '12.5', 'empty array']);
+	await expect(resultValues(page)).toHaveText(['19', '12', 'empty array']);
 });
 
 test('loads calcs, confirming only over unsaved changes', async ({ page }) => {
@@ -493,14 +501,14 @@ test('persists the working calc and library saves across reloads', async ({ page
 
 test('saving appends a draft; publishing promotes it for consumers', async ({ page }) => {
 	await loadFromLibrary(page, 'consensus-grade');
-	await page.locator('[data-op-select="input.0"]').selectOption('avg');
+	await page.locator('[data-op-select="root"]').selectOption('sum');
 	await page.locator('[data-save-calc]').click();
 
 	// The draft is private: the library still serves the published v1 and no
 	// duplicate entry was created.
 	await page.locator('[data-tab="library"]').click();
 	const card = page.locator('[data-lib-row="consensus-grade"]');
-	await expect(card).toContainText('(@moodys-grade + @sp-grade) / 2');
+	await expect(card).toContainText('avg(@moodys-grade, @sp-grade, @fitch-grade)');
 	await expect(card).toContainText('v1 · published');
 	await expect(card).toContainText('draft pending');
 	await expect(page.locator('[data-lib-row]', { hasText: 'Consensus grade' })).toHaveCount(1);
@@ -513,7 +521,7 @@ test('saving appends a draft; publishing promotes it for consumers', async ({ pa
 	await expect(page.locator('[data-version-row="2"]')).toContainText('in effect');
 
 	await page.locator('[data-tab="library"]').click();
-	await expect(card).toContainText('avg(@moodys-grade, @sp-grade)');
+	await expect(card).toContainText('sum(@moodys-grade, @sp-grade, @fitch-grade)');
 	await expect(card).toContainText('v2 · published');
 
 	// The whole history survives a reload.
@@ -646,7 +654,7 @@ test('clear resets to an empty, selected root slot', async ({ page }) => {
 test('slide deck presents full screen, navigates, and exits back to the article', async ({
 	page
 }) => {
-	await page.locator('[data-present]').click();
+	await enterDeck(page);
 	const deck = page.locator('[data-slide-deck]');
 	await expect(deck).toBeVisible();
 	await expect(page.locator('[data-deck-counter]')).toHaveText('1 / 16');
@@ -670,7 +678,7 @@ test('slide deck presents full screen, navigates, and exits back to the article'
 });
 
 test('slide deck demo slide hosts the working calc builder', async ({ page }) => {
-	await page.locator('[data-present]').click();
+	await enterDeck(page);
 	await page.keyboard.press('End');
 	// Walk back to the demo slide (index 7).
 	for (let i = 0; i < 8; i++) await page.keyboard.press('ArrowLeft');
@@ -685,7 +693,7 @@ test('slide deck demo slide hosts the working calc builder', async ({ page }) =>
 });
 
 test('wheel flick advances one slide with a cooldown', async ({ page }) => {
-	await page.locator('[data-present]').click();
+	await enterDeck(page);
 	await page.mouse.move(720, 450);
 	await page.mouse.wheel(0, 400);
 	await expect(page.locator('[data-deck-counter]')).toHaveText('2 / 16');
@@ -696,7 +704,7 @@ test('wheel flick advances one slide with a cooldown', async ({ page }) => {
 });
 
 test('java api and architecture slides render', async ({ page }) => {
-	await page.locator('[data-present]').click();
+	await enterDeck(page);
 	for (let i = 0; i < 8; i++) await page.keyboard.press('ArrowRight');
 	await expect(page.locator('.code-block')).toContainText('ComputedAttribute');
 	await page.keyboard.press('ArrowRight');
@@ -862,7 +870,7 @@ test('calc references preview their definition and drill down', async ({ page })
 	await loadFromLibrary(page, 'consensus-grade');
 
 	// Hover preview: the reference's title carries its printed definition.
-	const leaf = page.locator('[data-node-path="input.0/input.0"] .leaf-btn');
+	const leaf = page.locator('[data-node-path="input.0"] .leaf-btn');
 	await expect(leaf).toHaveAttribute('title', /lookupText/);
 
 	// Drill down: the open button loads the referenced calc in the editor.
@@ -937,4 +945,16 @@ test('the article tour button expands the demo and starts the tour', async ({ pa
 	// Second Escape collapses the stage.
 	await page.keyboard.press('Escape');
 	await expect(page.locator('[data-demo-stage]')).not.toHaveClass(/expanded/);
+});
+
+test('hero jumps to the demo and flags small screens', async ({ page }) => {
+	// The slides button is gone; the hero CTA scrolls to the live demo.
+	await expect(page.locator('[data-present]')).toHaveCount(0);
+	await expect(page.locator('.mobile-note')).toBeHidden();
+	await page.locator('[data-jump-demo]').click();
+	await expect(page.locator('[data-demo-stage]')).toBeInViewport();
+
+	// Small screens get the larger-screen disclaimer.
+	await page.setViewportSize({ width: 390, height: 844 });
+	await expect(page.locator('.mobile-note')).toBeVisible();
 });
