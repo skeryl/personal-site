@@ -1,6 +1,7 @@
 import antFarm from "$lib/assets/videos/posts/ant-farm.webm";
 import blobConvergence from "$lib/assets/videos/posts/blob-convergence.mp4";
 import blobGrid from "$lib/assets/videos/posts/blob-grid.mp4";
+import calcBuilder from "$lib/assets/videos/posts/calc-builder.mov";
 import cubePegTorusHole from "$lib/assets/videos/posts/cube-peg-torus-hole.webm";
 import follow from "$lib/assets/videos/posts/follow.webm";
 import gravitySwell from "$lib/assets/videos/posts/gravity-swell.webm";
@@ -21,6 +22,7 @@ const videos: Record<string, string> = {
     ["ant-farm"]: antFarm,
     ["blob-convergence"]: blobConvergence,
     ["blob-grid"]: blobGrid,
+    ["calc-builder"]: calcBuilder,
     ["cube-peg-torus-hole"]: cubePegTorusHole,
     ["follow"]: follow,
     ["gravity-swell"]: gravitySwell,

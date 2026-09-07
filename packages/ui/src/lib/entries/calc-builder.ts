@@ -4,7 +4,7 @@ import CalcBuilder from '$lib/explorations/calc-builder.svelte';
 const post: Post = {
 	summary: {
 		id: 'calc-builder',
-		tags: ['finance', 'ast', 'no-code', 'sandbox'],
+		tags: ['blog', 'graphs', 'math', 'sandbox'],
 		title: 'Calc Builder',
 		subtitle:
 			'The story of a calculation platform born from an angry phone call, rebuilt from memory with a live demo',
