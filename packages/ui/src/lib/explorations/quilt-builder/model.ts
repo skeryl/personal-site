@@ -59,8 +59,7 @@ export const withinBudget = (cells: readonly Cell[]): boolean => {
 };
 
 export type ApplyResult =
-	| { ok: true; board: Board }
-	| { ok: false; reason: 'no-op' | 'over-budget' };
+	{ ok: true; board: Board } | { ok: false; reason: 'no-op' | 'over-budget' };
 
 /**
  * Apply sparse cell updates as one transaction. Rejects results that change

@@ -101,11 +101,7 @@ interface AxisGesture {
 }
 
 export type Gesture =
-	| PaintGesture
-	| SlotDragGesture
-	| GroupDragGesture
-	| MarqueeGesture
-	| AxisGesture;
+	PaintGesture | SlotDragGesture | GroupDragGesture | MarqueeGesture | AxisGesture;
 
 export interface Clipboard {
 	w: number;
