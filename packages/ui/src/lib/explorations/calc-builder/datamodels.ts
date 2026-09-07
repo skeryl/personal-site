@@ -74,7 +74,7 @@ export const MODELS: DataModel[] = [
 						creditRatings: [
 							{ agency: 'moodys', rating: 'AA', score: 20 },
 							{ agency: 'sp', rating: 'AA', score: 19 },
-							{ agency: 'fitch', rating: 'A', score: 18 }
+							{ agency: 'fitch', rating: 'AA', score: 18 }
 						]
 					}
 				}
@@ -94,7 +94,8 @@ export const MODELS: DataModel[] = [
 						couponRate: 0,
 						creditRatings: [
 							{ agency: 'moodys', rating: 'BB', score: 11 },
-							{ agency: 'sp', rating: 'BBB', score: 13 }
+							{ agency: 'sp', rating: 'BBB', score: 13 },
+							{ agency: 'fitch', rating: 'BB', score: 12 }
 						]
 					}
 				}

@@ -147,9 +147,9 @@ export const LIBRARY: CalcDef[] = [
 	builtIn(
 		'consensus-grade',
 		'Consensus grade',
-		"calcs in calcs: the Moody's and S&P grade calculations, averaged",
+		'calcs in calcs: the three agency grade calculations, averaged',
 		'trading-position',
-		op('div', op('add', ref('moodys-grade'), ref('sp-grade')), n(2))
+		op('avg', ref('moodys-grade'), ref('sp-grade'), ref('fitch-grade'))
 	),
 	builtIn(
 		'avg-rating-grade',

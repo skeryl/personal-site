@@ -378,7 +378,7 @@
 					</ul>
 				{:else}
 					<div class="center">
-						<code class="closing-expr">avg(@moodys-grade, @sp-grade)</code>
+						<code class="closing-expr">avg(@moodys-grade, @sp-grade, @fitch-grade)</code>
 						<h2 class="closing">Questions?</h2>
 					</div>
 				{/if}

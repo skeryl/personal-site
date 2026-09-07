@@ -253,7 +253,7 @@ describe('map', () => {
 			fallback: num(0)
 		};
 		const tree = op('avg', map(field('instrument.creditRatings'), grade));
-		expect(evaluate(tree, aapl)).toEqual({ ok: true, value: (19 + 19 + 17) / 3 });
+		expect(evaluate(tree, aapl)).toEqual({ ok: true, value: (19 + 19 + 19) / 3 });
 	});
 
 	it('yields an empty array for empty sources', () => {

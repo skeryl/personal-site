@@ -87,24 +87,24 @@ describe('library', () => {
 			'no-match'
 		]);
 		expect(resultsOf('fitch-grade').map((r) => (r.ok ? r.value : r.error))).toEqual([
-			17,
-			'no-match',
+			19,
+			11,
 			'no-match'
 		]);
 	});
 
-	it('composes calcs in calcs: the consensus grade references two others', () => {
+	it('composes calcs in calcs: the consensus grade references three others', () => {
 		expect(resultsOf('consensus-grade')).toEqual([
 			{ ok: true, value: 19 },
-			{ ok: true, value: 12.5 },
+			{ ok: true, value: 12 },
 			{ ok: false, error: 'no-match' }
 		]);
 	});
 
 	it('maps every letter grade to a number and averages across agencies', () => {
 		expect(resultsOf('avg-rating-grade')).toEqual([
-			{ ok: true, value: (19 + 19 + 17) / 3 },
-			{ ok: true, value: (11 + 14) / 2 },
+			{ ok: true, value: (19 + 19 + 19) / 3 },
+			{ ok: true, value: (11 + 14 + 11) / 3 },
 			{ ok: false, error: 'empty-array' }
 		]);
 	});
