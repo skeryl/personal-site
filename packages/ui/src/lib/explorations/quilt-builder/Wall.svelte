@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { isNamed } from './data';
 	import Minimap from './Minimap.svelte';
 	import { toPolygonPoints } from './geometry';
 	import {
@@ -46,9 +45,8 @@
 		}
 		if (store.tool === 'grid') return 'Click or drag to paint the grid chosen on the left';
 		if (store.tool === 'erase') return null;
-		if (!store.materials.length) return 'Add a fabric in Materials to start placing';
-		if (!store.selectedMaterial) return 'Select a fabric in Materials to start placing';
-		if (!isNamed(store.selectedMaterial)) return 'Name the selected fabric to start placing';
+		if (!store.materials.length) return 'Add a color in Attributes to start placing';
+		if (!store.selectedMaterial) return 'Pick a color in Attributes to start placing';
 		return null;
 	});
 

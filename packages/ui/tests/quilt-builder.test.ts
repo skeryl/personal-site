@@ -49,13 +49,13 @@ const at = (cols: number, row: number, col: number) => row * cols + col;
 /** Hover previews pollute fill reads; park the pointer off the quilt. */
 const parkMouse = (page: Page) => page.mouse.move(10, 10);
 
+/*
+ * Colour lives in the Attributes palette now: adding one through the "+"
+ * swatch makes it the active fabric, and naming it is optional.
+ */
 const addFabric = async (page: Page, name: string, hex: string) => {
-	await page.getByRole('button', { name: '+Add' }).click();
-	const card = page.locator('.material').last();
-	await card.getByPlaceholder('Name this fabric').fill(name);
-	await card.locator('.hex').fill(hex);
-	await card.locator('.hex').press('Enter');
-	await card.getByRole('button', { name: /Use|Selected/ }).click();
+	await page.locator('.palette input[type="color"]').fill(`#${hex}`);
+	await page.locator('.active .name').fill(name);
 };
 
 test.beforeEach(async ({ page }) => {
@@ -68,21 +68,19 @@ test.beforeEach(async ({ page }) => {
 	await page.waitForSelector('[data-cell-index="0"]');
 });
 
-test('nothing can be placed until a fabric is added and named', async ({ page }) => {
+test('nothing can be placed until a colour exists, and naming is optional', async ({ page }) => {
+	await expect(page.locator('.banner')).toContainText(/add a color/i);
+	await page.getByRole('tab', { name: 'Piece' }).click();
 	await cell(page, 0).click();
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#ffffff']);
 
-	await page.getByRole('button', { name: '+Add' }).click();
-	await expect(page.locator('.banner')).toContainText(/name the selected fabric/i);
+	// Adding a colour is enough: it becomes active and placing works unnamed.
+	await page.locator('.palette input[type="color"]').fill('#4f7fe8');
+	await expect(page.locator('.banner')).toHaveCount(0);
 	await cell(page, 0).click();
 	await parkMouse(page);
-	expect(await cellFills(page, 0)).toEqual(['#ffffff']);
-
-	await page.getByPlaceholder('Name this fabric').fill('Blue');
-	await cell(page, 0).click();
-	await parkMouse(page);
-	expect((await cellFills(page, 0))[0]).not.toBe('#ffffff');
+	expect(await cellFills(page, 0)).toEqual(['#4f7fe8']);
 });
 
 test('a paint drag is one undo step and redo restores it', async ({ page }) => {
@@ -120,8 +118,9 @@ test('stamping a block keeps the fabric underneath in the background slots', asy
 	await parkMouse(page);
 
 	expect(await cellFills(page, 5)).toEqual(['#38511f', '#4f7fe8', '#4f7fe8', '#4f7fe8', '#4f7fe8']);
-	await expect(page.locator('.material').first()).toContainText('4½” squares: (2)');
-	await expect(page.locator('.material').last()).toContainText('6⅛” squares: (1)');
+	await page.locator('.cut-list summary').click();
+	await expect(page.locator('.cut-group').first()).toContainText('4½” squares: (2)');
+	await expect(page.locator('.cut-group').last()).toContainText('6⅛” squares: (1)');
 });
 
 test('the design, fabrics, and size survive a reload', async ({ page }) => {
@@ -137,7 +136,7 @@ test('the design, fabrics, and size survive a reload', async ({ page }) => {
 	await page.waitForSelector('[data-cell-index="0"]');
 	await expect(page.getByLabel('Quilt name')).toHaveValue('Stars');
 	await expect(page.getByLabel('Quilt size')).toHaveValue('throw');
-	await expect(page.locator('.material')).toHaveCount(1);
+	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(1);
 	expect(await cellFills(page, 3)).toEqual(['#4f7fe8']);
 });
 
@@ -147,7 +146,8 @@ test('composition subdivides a block without changing how it looks', async ({ pa
 	await cell(page, 0).click();
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#4f7fe8']);
-	await expect(page.locator('.material').first()).toContainText('8½” squares: (1)');
+	await page.locator('.cut-list summary').click();
+	await expect(page.locator('.cut-group').first()).toContainText('8½” squares: (1)');
 
 	await selectCell(page, 0);
 
@@ -156,12 +156,12 @@ test('composition subdivides a block without changing how it looks', async ({ pa
 	await composition(page, /^2 by 2$/).click();
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(Array(4).fill('#4f7fe8'));
-	await expect(page.locator('.material').first()).toContainText('4½” squares: (4)');
+	await expect(page.locator('.cut-group').first()).toContainText('4½” squares: (4)');
 
 	await composition(page, /^4 by 4$/).click();
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(Array(16).fill('#4f7fe8'));
-	await expect(page.locator('.material').first()).toContainText('2½” squares: (16)');
+	await expect(page.locator('.cut-group').first()).toContainText('2½” squares: (16)');
 
 	// Coarsening keeps each group's top-left piece, and undo restores the 4x4.
 	await composition(page, /^One piece$/).click();
@@ -403,4 +403,55 @@ test('the wall labels its columns and rows, and names the selection', async ({ p
 		await cell(page, at(cols, r, c)).click({ modifiers: ['Shift'] });
 	}
 	await expect(page.locator('.readout')).toHaveText('5 squares selected');
+});
+
+test('the palette chooses which colour gets painted', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await addFabric(page, 'Green', '38511f');
+	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(2);
+
+	// The colour just added is the active one.
+	await page.getByRole('tab', { name: 'Piece' }).click();
+	await cell(page, 0).click();
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toEqual(['#38511f']);
+
+	await page.getByRole('button', { name: 'Paint with Blue' }).click();
+	await cell(page, 1).click();
+	await parkMouse(page);
+	expect(await cellFills(page, 1)).toEqual(['#4f7fe8']);
+});
+
+test('attributes lists the fabrics in a selection and remaps one', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await page.getByRole('tab', { name: 'Piece' }).click();
+	await cell(page, 0).click();
+	await cell(page, 1).click();
+
+	// Stamp a pinwheel over both: role 0 takes green, the rest keeps blue.
+	await addFabric(page, 'Green', '38511f');
+	await page.getByRole('tab', { name: 'Block' }).click();
+	await page.getByRole('button', { name: 'Pinwheel' }).click();
+	await cell(page, 0).click();
+	await cell(page, 1).click();
+	await parkMouse(page);
+	expect(new Set(await cellFills(page, 0))).toEqual(new Set(['#38511f', '#4f7fe8']));
+
+	// With one block selected, Attributes names both of its fabrics.
+	await tool(page, /^Mouse/).click();
+	await cell(page, 0).click();
+	await expect(page.locator('.colors .color')).toHaveCount(2);
+
+	// Remapping green to blue leaves the block in one fabric.
+	await page.locator('.colors .color').first().locator('.swatch').click();
+	await page.locator('.picker').getByRole('button', { name: 'Blue' }).click();
+	await parkMouse(page);
+	expect(new Set(await cellFills(page, 0))).toEqual(new Set(['#4f7fe8']));
+
+	// The neighbour was not selected, so it kept both fabrics.
+	expect(new Set(await cellFills(page, 1))).toEqual(new Set(['#38511f', '#4f7fe8']));
+});
+
+test('attributes says so when nothing is selected', async ({ page }) => {
+	await expect(page.locator('.attributes .hint').first()).toContainText('No blocks selected');
 });

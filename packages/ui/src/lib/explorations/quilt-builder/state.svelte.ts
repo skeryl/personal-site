@@ -13,7 +13,6 @@ import {
 	QUILT_SIZE_BY_ID,
 	STARTER_HEXES,
 	clampCustomInches,
-	isNamed,
 	normalizeHex,
 	type Material
 } from './data';
@@ -28,6 +27,7 @@ import {
 	colOf,
 	divisionOf,
 	emptyBoard,
+	flatten,
 	isEmpty,
 	mapLeaves,
 	materialsInUse,
@@ -38,7 +38,8 @@ import {
 	squareLabel,
 	withoutMaterial,
 	type Block,
-	type Board
+	type Board,
+	type MaterialId
 } from './model';
 import {
 	buildErase,
@@ -164,8 +165,11 @@ export class QuiltStore {
 	selectedMaterial = $derived(
 		this.selectedMaterialId ? (this.materialById.get(this.selectedMaterialId) ?? null) : null
 	);
-	/** Placement is allowed only with a named fabric selected. */
-	canPlace = $derived(this.selectedMaterial !== null && isNamed(this.selectedMaterial));
+	/*
+	 * Placement needs a fabric, but no longer a NAMED one: names are optional
+	 * now, and an unnamed fabric exports as its hex code.
+	 */
+	canPlace = $derived(this.selectedMaterial !== null);
 	filled = $derived(this.cells.filter((block) => !isEmpty(block)).length);
 	inUse = $derived(materialsInUse(this.cells));
 	canUndo = $derived(this.history.past.length > 0);
@@ -438,6 +442,43 @@ export class QuiltStore {
 		return `${count} squares selected`;
 	});
 
+	/*
+	 * The distinct fabrics used by the selected blocks, in reading order. This
+	 * is what ATTRIBUTES lists: two for a plain block, more for a composed one.
+	 */
+	selectionFabrics = $derived.by(() => {
+		const seen: MaterialId[] = [];
+		[...this.selection]
+			.sort((a, b) => a - b)
+			.forEach((index) => {
+				const block = this.cells[index];
+				if (!block) return;
+				flatten(block).forEach(({ fabric }) => {
+					if (fabric && !seen.includes(fabric)) seen.push(fabric);
+				});
+			});
+		return seen;
+	});
+
+	/** Swap one fabric for another, within the selection only. */
+	remapFabric(from: MaterialId, to: MaterialId) {
+		if (!this.selection.length || from === to) return;
+		const updates = new Map<number, Block>();
+		this.selection.forEach((index) => {
+			const block = this.cells[index];
+			if (!block) return;
+			updates.set(
+				index,
+				mapLeaves(block, (leaf) =>
+					leaf.fabrics.includes(from)
+						? { ...leaf, fabrics: leaf.fabrics.map((f) => (f === from ? to : f)) }
+						: leaf
+				)
+			);
+		});
+		this.commit(updates);
+	}
+
 	/** What the grid chips show as active: the selection's, else the tool's. */
 	activeDivision = $derived(this.selection.length ? this.selectedDivision : this.gridDivision);
 
@@ -650,15 +691,17 @@ export class QuiltStore {
 
 	// ── Materials ────────────────────────────────────────────────────
 
-	addMaterial() {
+	/** Add a fabric to the palette and make it the one being painted with. */
+	addMaterial(hex?: string): Material {
 		const material: Material = {
 			id: crypto.randomUUID(),
 			name: '',
-			hex: STARTER_HEXES[this.materials.length % STARTER_HEXES.length]
+			hex: (hex && normalizeHex(hex)) || STARTER_HEXES[this.materials.length % STARTER_HEXES.length]
 		};
 		this.materials = [...this.materials, material];
 		this.selectedMaterialId = material.id;
 		this.tool = 'place';
+		return material;
 	}
 
 	selectMaterial(id: string) {

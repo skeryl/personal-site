@@ -4,6 +4,7 @@
 	import { PIECE_CUTS } from './geometry';
 	import { flatten, leafBlock, rotateBlock, type Block } from './model';
 	import { boundsOf, coordOf, rotatePattern, type PatternBlocks } from './pattern';
+	import AttributesPanel from './AttributesPanel.svelte';
 	import BlockSvg from './BlockSvg.svelte';
 	import PatternSvg from './PatternSvg.svelte';
 	import { DIVISIONS, type QuiltStore } from './state.svelte';
@@ -215,6 +216,7 @@
 			</div>
 		</div>
 	{/if}
+	<AttributesPanel {store} />
 </aside>
 
 <style>

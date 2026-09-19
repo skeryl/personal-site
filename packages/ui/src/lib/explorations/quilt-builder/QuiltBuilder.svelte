@@ -3,7 +3,6 @@
 	import { QuiltStore } from './state.svelte';
 	import SidePanel from './SidePanel.svelte';
 	import Wall from './Wall.svelte';
-	import MaterialsPanel from './MaterialsPanel.svelte';
 
 	const store = new QuiltStore();
 
@@ -91,7 +90,6 @@
 	<section class="body">
 		<SidePanel {store} />
 		<Wall {store} />
-		<MaterialsPanel {store} />
 	</section>
 </div>
 
@@ -196,7 +194,7 @@
 
 	.body {
 		display: grid;
-		grid-template-columns: 22rem minmax(0, 1fr) 17rem;
+		grid-template-columns: 22rem minmax(0, 1fr);
 		align-items: start;
 		border-top: 1px solid var(--qb-line);
 	}
@@ -211,9 +209,6 @@
 	@media (max-width: 1100px) {
 		.body {
 			grid-template-columns: 18rem minmax(0, 1fr);
-		}
-		.body > :global(.materials) {
-			grid-column: 1 / -1;
 		}
 	}
 	@media (max-width: 768px) {
