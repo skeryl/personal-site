@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { SQUARE_INCHES } from './data';
+	import { QUILT_SIZES } from './data';
 	import { QuiltStore } from './state.svelte';
-	import Palette from './Palette.svelte';
+	import SidePanel from './SidePanel.svelte';
 	import Wall from './Wall.svelte';
-	import PatternsPanel from './PatternsPanel.svelte';
+	import MaterialsPanel from './MaterialsPanel.svelte';
 
 	const store = new QuiltStore();
 
@@ -13,8 +13,8 @@
 	 */
 	const AUTOSAVE_MS = 250;
 	$effect(() => {
-		void store.workingState;
-		const timer = setTimeout(() => store.persistWorking(), AUTOSAVE_MS);
+		void store.savedState;
+		const timer = setTimeout(() => store.persist(), AUTOSAVE_MS);
 		return () => clearTimeout(timer);
 	});
 </script>
@@ -25,118 +25,131 @@
 	onkeydown={(e) => store.onKeyDown(e)}
 />
 
-<div class="exploration">
+<div class="qb">
 	<header class="hero">
 		<h1>Quilt Builder</h1>
-		<p class="subtitle">
-			A design wall for one finite pile of scrap fabric. Every cell is an {SQUARE_INCHES}" square
-			that can hold a whole square, two rectangles, two triangles, or four half-triangles. Drag
-			pieces around until something looks right.
-		</p>
 	</header>
 
-	<section class="tool-grid">
-		<Palette {store} />
+	<div class="titlebar">
+		<input
+			class="quilt-name"
+			type="text"
+			placeholder="Untitled"
+			aria-label="Quilt name"
+			maxlength="60"
+			bind:value={store.name}
+			onkeydown={(e) => {
+				if (e.key === 'Enter') e.currentTarget.blur();
+			}}
+		/>
+		<label class="size">
+			<span class="sr-only">Quilt size</span>
+			<select value={store.sizeId} onchange={(e) => store.setSize(e.currentTarget.value)}>
+				{#each QUILT_SIZES as size (size.id)}
+					<option value={size.id}>
+						{size.name.toUpperCase()} ({size.width}”x{size.height}”)
+					</option>
+				{/each}
+			</select>
+		</label>
+	</div>
+
+	<section class="body">
+		<SidePanel {store} />
 		<Wall {store} />
-		<PatternsPanel {store} />
+		<MaterialsPanel {store} />
 	</section>
 </div>
 
 <style>
-	.exploration {
-		/* Accent palette shared by the child components. */
-		--qb-accent: #f59e0b;
-		--qb-axis-v: #e11d48;
-		--qb-axis-h: #2563eb;
-		--qb-wall: #616161;
+	.qb {
+		--qb-mono: 'JetBrains Mono', 'Fira Mono', 'SF Mono', Menlo, Consolas, monospace;
+		--qb-accent: #c766e4;
+		--qb-panel: #f4f4f4;
+		--qb-wall: #efefef;
+		--qb-line: #cfcfcf;
 
 		max-width: 1400px;
 		margin: 0 auto;
-		padding: 3rem 1.25rem 6rem;
+		padding: 1.5rem 0 6rem;
 		color: var(--color-text);
-		line-height: 1.6;
+		line-height: 1.5;
 	}
 	.hero {
 		text-align: center;
-		margin-bottom: 2.5rem;
+		margin-bottom: 1.5rem;
 	}
 	.hero h1 {
+		font-family: var(--qb-mono);
+		font-weight: 500;
 		font-size: clamp(2rem, 5vw, 3rem);
-		letter-spacing: -0.02em;
-		margin: 0 0 1rem;
+		letter-spacing: -0.01em;
+		margin: 0;
 		color: var(--color-text-strong);
 	}
-	.subtitle {
-		font-size: 1.05rem;
-		color: var(--color-text-secondary);
-		max-width: 62ch;
-		margin: 0 auto;
-	}
 
-	.tool-grid {
-		display: grid;
-		grid-template-columns: 14rem minmax(0, 1fr) 24rem;
+	.titlebar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
 		gap: 2rem;
-		align-items: start;
+		max-width: 46rem;
+		margin: 0 auto 0.75rem;
+		padding: 0 1rem;
+		font-family: var(--qb-mono);
 	}
-
-	/* Shared building blocks used by all three panels. */
-	.exploration :global(.tool-btn) {
-		padding: 0.3rem 0.6rem;
-		border: 1px solid var(--color-border-strong);
-		border-radius: 0.375rem;
-		background: none;
+	.quilt-name {
+		flex: 1;
+		min-width: 0;
 		font: inherit;
-		font-size: 0.78rem;
+		font-size: 1.1rem;
+		color: var(--color-text-strong);
+		background: none;
+		border: none;
+		border-bottom: 1px solid transparent;
+		padding: 0.1rem 0;
+	}
+	.quilt-name:hover {
+		border-bottom-color: var(--qb-line);
+	}
+	.quilt-name:focus {
+		outline: none;
+		border-bottom-color: var(--color-text-strong);
+	}
+	.size select {
+		font: inherit;
+		font-size: 0.85rem;
+		color: var(--color-text-strong);
+		background: transparent;
+		border: none;
 		cursor: pointer;
 	}
-	.exploration :global(.tool-btn.active) {
-		background: var(--color-filter-active-bg);
-		color: var(--color-filter-active-text);
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
 	}
-	.exploration :global(.tool-btn:disabled) {
-		opacity: 0.4;
-		cursor: default;
-	}
-	.exploration :global(kbd) {
-		font-size: 0.7rem;
-		opacity: 0.7;
-	}
-	.exploration :global(.group-label) {
-		font-size: 0.68rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-text-muted);
-		margin-top: 0.9rem;
-	}
-	.exploration :global(.hint) {
-		font-size: 0.8rem;
-		color: var(--color-text-muted);
-		margin: 0 0 0.75rem;
-		line-height: 1.4;
-	}
-	.exploration :global(.chip) {
-		width: 1.4rem;
-		height: 1.4rem;
-		border-radius: 0.25rem;
-		border: 1px solid var(--color-border-subtle);
+
+	.body {
+		display: grid;
+		grid-template-columns: 22rem minmax(0, 1fr) 15rem;
+		align-items: start;
+		border-top: 1px solid var(--qb-line);
 	}
 
 	@media (max-width: 1100px) {
-		.tool-grid {
-			grid-template-columns: 14rem minmax(0, 1fr);
+		.body {
+			grid-template-columns: 18rem minmax(0, 1fr);
 		}
-		.tool-grid > :global(.patterns-panel) {
+		.body > :global(.materials) {
 			grid-column: 1 / -1;
-		}
-		.tool-grid :global(.pattern-list) {
-			display: grid;
-			grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
 		}
 	}
 	@media (max-width: 768px) {
-		.tool-grid {
+		.body {
 			grid-template-columns: minmax(0, 1fr);
 		}
 	}

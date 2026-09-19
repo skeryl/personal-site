@@ -2,24 +2,26 @@ import { describe, expect, it } from 'vitest';
 import { HISTORY_CAP, emptyHistory, record, redo, undo } from './history';
 import { emptyBoard, type Board, type Cell } from './model';
 
-const square = (fabric: string): Cell => ({ layout: 'whole', rotation: 0, slots: [fabric] });
+const DIMS = { rows: 3, cols: 3 };
+
+const square = (fabric: string): Cell => ({ layout: 'square', rotation: 0, slots: [fabric] });
 
 const boardWith = (fabric: string): Board => {
-	const board = emptyBoard();
+	const board = emptyBoard(DIMS);
 	board[0] = square(fabric);
 	return board;
 };
 
 describe('record', () => {
 	it('stores the snapshot and clears redo', () => {
-		const withFuture = { past: [], future: [emptyBoard()] };
+		const withFuture = { past: [], future: [emptyBoard(DIMS)] };
 		const next = record(withFuture, boardWith('tan'));
 		expect(next.past).toHaveLength(1);
 		expect(next.future).toHaveLength(0);
 	});
 
 	it('caps the past at HISTORY_CAP entries', () => {
-		const full = Array.from({ length: HISTORY_CAP + 5 }, () => emptyBoard()).reduce(
+		const full = Array.from({ length: HISTORY_CAP + 5 }, () => emptyBoard(DIMS)).reduce(
 			(history, snapshot) => record(history, snapshot),
 			emptyHistory()
 		);
@@ -50,8 +52,8 @@ describe('undo/redo', () => {
 	});
 
 	it('returns null with nothing to restore', () => {
-		expect(undo(emptyHistory(), emptyBoard())).toBeNull();
-		expect(redo(emptyHistory(), emptyBoard())).toBeNull();
+		expect(undo(emptyHistory(), emptyBoard(DIMS))).toBeNull();
+		expect(redo(emptyHistory(), emptyBoard(DIMS))).toBeNull();
 	});
 
 	it('skips snapshots identical to the current board', () => {

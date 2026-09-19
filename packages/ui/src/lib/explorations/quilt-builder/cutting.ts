@@ -1,102 +1,141 @@
 /*
- * Cutting spec: real-world counts per pattern.
+ * Cutting list: real-world counts per fabric.
  *
- * Shane's order of operations: every piece starts from one cut blank
- * (finished size + seam allowance both sides). Rectangles are the blank
- * folded in half and cut on the fold; triangles are the blank cut on one or
- * both diagonals. Piece dimensions are subdivisions of the blank, by design;
- * do not "correct" them to standard quilting formulas.
+ * Every piece starts from one cut blank square (finished size + seam
+ * allowance both sides). Rectangles are the blank cut in half; triangles are
+ * the blank cut on one or both diagonals. Blank size is a fraction of the
+ * block, so a pinwheel's small triangles come from half-block blanks.
  */
 
-import { FABRICS, FABRIC_BY_ID, SEAM_INCHES, SQUARE_INCHES, type Fabric } from './data';
-import { LAYOUTS, rotatedSlots, type LayoutId, type ShapeKind } from './geometry';
-import { colOf, isEmpty, rowOf, type Cell } from './model';
+import { SEAM_INCHES, fmtInches, type Material } from './data';
+import { LAYOUTS, type ShapeKind } from './geometry';
+import { type Cell } from './model';
 
 /** Pieces cut from one blank, per kind. */
 export const CUT_YIELD: Record<ShapeKind, number> = { square: 1, rect: 2, hst: 2, qst: 4 };
 
 const KIND_ORDER: readonly ShapeKind[] = ['square', 'rect', 'hst', 'qst'];
 
-export const BLANK_INCHES = SQUARE_INCHES + 2 * SEAM_INCHES;
-
-export const CUT_DIMS: Record<ShapeKind, string> = {
-	square: `${BLANK_INCHES}”x${BLANK_INCHES}”`,
-	rect: `${BLANK_INCHES / 2}”x${BLANK_INCHES}”`,
-	hst: `${BLANK_INCHES}”x${BLANK_INCHES}” square cut corner to corner`,
-	qst: `${BLANK_INCHES}”x${BLANK_INCHES}” square cut on both diagonals`
-};
-
 export const KIND_NOUN: Record<ShapeKind, string> = {
 	square: 'square',
 	rect: 'rectangle',
-	hst: 'triangle',
-	qst: 'half triangle'
+	hst: 'half square triangle',
+	qst: 'quarter square triangle'
 };
 
-/** kind -> the layout built from it, derived from LAYOUTS itself. */
-export const KIND_LAYOUT: Record<ShapeKind, LayoutId> = Object.values(LAYOUTS).reduce(
-	(out, layout) => ({ ...out, [layout.kind]: layout.id }),
-	{} as Record<ShapeKind, LayoutId>
-);
+export const KIND_CUT: Record<ShapeKind, string> = {
+	square: 'as is',
+	rect: 'cut in half',
+	hst: 'cut corner to corner',
+	qst: 'cut on both diagonals'
+};
+
+/** The piece layout whose first slot draws this kind, for icons. */
+export const KIND_ICON_LAYOUT: Record<ShapeKind, string> = {
+	square: 'square',
+	rect: 'rectangle',
+	hst: 'hst',
+	qst: 'hourglass'
+};
+
+export const blankInches = (blockSize: number, frac: number): number =>
+	blockSize * frac + 2 * SEAM_INCHES;
+
+export interface CutKind {
+	kind: ShapeKind;
+	pieces: number;
+	blanks: number;
+}
 
 export interface CutRow {
-	kind: ShapeKind;
-	count: number;
-	/** Blanks to cut for these pieces, rounded up by yield. */
-	squares: number;
+	/** Blank size as a fraction of the block. */
+	frac: number;
+	inches: number;
+	label: string;
+	blanks: number;
+	kinds: CutKind[];
 }
 
 export interface CutGroup {
-	fabric: Fabric;
+	material: Material;
 	rows: CutRow[];
-	totalSquares: number;
+	totalBlanks: number;
 }
 
-export const cuttingListFor = (cells: readonly Cell[]): CutGroup[] => {
-	const byFabric = cells.reduce((map, cell) => {
+const plural = (n: number, noun: string): string => (n === 1 ? noun : `${noun}s`);
+
+export const cuttingListFor = (
+	cells: readonly Cell[],
+	materials: readonly Material[],
+	blockSize: number
+): CutGroup[] => {
+	// material -> frac -> kind -> piece count
+	const tally = new Map<string, Map<number, Map<ShapeKind, number>>>();
+	cells.forEach((cell) => {
 		const defs = LAYOUTS[cell.layout].slots;
 		cell.slots.forEach((id, i) => {
 			if (!id) return;
-			const counts = map.get(id) ?? new Map<ShapeKind, number>();
-			counts.set(defs[i].kind, (counts.get(defs[i].kind) ?? 0) + 1);
-			map.set(id, counts);
+			const byFrac = tally.get(id) ?? new Map<number, Map<ShapeKind, number>>();
+			const byKind = byFrac.get(defs[i].frac) ?? new Map<ShapeKind, number>();
+			byKind.set(defs[i].kind, (byKind.get(defs[i].kind) ?? 0) + 1);
+			byFrac.set(defs[i].frac, byKind);
+			tally.set(id, byFrac);
 		});
-		return map;
-	}, new Map<string, Map<ShapeKind, number>>());
-
-	return FABRICS.filter((fabric) => byFabric.has(fabric.id)).map((fabric) => {
-		const counts = byFabric.get(fabric.id)!;
-		const rows = KIND_ORDER.filter((kind) => counts.has(kind)).map((kind) => ({
-			kind,
-			count: counts.get(kind)!,
-			squares: Math.ceil(counts.get(kind)! / CUT_YIELD[kind])
-		}));
-		return {
-			fabric,
-			rows,
-			totalSquares: rows.reduce((sum, row) => sum + row.squares, 0)
-		};
 	});
+
+	return materials
+		.filter((material) => tally.has(material.id))
+		.map((material) => {
+			const byFrac = tally.get(material.id)!;
+			const rows = [...byFrac.entries()]
+				.sort(([a], [b]) => b - a)
+				.map(([frac, byKind]) => {
+					const kinds = KIND_ORDER.filter((kind) => byKind.has(kind)).map((kind) => ({
+						kind,
+						pieces: byKind.get(kind)!,
+						blanks: Math.ceil(byKind.get(kind)! / CUT_YIELD[kind])
+					}));
+					const inches = blankInches(blockSize, frac);
+					return {
+						frac,
+						inches,
+						label: `${fmtInches(inches)}”`,
+						blanks: kinds.reduce((sum, k) => sum + k.blanks, 0),
+						kinds
+					};
+				});
+			return { material, rows, totalBlanks: rows.reduce((sum, row) => sum + row.blanks, 0) };
+		});
 };
 
-/** SVG user units per cell in pattern thumbnails. */
-export const THUMB_SCALE = 10;
-
-export interface ThumbPoly {
-	points: string;
-	fill: string;
+export interface ExportInfo {
+	name: string;
+	sizeName: string;
+	widthIn: number;
+	heightIn: number;
+	blockSize: number;
+	rows: number;
+	cols: number;
 }
 
-/** Flatten a saved pattern into offset polygons for a thumbnail SVG. */
-export const thumbPolys = (cells: readonly Cell[]): ThumbPoly[] =>
-	cells.flatMap((cell, i) => {
-		if (isEmpty(cell)) return [];
-		const row = rowOf(i);
-		const col = colOf(i);
-		return rotatedSlots(cell.layout, cell.rotation).map((slot, s) => ({
-			points: slot.points
-				.map(([x, y]) => `${(col + x) * THUMB_SCALE},${(row + y) * THUMB_SCALE}`)
-				.join(' '),
-			fill: cell.slots[s] ? FABRIC_BY_ID[cell.slots[s]!].hex : '#ffffff'
-		}));
+export const materialsListText = (info: ExportInfo, groups: readonly CutGroup[]): string => {
+	const lines = [
+		`Quilt Builder — ${info.name.trim() || 'Untitled'}`,
+		`${info.sizeName} (${info.widthIn}” x ${info.heightIn}”), ${info.blockSize}” blocks, ${info.cols} x ${info.rows} blocks`,
+		''
+	];
+	if (!groups.length) lines.push('Nothing placed yet.');
+	groups.forEach((group) => {
+		lines.push(`${group.material.name.trim()} (${group.material.hex.toUpperCase()})`);
+		group.rows.forEach((row) => {
+			lines.push(`  ${row.label} squares: ${row.blanks}`);
+			row.kinds.forEach((k) => {
+				lines.push(
+					`    ${k.blanks} ${plural(k.blanks, 'square')} ${KIND_CUT[k.kind]} -> ${k.pieces} ${plural(k.pieces, KIND_NOUN[k.kind])}`
+				);
+			});
+		});
+		lines.push('');
 	});
+	return lines.join('\n');
+};

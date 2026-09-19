@@ -6,7 +6,7 @@ const post: Post = {
 		id: 'quilt-builder',
 		tags: ['quilting', 'design', 'color', 'sandbox'],
 		title: 'Quilt Builder',
-		subtitle: 'Laying out a scrap blanket when you only have so many squares of each color',
+		subtitle: 'Design a quilt block by block, then get the cutting list for every fabric',
 		timestamp: new Date(2026, 7, 9),
 		type: PostType.exploration,
 		isHidden: false

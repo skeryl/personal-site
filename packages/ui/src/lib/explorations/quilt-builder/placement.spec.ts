@@ -1,95 +1,84 @@
 import { describe, expect, it } from 'vitest';
-import { centroidOf, rotatedSlots } from './geometry';
-import { emptyBoard, type Cell } from './model';
-import { buildPlacement, inheritedSlots, keyboardPoint } from './placement';
+import { emptyCell, type Cell } from './model';
+import { buildErase, buildPlacement, inheritedSlots } from './placement';
 
-const square = (fabric: string): Cell => ({ layout: 'whole', rotation: 0, slots: [fabric] });
+const solid = (id: string): Cell => ({ layout: 'square', rotation: 0, slots: [id] });
 
 describe('inheritedSlots', () => {
-	it('recuts a solid square into quarters of the same fabric', () => {
-		expect(inheritedSlots(square('tan'), 'quarters', 0)).toEqual(['tan', 'tan', 'tan', 'tan']);
+	it('carries a solid square into every slot of a new layout', () => {
+		expect(inheritedSlots(solid('blue'), 'pinwheel', 0)).toEqual(Array(8).fill('blue'));
 	});
 
-	it('recuts a diagonal into a rectangle pair by centroid', () => {
-		const cell: Cell = { layout: 'diagonal', rotation: 0, slots: ['teal-deep', 'teal-mint'] };
-		// Top strip centroid sits in the upper triangle, bottom in the lower.
-		expect(inheritedSlots(cell, 'half', 0)).toEqual(['teal-deep', 'teal-mint']);
-	});
-
-	it('keeps empty cells empty', () => {
-		expect(inheritedSlots({ layout: 'whole', rotation: 0, slots: [null] }, 'diagonal', 0)).toEqual([
-			null,
-			null
-		]);
+	it('leaves an empty cell empty', () => {
+		expect(inheritedSlots(emptyCell(), 'hst', 0)).toEqual([null, null]);
 	});
 });
 
 describe('buildPlacement', () => {
-	const piece = { layout: 'whole', rotation: 0 } as const;
-
-	it('places into an empty cell', () => {
-		const result = buildPlacement(emptyBoard(), 0, [0.5, 0.5], piece, 'tan');
-		expect(result.blocked).toBe(false);
-		expect(result.cell.slots).toEqual(['tan']);
-	});
-
-	it('adds to a matching layout without resetting other slots', () => {
-		const board = emptyBoard();
-		board[0] = { layout: 'diagonal', rotation: 0, slots: ['teal-deep', null] };
-		const result = buildPlacement(
-			board,
-			0,
-			[0.2, 0.7],
-			{ layout: 'diagonal', rotation: 0 },
-			'teal-mint'
+	it('paints only the clicked slot of a piece', () => {
+		const { cell, slot } = buildPlacement(
+			emptyCell(),
+			[0.75, 0.5],
+			{ mode: 'paint', layout: 'rectangle', rotation: 0 },
+			'blue'
 		);
-		expect(result.cell.slots).toEqual(['teal-deep', 'teal-mint']);
+		expect(slot).toBe(1);
+		expect(cell.slots).toEqual([null, 'blue']);
 	});
 
-	it('preserves existing fabric when a different layout is placed on top', () => {
-		const board = emptyBoard();
-		board[0] = square('teal-deep');
-		const result = buildPlacement(
-			board,
-			0,
-			[0.5, 0.1],
-			{ layout: 'quarters', rotation: 0 },
-			'orchid'
+	it('keeps the color underneath when re-cutting a solid square', () => {
+		const { cell } = buildPlacement(
+			solid('blue'),
+			[0.7, 0.2],
+			{ mode: 'paint', layout: 'hst', rotation: 0 },
+			'green'
 		);
-		expect(result.blocked).toBe(false);
-		expect(result.cell.slots).toEqual(['orchid', 'teal-deep', 'teal-deep', 'teal-deep']);
+		expect(cell.slots).toEqual(['blue', 'green']);
 	});
 
-	it('blocks when the pile has nothing left of the placed fabric', () => {
-		const board = emptyBoard();
-		board[5] = square('white'); // white's entire count of 1
-		const result = buildPlacement(board, 0, [0.5, 0.5], piece, 'white');
-		expect(result.blocked).toBe(true);
-		expect(result.cell).toBe(board[0]);
+	it('stamps a block into the fabric role and inherits the rest', () => {
+		const { cell } = buildPlacement(
+			solid('blue'),
+			[0.5, 0.5],
+			{ mode: 'stamp', layout: 'square-in-square', rotation: 0 },
+			'green'
+		);
+		expect(cell.slots).toEqual(['green', 'blue', 'blue', 'blue', 'blue']);
 	});
 
-	it('allows re-placing the fabric already in the slot even at zero remaining', () => {
-		const board = emptyBoard();
-		board[0] = square('white');
-		const result = buildPlacement(board, 0, [0.5, 0.5], piece, 'white');
-		expect(result.blocked).toBe(false);
+	it('repaints one slot when the block is already there', () => {
+		const stamped: Cell = {
+			layout: 'square-in-square',
+			rotation: 0,
+			slots: ['green', 'blue', 'blue', 'blue', 'blue']
+		};
+		const { cell } = buildPlacement(
+			stamped,
+			[0.05, 0.05],
+			{ mode: 'stamp', layout: 'square-in-square', rotation: 0 },
+			'red'
+		);
+		expect(cell.slots).toEqual(['green', 'red', 'blue', 'blue', 'blue']);
 	});
 
-	it('drops inherited slots the pile can no longer cover', () => {
-		// A board loaded over budget: two white squares against a count of one.
-		const board = emptyBoard();
-		board[0] = square('white');
-		board[1] = square('white');
-		const result = buildPlacement(board, 0, [0.5, 0.1], { layout: 'quarters', rotation: 0 }, 'tan');
-		expect(result.blocked).toBe(false);
-		// The placed tan quarter survives; the inherited white quarters do not.
-		expect(result.cell.slots).toEqual(['tan', null, null, null]);
+	it('places a saved block exactly', () => {
+		const { cell } = buildPlacement(
+			solid('blue'),
+			[0.5, 0.5],
+			{ mode: 'exact', layout: 'hst', rotation: 2, slots: ['red', null] },
+			'green'
+		);
+		expect(cell).toEqual({ layout: 'hst', rotation: 2, slots: ['red', null] });
 	});
 });
 
-describe('keyboardPoint', () => {
-	it('targets the first slot of the pending piece', () => {
-		const point = keyboardPoint({ layout: 'diagonal', rotation: 0 });
-		expect(point).toEqual(centroidOf(rotatedSlots('diagonal', 0)[0].points));
+describe('buildErase', () => {
+	it('clears the slot under the point and collapses an emptied cell', () => {
+		const half: Cell = { layout: 'rectangle', rotation: 0, slots: ['blue', null] };
+		expect(buildErase(half, [0.25, 0.5])).toEqual(emptyCell());
+	});
+
+	it('is a no-op on an empty slot', () => {
+		expect(buildErase(emptyCell(), [0.5, 0.5])).toBeNull();
 	});
 });

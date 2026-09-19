@@ -1,102 +1,68 @@
 <script lang="ts">
-	import { COLS, FABRIC_BY_ID, ROWS, SQUARE_INCHES, inchesToFeet } from './data';
-	import { LAYOUTS, rotatedSlots, toPolygonPoints } from './geometry';
-	import { KIND_NOUN } from './cutting';
-	import { CELL_COUNT, colOf, isEmpty, rowOf, type Cell } from './model';
+	import { isNamed } from './data';
+	import { rotatedSlots, toPolygonPoints } from './geometry';
+	import { colOf, isEmpty, rowOf, type Cell } from './model';
 	import type { QuiltStore } from './state.svelte';
 
 	let { store }: { store: QuiltStore } = $props();
 
 	const VB = 100;
-	let blanket = $state<HTMLElement | null>(null);
-	$effect(() => {
-		store.blanketEl = blanket;
-	});
 
-	const widthIn = COLS * SQUARE_INCHES;
-	const heightIn = ROWS * SQUARE_INCHES;
+	const hexOf = (id: string | null): string =>
+		id ? (store.materialById.get(id)?.hex ?? '#ffffff') : '#ffffff';
 
-	const drag = $derived(
-		store.gesture?.kind === 'slot-drag' || store.gesture?.kind === 'group-drag'
-			? store.gesture
-			: null
-	);
-	const marquee = $derived(store.gesture?.kind === 'marquee' ? store.gesture : null);
+	const nameOf = (id: string | null): string =>
+		id ? store.materialById.get(id)?.name.trim() || 'unnamed fabric' : 'empty';
 
 	/** Position plus contents, so a screen reader can read the design. */
 	const cellLabel = (index: number, cell: Cell): string => {
-		const position = `Row ${rowOf(index) + 1}, column ${colOf(index) + 1}`;
+		const position = `Row ${rowOf(index, store.dims.cols) + 1}, column ${colOf(index, store.dims.cols) + 1}`;
 		if (isEmpty(cell)) return `${position}: empty`;
-		const defs = LAYOUTS[cell.layout].slots;
-		const pieces = cell.slots
-			.map((id, i) => (id ? `${FABRIC_BY_ID[id].name} ${KIND_NOUN[defs[i].kind]}` : null))
-			.filter((piece): piece is string => piece !== null);
-		return `${position}: ${pieces.join(', ')}`;
+		const names = [...new Set(cell.slots.filter((s) => s !== null).map(nameOf))];
+		return `${position}: ${cell.layout.replace(/-/g, ' ')} in ${names.join(', ')}`;
 	};
 
-	const onAxisKey = (e: KeyboardEvent, axis: 'v' | 'h') => {
-		const delta =
-			e.key === 'ArrowLeft' || e.key === 'ArrowUp'
-				? -1
-				: e.key === 'ArrowRight' || e.key === 'ArrowDown'
-					? 1
-					: 0;
-		if (!delta) return;
-		e.preventDefault();
-		e.stopPropagation();
-		store.nudgeAxis(axis, delta);
-	};
+	const banner = $derived.by(() => {
+		if (store.capturing) return 'Pick a block on the quilt to save it as a type';
+		if (store.tool === 'erase') return null;
+		if (!store.materials.length) return 'Add a fabric in Materials to start placing';
+		if (!store.selectedMaterial) return 'Select a fabric in Materials to start placing';
+		if (!isNamed(store.selectedMaterial)) return 'Name the selected fabric to start placing';
+		return null;
+	});
+
+	const finishedW = $derived(store.dims.cols * store.blockSize);
+	const finishedH = $derived(store.dims.rows * store.blockSize);
 </script>
 
-<div class="wall-side">
-	<div class="wall-title-row">
-		<input
-			class="wall-title"
-			type="text"
-			placeholder="Untitled pattern"
-			aria-label="Pattern name"
-			maxlength="40"
-			bind:value={store.patternName}
-			onblur={() => store.commitName()}
-			onkeydown={(e) => {
-				if (e.key === 'Enter') e.currentTarget.blur();
-			}}
-		/>
-		{#if store.currentId === null}
-			<span class="unsaved-tag">unsaved</span>
-		{/if}
-	</div>
+<section class="wall">
+	<div class="wall-frame">
+		<div class="banner-slot" aria-live="polite">
+			{#if banner}
+				<span class="banner" class:capturing={store.capturing}>{banner}</span>
+			{/if}
+		</div>
 
-	<div class="wall">
 		<div
 			class="blanket"
-			bind:this={blanket}
-			class:tool-select={store.tool === 'select'}
-			class:tool-place={store.tool === 'place'}
 			class:tool-erase={store.tool === 'erase'}
-			style="grid-template-columns: repeat({COLS}, 1fr); aspect-ratio: {COLS} / {ROWS}"
+			class:locked={store.tool === 'place' && !store.canPlace && !store.capturing}
+			class:capturing={store.capturing}
+			style="grid-template-columns: repeat({store.dims.cols}, 1fr); aspect-ratio: {store.dims
+				.cols} / {store.dims.rows}"
 		>
 			{#each store.cells as cell, i (i)}
 				{@const pv = store.placePreview?.index === i ? store.placePreview : null}
 				{@const ev = store.erasePreview?.index === i ? store.erasePreview : null}
-				{@const gv = store.groupPreview?.get(i) ?? null}
-				{@const mv =
-					store.placePreview !== null && store.placePreview.index !== i
-						? (store.placePreview.mirrors.get(i) ?? null)
-						: null}
-				{@const display = gv ?? mv ?? (pv && !pv.blocked ? pv.cell : cell)}
+				{@const display = pv?.cell ?? cell}
+				{@const sameShape = display.layout === cell.layout && display.rotation === cell.rotation}
+				{@const eraseShape =
+					ev !== null && ev.cell.layout === cell.layout && ev.cell.rotation === cell.rotation}
 				<button
 					class="cell"
 					class:hovered={store.hover?.index === i}
-					class:selected={store.selectedSet.has(i)}
-					class:blocked={pv?.blocked}
-					class:lifted={store.groupPreview !== null &&
-						drag?.kind === 'group-drag' &&
-						!drag.copy &&
-						store.selectedSet.has(i)}
 					data-cell-index={i}
 					aria-label={cellLabel(i, cell)}
-					aria-pressed={store.selectedSet.has(i)}
 					onpointerdown={(e) => store.onCellPointerDown(e, i)}
 					onclick={(e) => {
 						// detail 0 = keyboard activation; pointer clicks are
@@ -105,7 +71,7 @@
 					}}
 					oncontextmenu={(e) => {
 						e.preventDefault();
-						store.contextRotate(i);
+						store.rotateCell(i);
 					}}
 				>
 					<svg viewBox="0 0 {VB} {VB}" preserveAspectRatio="none" aria-hidden="true">
@@ -113,11 +79,11 @@
 							{@const id = display.slots[s]}
 							<polygon
 								points={toPolygonPoints(slot.points, VB)}
-								fill={id ? FABRIC_BY_ID[id].hex : '#ffffff'}
-								class:ghost={gv !== null ||
-									mv !== null ||
-									(pv !== null && s === pv.slot && !pv.blocked)}
-								class:erasing={ev !== null && s === ev.slot}
+								fill={hexOf(id)}
+								class:ghost={pv !== null && (!sameShape || cell.slots[s] !== id)}
+								class:erasing={ev !== null &&
+									(!eraseShape || ev.cell.slots[s] === null) &&
+									id !== null}
 								stroke={display.slots.length > 1 ? 'rgba(0, 0, 0, 0.18)' : 'none'}
 								stroke-width="1"
 								vector-effect="non-scaling-stroke"
@@ -126,132 +92,86 @@
 					</svg>
 				</button>
 			{/each}
-
-			{#if store.symV}
-				<div
-					class="axis axis-v"
-					role="slider"
-					tabindex="0"
-					aria-label="Vertical symmetry axis"
-					aria-orientation="vertical"
-					aria-valuemin="1"
-					aria-valuemax={2 * COLS - 1}
-					aria-valuenow={store.axisV}
-					style="left: {(store.axisV / (2 * COLS)) * 100}%"
-					onpointerdown={(e) => {
-						e.stopPropagation();
-						store.startAxisDrag(e, 'v');
-					}}
-					onkeydown={(e) => onAxisKey(e, 'v')}
-				></div>
-			{/if}
-			{#if store.symH}
-				<div
-					class="axis axis-h"
-					role="slider"
-					tabindex="0"
-					aria-label="Horizontal symmetry axis"
-					aria-orientation="horizontal"
-					aria-valuemin="1"
-					aria-valuemax={2 * ROWS - 1}
-					aria-valuenow={store.axisH}
-					style="top: {(store.axisH / (2 * ROWS)) * 100}%"
-					onpointerdown={(e) => {
-						e.stopPropagation();
-						store.startAxisDrag(e, 'h');
-					}}
-					onkeydown={(e) => onAxisKey(e, 'h')}
-				></div>
-			{/if}
 		</div>
+
+		<p class="caption">
+			{store.dims.cols} × {store.dims.rows} blocks at {store.blockSize}” · {finishedW}” × {finishedH}”
+			finished
+		</p>
+
+		<div class="actions">
+			<button
+				class="action"
+				class:active={store.tool === 'place'}
+				onclick={() => (store.tool = 'place')}
+			>
+				Place <kbd>P</kbd>
+			</button>
+			<button
+				class="action"
+				class:active={store.tool === 'erase'}
+				onclick={() => (store.tool = 'erase')}
+			>
+				Erase <kbd>E</kbd>
+			</button>
+			<button class="action" onclick={() => store.rotate()}>Rotate <kbd>R</kbd></button>
+			<button class="action" onclick={() => store.undo()} disabled={!store.canUndo}>
+				Undo <kbd>⌘Z</kbd>
+			</button>
+			<button class="action" onclick={() => store.redo()} disabled={!store.canRedo}>
+				Redo <kbd>⇧⌘Z</kbd>
+			</button>
+			<button class="action" onclick={() => store.clearAll()} disabled={store.filled === 0}
+				>Clear</button
+			>
+		</div>
+
+		<button
+			class="export"
+			onclick={() => store.exportMaterialsList()}
+			disabled={!store.cutting.length}
+		>
+			Export materials list
+		</button>
 	</div>
-
-	<p class="wall-caption">
-		{COLS} × {ROWS} squares at {SQUARE_INCHES}" ({inchesToFeet(widthIn)} × {inchesToFeet(heightIn)} finished);
-		{store.filled} of {CELL_COUNT} cells started. Pick a piece and color, then click or drag to paint.
-		The mouse tool selects squares (shift-click, shift-drag, or arrow keys for more): R or right-click
-		rotates, delete removes, drag moves, alt-drag duplicates. ⌘C copies the selection and ⌘V pastes it
-		at the cursor. ⌘Z undoes, ⇧⌘Z redoes.
-	</p>
-</div>
-
-{#if marquee?.active}
-	<div
-		class="marquee"
-		style="left: {Math.min(marquee.x0, marquee.x)}px; top: {Math.min(
-			marquee.y0,
-			marquee.y
-		)}px; width: {Math.abs(marquee.x - marquee.x0)}px; height: {Math.abs(marquee.y - marquee.y0)}px"
-	></div>
-{/if}
-
-{#if drag?.active}
-	<div
-		class="drag-ghost"
-		style="left: {drag.x}px; top: {drag.y}px; background: {FABRIC_BY_ID[drag.fabricId].hex}"
-	>
-		{#if drag.kind === 'group-drag' || drag.copy}
-			<span class="ghost-badge">
-				{drag.kind === 'group-drag' ? `×${store.selection.length}` : ''}{drag.copy ? '+' : ''}
-			</span>
-		{/if}
-	</div>
-{/if}
+</section>
 
 <style>
-	.wall-title-row {
+	.wall {
+		font-family: var(--qb-mono);
+	}
+	.wall-frame {
+		background: var(--qb-wall);
+		border: 1px solid var(--qb-line);
+		padding: 1rem 2rem 2rem;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+	.banner-slot {
+		height: 1.5rem;
+		margin-bottom: 0.25rem;
 		display: flex;
 		align-items: center;
-		gap: 0.6rem;
-		margin-bottom: 0.5rem;
 	}
-	/* A title that is secretly an input: plain text at rest, obviously
-	   editable on hover, a real field when focused. */
-	.wall-title {
-		flex: 1;
-		min-width: 0;
-		font: inherit;
-		font-size: 1.35rem;
-		font-weight: 700;
-		color: var(--color-text-strong);
-		background: none;
-		border: 1px solid transparent;
-		border-radius: 0.375rem;
-		padding: 0.1rem 0.4rem;
-		margin-left: -0.4rem;
+	.banner {
+		font-size: 0.7rem;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--color-text-secondary);
 	}
-	.wall-title:hover {
-		border-color: var(--color-border);
-		background: var(--color-surface-active);
-		cursor: text;
-	}
-	.wall-title:focus {
-		border-color: var(--color-border-strong);
-		background: var(--color-surface-active);
-		outline: none;
-	}
-	.unsaved-tag {
-		font-size: 0.72rem;
-		color: var(--color-text-muted);
-		border: 1px dashed var(--color-border-strong);
-		padding: 0.1rem 0.5rem;
-		border-radius: 999px;
-		white-space: nowrap;
+	.banner.capturing {
+		color: var(--qb-accent);
 	}
 
-	/* The design wall: a neutral backdrop so the fabric colours read true. */
-	.wall {
-		background: var(--qb-wall, #616161);
-		padding: 1.25rem;
-		border-radius: 0.5rem;
-	}
 	.blanket {
 		position: relative;
 		display: grid;
 		width: 100%;
+		max-width: 46rem;
 		gap: 1px;
-		background: #b0b0b0;
-		border: 1px solid #3a3a3a;
+		background: var(--qb-line);
+		border: 2px solid #1a1a1a;
 	}
 	.cell {
 		position: relative;
@@ -262,26 +182,24 @@
 		/* pan-y keeps the page scrollable on touch; horizontal drags still paint. */
 		touch-action: pan-y;
 		line-height: 0;
+		cursor: cell;
 	}
 	.cell svg {
 		width: 100%;
 		height: 100%;
 		display: block;
 	}
-	.tool-select .cell {
-		cursor: pointer;
-	}
-	.tool-place .cell {
-		cursor: cell;
-	}
-	.tool-place .cell.blocked {
+	.locked .cell {
 		cursor: not-allowed;
 	}
 	.tool-erase .cell {
 		cursor: crosshair;
 	}
+	.capturing .cell {
+		cursor: copy;
+	}
 	.cell.hovered {
-		box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.45);
+		box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.35);
 		z-index: 1;
 	}
 	.cell:focus-visible {
@@ -289,112 +207,76 @@
 		outline-offset: -3px;
 		z-index: 3;
 	}
-	.cell.selected {
-		z-index: 2;
-	}
-	/* Drawn on top of the fabric so selection reads on any color. */
-	.cell.selected::after {
-		content: '';
-		position: absolute;
-		inset: 0;
-		border: 3px solid var(--qb-accent);
-		box-shadow:
-			inset 0 0 0 2px rgba(255, 255, 255, 0.95),
-			0 0 8px rgba(245, 158, 11, 0.7);
-		pointer-events: none;
-	}
 	polygon.ghost {
-		opacity: 0.55;
-		stroke: rgba(0, 0, 0, 0.6);
+		opacity: 0.7;
+		stroke: rgba(0, 0, 0, 0.7);
 		stroke-dasharray: 4 3;
 		stroke-width: 1.5;
 	}
 	polygon.erasing {
-		opacity: 0.3;
+		opacity: 0.25;
 	}
-	/* Group-move sources fade while their ghost shows at the destination. */
-	.cell.lifted svg {
+
+	.caption {
+		margin: 1rem 0 0;
+		font-size: 0.7rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--color-text-secondary);
+	}
+	.actions {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 0.25rem 1rem;
+		margin-top: 0.75rem;
+	}
+	.action {
+		border: none;
+		background: none;
+		padding: 0.2rem 0;
+		font: inherit;
+		font-size: 0.7rem;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--color-text-secondary);
+		cursor: pointer;
+	}
+	.action kbd {
+		font: inherit;
+		opacity: 0.6;
+	}
+	.action:hover:not(:disabled),
+	.action.active {
+		color: var(--color-text-strong);
+	}
+	.action.active {
+		text-decoration: underline;
+		text-underline-offset: 0.3em;
+	}
+	.action:disabled {
 		opacity: 0.35;
+		cursor: default;
 	}
 
-	.axis {
-		position: absolute;
-		z-index: 5;
-		touch-action: none;
+	.export {
+		margin-top: 2.5rem;
+		border: none;
+		background: none;
+		font: inherit;
+		font-size: 0.7rem;
+		font-weight: 600;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: #1d4ed8;
+		cursor: pointer;
 	}
-	.axis:focus-visible {
-		outline: 2px solid var(--qb-accent);
+	.export:hover:not(:disabled) {
+		text-decoration: underline;
+		text-underline-offset: 0.3em;
 	}
-	.axis-v {
-		top: 0;
-		bottom: 0;
-		width: 14px;
-		transform: translateX(-50%);
-		cursor: col-resize;
-	}
-	.axis-h {
-		left: 0;
-		right: 0;
-		height: 14px;
-		transform: translateY(-50%);
-		cursor: row-resize;
-	}
-	.axis-v::before,
-	.axis-h::before {
-		content: '';
-		position: absolute;
-		background: var(--qb-axis-v);
-		opacity: 0.8;
-	}
-	.axis-v::before {
-		left: 50%;
-		top: 0;
-		bottom: 0;
-		width: 3px;
-		transform: translateX(-50%);
-	}
-	.axis-h::before {
-		top: 50%;
-		left: 0;
-		right: 0;
-		height: 3px;
-		transform: translateY(-50%);
-		background: var(--qb-axis-h);
-	}
-
-	.wall-caption {
-		font-size: 0.8rem;
-		color: var(--color-text-muted);
-		margin: 0.6rem 0 0;
-	}
-
-	.marquee {
-		position: fixed;
-		border: 1.5px dashed var(--qb-accent);
-		background: rgba(245, 158, 11, 0.12);
-		pointer-events: none;
-		z-index: 40;
-	}
-	.drag-ghost {
-		position: fixed;
-		width: 2.5rem;
-		height: 2.5rem;
-		margin: -1.25rem 0 0 -1.25rem;
-		border: 1px solid rgba(0, 0, 0, 0.3);
-		border-radius: 0.125rem;
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-		pointer-events: none;
-		z-index: 50;
-	}
-	.ghost-badge {
-		position: absolute;
-		top: -0.55rem;
-		right: -0.55rem;
-		background: #1f2937;
-		color: #fff;
-		font-size: 0.65rem;
-		line-height: 1;
-		padding: 0.2rem 0.35rem;
-		border-radius: 999px;
+	.export:disabled {
+		opacity: 0.35;
+		cursor: default;
 	}
 </style>

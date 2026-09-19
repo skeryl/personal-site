@@ -1,82 +1,70 @@
 /*
- * Placement: what one click of the paint tool does to a cell. Shared by the
- * editing path and the ghost preview so what you see is what you get.
+ * Placement: what one click does to a cell. Shared by the editing path and
+ * the ghost preview so what you see is what you get.
  */
 
-import {
-	LAYOUTS,
-	SHAPE_AREA,
-	centroidOf,
-	rotatedSlots,
-	slotAt,
-	type LayoutId,
-	type Point
-} from './geometry';
-import { remainingOf, usageOf, type Cell } from './model';
+import { centroidOf, rotatedSlots, slotAt, type Point } from './geometry';
+import { cellsEqual, emptyCell, type Cell } from './model';
 
-export interface PendingPiece {
-	layout: LayoutId;
-	rotation: number;
-}
-
-export interface Placement {
-	cell: Cell;
-	slot: number;
-	blocked: boolean;
-}
+export type Pending =
+	/** Paint the clicked slot only. */
+	| { mode: 'paint'; layout: string; rotation: number }
+	/** Stamp a block: role-0 slots take the fabric, the rest keep what was under them. */
+	| { mode: 'stamp'; layout: string; rotation: number }
+	/** Stamp a saved block exactly as it was captured. */
+	| { mode: 'exact'; layout: string; rotation: number; slots: (string | null)[] };
 
 /*
  * Re-cut a cell's current fabric into a new layout: each new slot takes the
  * color under its centroid. Placing a triangle over a solid square keeps the
  * square's color everywhere the triangle doesn't cover.
  */
-export const inheritedSlots = (cell: Cell, layout: LayoutId, rotation: number): (string | null)[] =>
+export const inheritedSlots = (cell: Cell, layout: string, rotation: number): (string | null)[] =>
 	rotatedSlots(layout, rotation).map(
-		(slot) => cell.slots[slotAt(cell.layout, cell.rotation, centroidOf(slot.points))]
+		(s) => cell.slots[slotAt(cell.layout, cell.rotation, centroidOf(s.points))]
 	);
 
-/**
- * Work out the exact cell a placement click would produce. The placed slot
- * is budgeted first; inherited slots that no longer fit the scrap pile fall
- * back to empty. The whole cell is being rebuilt, so its current usage is
- * refundable.
- */
+export interface Placement {
+	cell: Cell;
+	slot: number;
+}
+
 export const buildPlacement = (
-	board: readonly Cell[],
-	index: number,
+	cell: Cell,
 	point: Point,
-	piece: PendingPiece,
-	fabricId: string
+	pending: Pending,
+	materialId: string
 ): Placement => {
-	const cell = board[index];
-	const matches = cell.layout === piece.layout && cell.rotation === piece.rotation;
-	const slots = matches ? [...cell.slots] : inheritedSlots(cell, piece.layout, piece.rotation);
-	const target: Cell = matches
-		? { layout: cell.layout, rotation: cell.rotation, slots }
-		: { layout: piece.layout, rotation: piece.rotation, slots };
-	const defs = LAYOUTS[target.layout].slots;
-	const slot = slotAt(target.layout, target.rotation, point);
+	const matches = cell.layout === pending.layout && cell.rotation === pending.rotation;
+	const slot = slotAt(pending.layout, pending.rotation, point);
 
-	const remaining = remainingOf(usageOf(board));
-	const before = usageOf([cell]);
-	const avail = Object.fromEntries(
-		Object.entries(remaining).map(([id, left]) => [id, left + (before[id] ?? 0)])
-	);
-
-	if ((avail[fabricId] ?? 0) < SHAPE_AREA[defs[slot].kind]) {
-		return { cell, slot, blocked: true };
+	if (pending.mode === 'exact') {
+		return {
+			cell: { layout: pending.layout, rotation: pending.rotation, slots: [...pending.slots] },
+			slot
+		};
 	}
-	slots[slot] = fabricId;
-	avail[fabricId] -= SHAPE_AREA[defs[slot].kind];
-	slots.forEach((id, i) => {
-		if (i === slot || !id) return;
-		const area = SHAPE_AREA[defs[i].kind];
-		if (avail[id] >= area) avail[id] -= area;
-		else slots[i] = null;
-	});
-	return { cell: target, slot, blocked: false };
+
+	const slots = matches ? [...cell.slots] : inheritedSlots(cell, pending.layout, pending.rotation);
+	if (pending.mode === 'paint' || matches) {
+		slots[slot] = materialId;
+	} else {
+		rotatedSlots(pending.layout, pending.rotation).forEach((s, i) => {
+			if (s.role === 0) slots[i] = materialId;
+		});
+	}
+	return { cell: { layout: pending.layout, rotation: pending.rotation, slots }, slot };
+};
+
+/** The cell after erasing the slot under `point`. */
+export const buildErase = (cell: Cell, point: Point): Cell | null => {
+	const slot = slotAt(cell.layout, cell.rotation, point);
+	if (cell.slots[slot] === null) return null;
+	const slots = cell.slots.map((s, i) => (i === slot ? null : s));
+	const next = slots.every((s) => s === null) ? emptyCell() : { ...cell, slots };
+	return cellsEqual(next, cell) ? null : next;
 };
 
 /** The point keyboard activation should target: the first slot's centroid. */
-export const keyboardPoint = (piece: PendingPiece): Point =>
-	centroidOf(rotatedSlots(piece.layout, piece.rotation)[0].points);
+export const keyboardPoint = (layout: string, rotation: number): Point =>
+	centroidOf(rotatedSlots(layout, rotation)[0].points);
