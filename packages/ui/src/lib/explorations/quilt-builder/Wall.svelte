@@ -58,19 +58,26 @@
 	let viewport = $state<HTMLElement | null>(null);
 	let viewW = $state(0);
 	let viewH = $state(0);
+	/* The headers live inside the scroller, so they eat into the fit. */
+	let headerH = $state(0);
+	let headerW = $state(0);
 	let scrollX = $state(0);
 	let scrollY = $state(0);
 
 	const aspect = $derived(store.dims.cols / store.dims.rows);
 
 	/*
-	 * Size at zoom 1: the whole quilt, contained in the viewport. The slack
-	 * keeps the border off the edge so fitting never raises a scrollbar.
+	 * Size at zoom 1: the whole quilt, contained in the viewport. The column
+	 * and row headers scroll with the quilt, so they take space away from the
+	 * fit; not subtracting them is what put a scrollbar on a zoomed-out wall
+	 * and clipped the letters off the top.
 	 */
-	const FIT_SLACK = 12;
+	const FIT_SLACK = 8;
 	const base = $derived.by(() => {
-		if (!viewW || !viewH) return { w: 0, h: 0 };
-		const w = Math.max(Math.min(viewW - FIT_SLACK, (viewH - FIT_SLACK) * aspect), 80);
+		const availW = viewW - headerW - FIT_SLACK;
+		const availH = viewH - headerH - FIT_SLACK;
+		if (availW <= 0 || availH <= 0) return { w: 0, h: 0 };
+		const w = Math.max(Math.min(availW, availH * aspect), 80);
 		return { w, h: w / aspect };
 	});
 	const content = $derived({ w: base.w * store.zoom, h: base.h * store.zoom });
@@ -214,6 +221,7 @@
 						<div class="corner" aria-hidden="true"></div>
 						<div
 							class="col-headers"
+							bind:clientHeight={headerH}
 							aria-hidden="true"
 							style="grid-template-columns: repeat({store.dims.cols}, 1fr); width: {content.w}px"
 						>
@@ -223,6 +231,7 @@
 						</div>
 						<div
 							class="row-headers"
+							bind:clientWidth={headerW}
 							aria-hidden="true"
 							style="grid-template-rows: repeat({store.dims.rows}, 1fr); height: {content.h}px"
 						>
@@ -387,14 +396,20 @@
 <style>
 	.wall {
 		font-family: var(--qb-mono);
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+		height: 100%;
 	}
 	.wall-frame {
 		background: var(--qb-wall);
 		border: 1px solid var(--qb-line);
-		padding: 1rem 2rem 2rem;
+		padding: 0.75rem 2rem 1.25rem;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
+		flex: 1;
+		min-height: 0;
 	}
 	.banner-slot {
 		height: 1.5rem;
@@ -413,9 +428,11 @@
 		position: relative;
 		width: 100%;
 		max-width: 80rem;
+		flex: 1;
+		min-height: 0;
 	}
 	.viewport {
-		height: clamp(18rem, 58vh, 52rem);
+		height: 100%;
 		overflow: auto;
 		/*
 		 * Scroll chaining stays on: the wall fills most of the window, so

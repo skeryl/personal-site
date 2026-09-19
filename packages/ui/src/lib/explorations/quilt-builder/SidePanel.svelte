@@ -226,6 +226,10 @@
 		background: var(--qb-panel);
 		border-right: 1px solid var(--qb-line);
 		font-family: var(--qb-mono);
+		/* Fills the shell and scrolls itself, rather than growing the page. */
+		min-height: 0;
+		overflow-y: auto;
+		overscroll-behavior: contain;
 	}
 	.tabs {
 		display: grid;

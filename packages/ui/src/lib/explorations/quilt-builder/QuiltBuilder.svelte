@@ -7,6 +7,31 @@
 	const store = new QuiltStore();
 
 	/*
+	 * The builder is an app shell, not a document: it fills the window from
+	 * wherever it starts down to the bottom edge, and only the work area
+	 * scrolls. How much page chrome sits above it depends on the post header,
+	 * so measure rather than hardcode an offset.
+	 */
+	let root = $state<HTMLElement | null>(null);
+	let top = $state(0);
+
+	$effect(() => {
+		const el = root;
+		if (!el) return;
+		const measure = () => {
+			top = el.getBoundingClientRect().top + window.scrollY;
+		};
+		measure();
+		window.addEventListener('resize', measure);
+		const observer = new ResizeObserver(measure);
+		observer.observe(document.body);
+		return () => {
+			window.removeEventListener('resize', measure);
+			observer.disconnect();
+		};
+	});
+
+	/*
 	 * Autosave the working state, debounced so a paint stroke is one write
 	 * instead of one per pointer move.
 	 */
@@ -24,7 +49,7 @@
 	onkeydown={(e) => store.onKeyDown(e)}
 />
 
-<div class="qb">
+<div class="qb" bind:this={root} style="--qb-top: {top}px">
 	<header class="hero">
 		<h1>Quilt Builder</h1>
 	</header>
@@ -109,13 +134,18 @@
 		 */
 		width: calc(100% + 3rem);
 		margin-inline: -1.5rem;
-		padding: 1.5rem 0 6rem;
+		padding: 1rem 0 0;
 		color: var(--color-text);
 		line-height: 1.5;
+		display: flex;
+		flex-direction: column;
+		/* Bottom gutter matches the page layout's own pb-8. */
+		height: calc(100dvh - var(--qb-top, 0px) - 2rem);
 	}
 	.hero {
 		text-align: center;
-		margin-bottom: 1.5rem;
+		margin-bottom: 0.75rem;
+		flex-shrink: 0;
 	}
 	.hero h1 {
 		font-family: var(--qb-mono);
@@ -127,6 +157,7 @@
 	}
 
 	.titlebar {
+		flex-shrink: 0;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -195,8 +226,10 @@
 	.body {
 		display: grid;
 		grid-template-columns: 22rem minmax(0, 1fr);
-		align-items: start;
+		align-items: stretch;
 		border-top: 1px solid var(--qb-line);
+		flex: 1;
+		min-height: 0;
 	}
 
 	@media (max-width: 639px) {
@@ -211,7 +244,12 @@
 			grid-template-columns: 18rem minmax(0, 1fr);
 		}
 	}
+	/* Narrow screens go back to a document that scrolls as a whole. */
 	@media (max-width: 768px) {
+		.qb {
+			height: auto;
+			padding-bottom: 4rem;
+		}
 		.body {
 			grid-template-columns: minmax(0, 1fr);
 		}

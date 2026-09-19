@@ -455,3 +455,37 @@ test('attributes lists the fabrics in a selection and remaps one', async ({ page
 test('attributes says so when nothing is selected', async ({ page }) => {
 	await expect(page.locator('.attributes .hint').first()).toContainText('No blocks selected');
 });
+
+test('the app fits the window: only the wall and the palette scroll', async ({ page }) => {
+	await page.selectOption('.size select', 'king');
+
+	const state = await page.evaluate(() => {
+		const viewport = document.querySelector('.viewport')!;
+		const side = document.querySelector('.side')!;
+		return {
+			pageOverflow: document.documentElement.scrollHeight - window.innerHeight,
+			wallOverflowsAtFit:
+				viewport.scrollHeight > viewport.clientHeight + 1 ||
+				viewport.scrollWidth > viewport.clientWidth + 1,
+			sideScrolls: side.scrollHeight > side.clientHeight + 1
+		};
+	});
+
+	// The page itself never scrolls.
+	expect(state.pageOverflow).toBeLessThanOrEqual(0);
+	// At 100% the whole quilt fits, so the wall has nothing to scroll.
+	expect(state.wallOverflowsAtFit).toBe(false);
+	// The palette is taller than the shell, so it scrolls inside itself.
+	expect(state.sideScrolls).toBe(true);
+
+	// Every header is drawn, none clipped off the top or left.
+	await expect(page.locator('.col-headers .head')).toHaveCount(14);
+	await expect(page.locator('.row-headers .head')).toHaveCount(14);
+
+	// Zooming in is what makes the wall scroll.
+	for (let i = 0; i < 4; i++) await page.keyboard.press('+');
+	const zoomed = await page
+		.locator('.viewport')
+		.evaluate((el) => el.scrollHeight > el.clientHeight);
+	expect(zoomed).toBe(true);
+});
