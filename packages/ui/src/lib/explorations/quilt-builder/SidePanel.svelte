@@ -1,9 +1,20 @@
 <script lang="ts">
+	/*
+	 * The palette, in the order the design lays it out: block size, block grid,
+	 * block type, block patterns, attributes.
+	 *
+	 * There are no Block/Piece tabs. The difference between them was never
+	 * about which palette you were looking at, it was what a click does: a cut
+	 * recuts the piece under the cursor, a block type stamps the whole square.
+	 * That is a property of the thing you picked, so the list can be flat and
+	 * the store works it out.
+	 */
+
 	import { BLOCK_SIZES, fmtInches } from './data';
 	import { BLOCK_TYPES } from './blocks';
 	import { PIECE_CUTS } from './geometry';
 	import { flatten, leafBlock, rotateBlock, type Block } from './model';
-	import { boundsOf, coordOf, rotatePattern, type PatternBlocks } from './pattern';
+	import { boundsOf, rotatePattern } from './pattern';
 	import AttributesPanel from './AttributesPanel.svelte';
 	import BlockSvg from './BlockSvg.svelte';
 	import PatternSvg from './PatternSvg.svelte';
@@ -15,17 +26,18 @@
 	const LIGHT = '#d9d9d9';
 
 	/** Icon fills: dark for the fabric role, light for background, white for empty. */
-	const roleFill = (role: number, dark = DARK): string =>
-		role === 0 ? dark : role === 1 ? LIGHT : '#ffffff';
-
-	const roleFills = (block: Block, dark = DARK): string[] =>
-		flatten(block).map((p) => roleFill(p.role, dark));
+	const roleFills = (block: Block): string[] =>
+		flatten(block).map((p) => (p.role === 0 ? DARK : p.role === 1 ? LIGHT : '#ffffff'));
 
 	const hexOf = (id: string | null): string =>
 		id ? (store.materialById.get(id)?.hex ?? '#fff') : '#fff';
 
-	/** Rotated once per rotation change, so the flatten cache keeps hitting. */
-	const pieceEntries = $derived(
+	/*
+	 * Everything that fills exactly one square: the cuts, which paint, and the
+	 * block types, which stamp. Rotated once per rotation change so the flatten
+	 * cache keeps hitting.
+	 */
+	const cutEntries = $derived(
 		PIECE_CUTS.map((cut) => ({ cut, block: leafBlock(cut.id, store.rotation) }))
 	);
 	const blockEntries = $derived(
@@ -39,28 +51,26 @@
 		})
 	);
 
-	/** The single block, or the pattern, that a click would place. */
-	const example = $derived.by((): { block: Block } | { blocks: PatternBlocks } => {
-		const pending = store.pending;
-		if (pending.mode === 'paint') {
-			return { block: leafBlock(pending.cut, pending.rotation) };
-		}
-		return pending.mode === 'pattern' ? { blocks: pending.blocks } : { block: pending.block };
-	});
-
-	const exampleFills = $derived.by(() => {
-		if (!('block' in example)) return [];
-		const dark = store.selectedMaterial?.hex ?? DARK;
-		return flatten(example.block).map((p) => roleFill(p.role, dark));
-	});
-
 	const selectedCount = $derived(store.selection.length);
 	const capturableCount = $derived(store.capturable.length);
 </script>
 
 <aside class="side">
-	<section class="selection" aria-label="Grid">
-		<div class="label section">Grid <kbd>G</kbd></div>
+	<label class="setting">
+		<span class="label">Block size</span>
+		<select
+			class="select"
+			value={store.blockSize}
+			onchange={(e) => store.setBlockSize(Number(e.currentTarget.value))}
+		>
+			{#each BLOCK_SIZES as size (size)}
+				<option value={size}>{size}”</option>
+			{/each}
+		</select>
+	</label>
+
+	<section class="group" aria-label="Block grid">
+		<div class="label section">Block grid <kbd>G</kbd></div>
 		<div class="composition" role="group" aria-label="Block grid">
 			{#each DIVISIONS as division (division)}
 				{@const label = division === 1 ? 'One piece' : `${division} by ${division}`}
@@ -85,7 +95,6 @@
 				</button>
 			{/each}
 		</div>
-
 		<p class="hint">
 			{#if selectedCount}
 				{selectedCount === 1
@@ -96,72 +105,47 @@
 			{:else}
 				Pick a grid to paint it on, or
 				<button class="link" onclick={() => (store.tool = 'mouse')}>select</button>
-				blocks to change theirs. Shift-click to add, or drag a box.
+				blocks to change theirs.
 			{/if}
 		</p>
-
-		{#if selectedCount}
-			<button class="add-new" disabled={!capturableCount} onclick={() => store.capturePattern()}>
-				+ Save selection
-			</button>
-			{#if !capturableCount}
-				<p class="hint">Those blocks are empty; fill one to save it.</p>
-			{/if}
-		{/if}
 	</section>
 
-	<div class="tabs" role="tablist" aria-label="Palette">
-		<button
-			role="tab"
-			class="tab"
-			class:active={store.tab === 'block'}
-			aria-selected={store.tab === 'block'}
-			onclick={() => (store.tab = 'block')}
-		>
-			Block
-		</button>
-		<button
-			role="tab"
-			class="tab"
-			class:active={store.tab === 'piece'}
-			aria-selected={store.tab === 'piece'}
-			onclick={() => (store.tab = 'piece')}
-		>
-			Piece
-		</button>
-	</div>
-
-	{#if store.tab === 'block'}
-		<div class="panel-body">
-			<label class="setting">
-				<span class="label">Block size</span>
-				<select
-					class="select"
-					value={store.blockSize}
-					onchange={(e) => store.setBlockSize(Number(e.currentTarget.value))}
+	<section class="group" aria-label="Block type">
+		<div class="label section">Block type</div>
+		<div class="types">
+			{#each cutEntries as entry (entry.cut.id)}
+				<button
+					class="type"
+					class:active={store.tab === 'piece' && store.pieceId === entry.cut.id}
+					aria-pressed={store.tab === 'piece' && store.pieceId === entry.cut.id}
+					aria-label={entry.cut.name}
+					title={entry.cut.name}
+					onclick={() => store.pickPiece(entry.cut.id)}
 				>
-					{#each BLOCK_SIZES as size (size)}
-						<option value={size}>{size}”</option>
-					{/each}
-				</select>
-			</label>
+					<BlockSvg block={entry.block} fills={roleFills(entry.block)} />
+				</button>
+			{/each}
+			{#each blockEntries as entry (entry.type.id)}
+				<button
+					class="type"
+					class:active={store.tab === 'block' && store.blockId === entry.type.id}
+					aria-pressed={store.tab === 'block' && store.blockId === entry.type.id}
+					aria-label={entry.type.name}
+					title={entry.type.name}
+					onclick={() => store.pickBlock(entry.type.id)}
+				>
+					<BlockSvg block={entry.block} fills={roleFills(entry.block)} />
+				</button>
+			{/each}
+		</div>
+	</section>
 
-			<div class="label section">Type</div>
+	<section class="group" aria-label="Block patterns">
+		<div class="label section">Block patterns</div>
+		{#if patternEntries.length}
 			<div class="types">
-				{#each blockEntries as entry (entry.type.id)}
-					<button
-						class="type"
-						class:active={store.blockId === entry.type.id}
-						aria-pressed={store.blockId === entry.type.id}
-						aria-label={entry.type.name}
-						title={entry.type.name}
-						onclick={() => store.pickBlock(entry.type.id)}
-					>
-						<BlockSvg block={entry.block} fills={roleFills(entry.block)} />
-					</button>
-				{/each}
 				{#each patternEntries as entry (entry.saved.id)}
-					<div class="custom">
+					<div class="saved">
 						<button
 							class="type"
 							class:active={store.selectedPattern?.id === entry.saved.id}
@@ -172,11 +156,11 @@
 						>
 							<PatternSvg blocks={entry.blocks} fillOf={hexOf} />
 						</button>
-						<span class="custom-name">
-							{entry.saved.name}{#if entry.size}<span class="custom-size">{entry.size}</span>{/if}
+						<span class="saved-name">
+							{entry.saved.name}{#if entry.size}<span class="saved-size">{entry.size}</span>{/if}
 						</span>
 						<button
-							class="custom-remove"
+							class="saved-remove"
 							aria-label={`Remove ${entry.saved.name}`}
 							title="Remove"
 							onclick={() => store.deletePattern(entry.saved.id)}
@@ -186,36 +170,19 @@
 					</div>
 				{/each}
 			</div>
-		</div>
+		{/if}
+		<button class="add-new" disabled={!capturableCount} onclick={() => store.capturePattern()}>
+			+ Add selection as pattern
+		</button>
+		{#if !capturableCount}
+			<p class="hint">
+				{selectedCount
+					? 'Those blocks are empty; fill one to save it.'
+					: 'Select filled blocks on the quilt to save them as a pattern.'}
+			</p>
+		{/if}
+	</section>
 
-		<div class="example">
-			<div class="label example-label">Center block example</div>
-			<div class="example-art">
-				{#if 'blocks' in example}
-					<PatternSvg blocks={example.blocks} fillOf={hexOf} />
-				{:else}
-					<BlockSvg block={example.block} fills={exampleFills} stroke="rgba(0, 0, 0, 0.12)" />
-				{/if}
-			</div>
-		</div>
-	{:else}
-		<div class="panel-body">
-			<div class="label section">Type</div>
-			<div class="types labeled">
-				{#each pieceEntries as entry (entry.cut.id)}
-					<button
-						class="type"
-						class:active={store.pieceId === entry.cut.id}
-						aria-pressed={store.pieceId === entry.cut.id}
-						onclick={() => store.pickPiece(entry.cut.id)}
-					>
-						<BlockSvg block={entry.block} fills={roleFills(entry.block)} />
-						<span class="type-name">{entry.cut.name}</span>
-					</button>
-				{/each}
-			</div>
-		</div>
-	{/if}
 	<AttributesPanel {store} />
 </aside>
 
@@ -231,161 +198,43 @@
 		overflow-y: auto;
 		overscroll-behavior: contain;
 	}
-	.tabs {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		border-bottom: 1px solid var(--qb-line);
-	}
-	.tab {
-		padding: 0.85rem 0;
-		border: none;
-		background: none;
-		font: inherit;
-		font-size: 0.95rem;
-		color: var(--color-text-secondary);
-		cursor: pointer;
-	}
-	.tab.active {
-		background: #fafafa;
-		color: var(--color-text-strong);
-		font-weight: 700;
+	.group {
+		border-top: 1px solid var(--qb-line);
+		padding-bottom: 0.9rem;
 	}
 
-	.panel-body {
-		padding: 1rem 1.5rem 1.25rem;
-	}
 	.setting {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
-		white-space: nowrap;
+		gap: 0.75rem;
+		padding: 0.9rem 1rem;
 	}
 	.label {
-		font-size: 0.72rem;
-		font-weight: 600;
-		letter-spacing: 0.12em;
+		font-size: 0.65rem;
+		letter-spacing: 0.08em;
 		text-transform: uppercase;
-		color: var(--color-text-strong);
+		color: var(--color-text-secondary);
 	}
 	.section {
-		margin: 1.5rem 0 0.9rem 1.75rem;
+		padding: 0.9rem 1rem 0.5rem;
+	}
+	.section kbd {
+		font: inherit;
+		font-size: 0.85em;
+		opacity: 0.55;
+		margin-left: 0.25rem;
 	}
 	.select {
 		font: inherit;
 		font-size: 0.85rem;
-		padding: 0.15rem 0.4rem;
-		border: none;
-		border-bottom: 1px solid var(--color-text-strong);
+		color: var(--color-text-strong);
 		background: transparent;
-		color: var(--color-text-strong);
-		cursor: pointer;
-	}
-
-	.types {
-		display: grid;
-		grid-template-columns: repeat(2, 6.75rem);
-		gap: 1.5rem 3rem;
-		justify-content: center;
-	}
-	.type {
-		width: 6.75rem;
-		height: 6.75rem;
-		padding: 0;
-		border: 2px solid transparent;
-		background: none;
-		cursor: pointer;
-		box-sizing: content-box;
-	}
-	.type:hover {
-		border-color: var(--qb-line);
-	}
-	.type.active {
-		border-color: var(--qb-accent);
-	}
-	.type:focus-visible {
-		outline: 2px solid var(--qb-accent);
-		outline-offset: 2px;
-	}
-	.labeled .type {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		height: auto;
-	}
-	.labeled .type :global(svg) {
-		width: 6.75rem;
-		height: 6.75rem;
-	}
-	.type-name {
-		margin-top: 0.5rem;
-		font-size: 0.68rem;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: var(--color-text-strong);
-	}
-
-	.custom {
-		position: relative;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-	}
-	.custom-name {
-		margin-top: 0.4rem;
-		font-size: 0.62rem;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: var(--color-text-secondary);
-		max-width: 6.75rem;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.custom-remove {
-		position: absolute;
-		top: -0.5rem;
-		right: -0.75rem;
-		width: 1.4rem;
-		height: 1.4rem;
-		border: 1px solid var(--qb-line);
-		border-radius: 999px;
-		background: #fff;
-		font: inherit;
-		line-height: 1;
-		color: var(--color-text-secondary);
-		cursor: pointer;
-		opacity: 0;
-	}
-	.custom:hover .custom-remove,
-	.custom-remove:focus-visible {
-		opacity: 1;
-	}
-
-	.add-new:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-	.add-new {
-		align-self: center;
-		justify-self: center;
-		padding: 0.5rem 0.25rem;
 		border: none;
-		background: none;
-		font: inherit;
-		font-size: 0.72rem;
-		font-weight: 600;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-		color: var(--color-text-strong);
+		border-bottom: 1px solid var(--qb-line);
+		padding: 0.15rem 0;
 		cursor: pointer;
 	}
-	.add-new:hover:not(:disabled) {
-		color: var(--qb-accent);
-	}
-	.selection {
-		padding: 0.75rem 0 0.9rem;
-		border-bottom: 1px solid var(--qb-line);
-	}
+
 	.composition {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
@@ -436,11 +285,97 @@
 		font-size: 0.7rem;
 		color: var(--color-text-secondary);
 	}
-	.section kbd {
+
+	.types {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+		gap: 0.6rem;
+		padding: 0 1rem;
+	}
+	.type {
+		aspect-ratio: 1;
+		padding: 0;
+		border: 1px solid transparent;
+		background: none;
+		cursor: pointer;
+		line-height: 0;
+	}
+	.type:hover {
+		border-color: var(--qb-line);
+	}
+	.type.active {
+		border-color: var(--qb-accent);
+		outline: 1px solid var(--qb-accent);
+	}
+	.type:focus-visible {
+		outline: 2px solid var(--qb-accent);
+		outline-offset: 1px;
+	}
+
+	.saved {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+	}
+	.saved-name {
+		font-size: 0.65rem;
+		color: var(--color-text-secondary);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.saved-size {
+		margin-left: 0.3rem;
+		opacity: 0.6;
+	}
+	.saved-remove {
+		position: absolute;
+		top: -0.4rem;
+		right: -0.4rem;
+		width: 1.1rem;
+		height: 1.1rem;
 		font: inherit;
-		font-size: 0.85em;
-		opacity: 0.55;
-		margin-left: 0.25rem;
+		font-size: 0.8rem;
+		line-height: 1;
+		color: var(--color-text-secondary);
+		background: var(--qb-panel);
+		border: 1px solid var(--qb-line);
+		cursor: pointer;
+		opacity: 0;
+	}
+	.saved:hover .saved-remove,
+	.saved-remove:focus-visible {
+		opacity: 1;
+	}
+
+	.add-new {
+		display: block;
+		margin: 0.7rem 1rem 0;
+		font: inherit;
+		font-size: 0.7rem;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--color-text-secondary);
+		background: none;
+		border: none;
+		padding: 0;
+		cursor: pointer;
+		text-align: left;
+	}
+	.add-new:hover:not(:disabled) {
+		color: var(--color-text-strong);
+	}
+	.add-new:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.hint {
+		margin: 0.5rem 1rem 0;
+		font-size: 0.7rem;
+		line-height: 1.5;
+		color: var(--color-text-secondary);
 	}
 	.link {
 		font: inherit;
@@ -450,32 +385,5 @@
 		color: var(--color-text-strong);
 		text-decoration: underline;
 		cursor: pointer;
-	}
-	.custom-size {
-		margin-left: 0.3rem;
-		opacity: 0.6;
-	}
-
-	.hint {
-		margin: 1rem 0 0;
-		font-size: 0.72rem;
-		line-height: 1.5;
-		color: var(--color-text-secondary);
-	}
-
-	.example {
-		border-top: 1px solid var(--qb-line);
-		padding: 2rem 1.5rem 2.5rem;
-		text-align: center;
-	}
-	.example-label {
-		font-style: italic;
-		font-size: 0.85rem;
-		margin-bottom: 1.25rem;
-	}
-	.example-art {
-		width: 13.5rem;
-		height: 13.5rem;
-		margin: 0 auto;
 	}
 </style>

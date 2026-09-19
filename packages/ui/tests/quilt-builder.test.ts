@@ -46,6 +46,10 @@ const gridCols = async (page: Page) => {
 
 const at = (cols: number, row: number, col: number) => row * cols + col;
 
+/** The palette has no tabs: cuts and block types sit in one Block type list. */
+const pickShape = (page: Page, name: string) =>
+	page.getByRole('button', { name, exact: true }).click();
+
 /** Hover previews pollute fill reads; park the pointer off the quilt. */
 const parkMouse = (page: Page) => page.mouse.move(10, 10);
 
@@ -70,7 +74,7 @@ test.beforeEach(async ({ page }) => {
 
 test('nothing can be placed until a colour exists, and naming is optional', async ({ page }) => {
 	await expect(page.locator('.banner')).toContainText(/add a color/i);
-	await page.getByRole('tab', { name: 'Piece' }).click();
+	await pickShape(page, 'Square');
 	await cell(page, 0).click();
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#ffffff']);
@@ -85,7 +89,7 @@ test('nothing can be placed until a colour exists, and naming is optional', asyn
 
 test('a paint drag is one undo step and redo restores it', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await page.getByRole('tab', { name: 'Piece' }).click();
+	await pickShape(page, 'Square');
 
 	const start = await cell(page, 0).boundingBox();
 	const end = await cell(page, 2).boundingBox();
@@ -108,11 +112,10 @@ test('a paint drag is one undo step and redo restores it', async ({ page }) => {
 
 test('stamping a block keeps the fabric underneath in the background slots', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await page.getByRole('tab', { name: 'Piece' }).click();
+	await pickShape(page, 'Square');
 	await cell(page, 5).click();
 
 	await addFabric(page, 'Green', '38511f');
-	await page.getByRole('tab', { name: 'Block' }).click();
 	await page.getByRole('button', { name: 'Square in a square' }).click();
 	await cell(page, 5).click();
 	await parkMouse(page);
@@ -125,7 +128,7 @@ test('stamping a block keeps the fabric underneath in the background slots', asy
 
 test('the design, fabrics, and size survive a reload', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await page.getByRole('tab', { name: 'Piece' }).click();
+	await pickShape(page, 'Square');
 	await cell(page, 3).click();
 	await page.getByLabel('Quilt name').fill('Stars');
 	await page.getByLabel('Quilt size').selectOption('throw');
@@ -142,7 +145,7 @@ test('the design, fabrics, and size survive a reload', async ({ page }) => {
 
 test('composition subdivides a block without changing how it looks', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await page.getByRole('tab', { name: 'Piece' }).click();
+	await pickShape(page, 'Square');
 	await cell(page, 0).click();
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#4f7fe8']);
@@ -174,7 +177,7 @@ test('composition subdivides a block without changing how it looks', async ({ pa
 
 test('a composed block can be painted one child at a time', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await page.getByRole('tab', { name: 'Piece' }).click();
+	await pickShape(page, 'Square');
 	await cell(page, 0).click();
 
 	await selectCell(page, 0);
@@ -182,7 +185,7 @@ test('a composed block can be painted one child at a time', async ({ page }) => 
 
 	await addFabric(page, 'Green', '38511f');
 	await tool(page, /^Place/).click();
-	await page.getByRole('tab', { name: 'Piece' }).click();
+	await pickShape(page, 'Square');
 
 	// Click inside the top-left quarter only.
 	const box = await cell(page, 0).boundingBox();
@@ -199,7 +202,7 @@ const answerPrompt = (page: Page, name: string) =>
 test('a multi-block selection saves as one pattern and stamps as one', async ({ page }) => {
 	const cols = await gridCols(page);
 	await addFabric(page, 'Blue', '4f7fe8');
-	await page.getByRole('tab', { name: 'Piece' }).click();
+	await pickShape(page, 'Square');
 	await cell(page, 0).click();
 	await addFabric(page, 'Green', '38511f');
 	await cell(page, 1).click();
@@ -214,10 +217,12 @@ test('a multi-block selection saves as one pattern and stamps as one', async ({ 
 	await page.mouse.down();
 	await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 5 });
 	await page.mouse.up();
-	await expect(page.locator('.selection .hint')).toContainText('2 blocks selected');
+	await expect(page.locator('section[aria-label="Block grid"] .hint')).toContainText(
+		'2 blocks selected'
+	);
 
 	answerPrompt(page, 'Domino');
-	await page.getByRole('button', { name: '+ Save selection' }).click();
+	await page.getByRole('button', { name: '+ Add selection as pattern' }).click();
 	await expect(page.getByRole('button', { name: 'Domino', exact: true })).toBeVisible();
 
 	// Stamping it lays both blocks down at once, in order.
@@ -235,7 +240,7 @@ test('a pattern can be a non-rectangular shape', async ({ page }) => {
 	const ell = [at(cols, 0, 0), at(cols, 1, 0), at(cols, 1, 1)];
 
 	await addFabric(page, 'Blue', '4f7fe8');
-	await page.getByRole('tab', { name: 'Piece' }).click();
+	await pickShape(page, 'Square');
 	for (const i of ell) await cell(page, i).click();
 	await parkMouse(page);
 
@@ -244,10 +249,12 @@ test('a pattern can be a non-rectangular shape', async ({ page }) => {
 	await cell(page, ell[0]).click();
 	await cell(page, ell[1]).click({ modifiers: ['Shift'] });
 	await cell(page, ell[2]).click({ modifiers: ['Shift'] });
-	await expect(page.locator('.selection .hint')).toContainText('3 blocks selected');
+	await expect(page.locator('section[aria-label="Block grid"] .hint')).toContainText(
+		'3 blocks selected'
+	);
 
 	answerPrompt(page, 'Ell');
-	await page.getByRole('button', { name: '+ Save selection' }).click();
+	await page.getByRole('button', { name: '+ Add selection as pattern' }).click();
 
 	await tool(page, /^Place/).click();
 	const anchor = at(cols, 4, 1);
@@ -320,7 +327,7 @@ test('the minimap moves the visible region', async ({ page }) => {
 
 test('the Grid tool paints a grid onto blocks without selecting them', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await page.getByRole('tab', { name: 'Piece' }).click();
+	await pickShape(page, 'Square');
 	await cell(page, 0).click();
 	await cell(page, 1).click();
 	await parkMouse(page);
@@ -339,7 +346,7 @@ test('the Grid tool paints a grid onto blocks without selecting them', async ({ 
 
 test('G cycles the grid, and applies to a selection when there is one', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await page.getByRole('tab', { name: 'Piece' }).click();
+	await pickShape(page, 'Square');
 	await cell(page, 0).click();
 	await parkMouse(page);
 
@@ -411,7 +418,7 @@ test('the palette chooses which colour gets painted', async ({ page }) => {
 	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(2);
 
 	// The colour just added is the active one.
-	await page.getByRole('tab', { name: 'Piece' }).click();
+	await pickShape(page, 'Square');
 	await cell(page, 0).click();
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#38511f']);
@@ -424,13 +431,12 @@ test('the palette chooses which colour gets painted', async ({ page }) => {
 
 test('attributes lists the fabrics in a selection and remaps one', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await page.getByRole('tab', { name: 'Piece' }).click();
+	await pickShape(page, 'Square');
 	await cell(page, 0).click();
 	await cell(page, 1).click();
 
 	// Stamp a pinwheel over both: role 0 takes green, the rest keeps blue.
 	await addFabric(page, 'Green', '38511f');
-	await page.getByRole('tab', { name: 'Block' }).click();
 	await page.getByRole('button', { name: 'Pinwheel' }).click();
 	await cell(page, 0).click();
 	await cell(page, 1).click();
@@ -462,12 +468,14 @@ test('the app fits the window: only the wall and the palette scroll', async ({ p
 	const state = await page.evaluate(() => {
 		const viewport = document.querySelector('.viewport')!;
 		const side = document.querySelector('.side')!;
+		const body = document.querySelector('.body')!;
 		return {
 			pageOverflow: document.documentElement.scrollHeight - window.innerHeight,
 			wallOverflowsAtFit:
 				viewport.scrollHeight > viewport.clientHeight + 1 ||
 				viewport.scrollWidth > viewport.clientWidth + 1,
-			sideScrolls: side.scrollHeight > side.clientHeight + 1
+			sideOverflowY: getComputedStyle(side).overflowY,
+			sideOverflowsShell: side.clientHeight > body.clientHeight + 1
 		};
 	});
 
@@ -475,8 +483,10 @@ test('the app fits the window: only the wall and the palette scroll', async ({ p
 	expect(state.pageOverflow).toBeLessThanOrEqual(0);
 	// At 100% the whole quilt fits, so the wall has nothing to scroll.
 	expect(state.wallOverflowsAtFit).toBe(false);
-	// The palette is taller than the shell, so it scrolls inside itself.
-	expect(state.sideScrolls).toBe(true);
+	// However long the palette gets, it scrolls inside the shell rather than
+	// stretching it.
+	expect(state.sideOverflowY).toBe('auto');
+	expect(state.sideOverflowsShell).toBe(false);
 
 	// Every header is drawn, none clipped off the top or left.
 	await expect(page.locator('.col-headers .head')).toHaveCount(14);
