@@ -911,3 +911,61 @@ test('palette sections collapse, and stay collapsed across a reload', async ({ p
 	// The others were left alone.
 	await expect(page.locator('[data-panel="grid"]')).toHaveAttribute('open', '');
 });
+
+test('delete empties the selected squares', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	const cols = await gridCols(page);
+	const a = at(cols, 1, 1);
+	const b = at(cols, 1, 2);
+	const keep = at(cols, 1, 3);
+
+	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	for (const i of [a, b, keep]) await cell(page, i).click();
+	await parkMouse(page);
+	expect(await cellFills(page, a)).toHaveLength(8);
+
+	await tool(page, /^Mouse/).click();
+	await cell(page, a).click();
+	await cell(page, b).click({ modifiers: ['Shift'] });
+	await page.keyboard.press('Delete');
+	await parkMouse(page);
+
+	// Both reset to a blank square, grid and all.
+	expect(await cellFills(page, a)).toEqual(['#ffffff']);
+	expect(await cellFills(page, b)).toEqual(['#ffffff']);
+	// The one that was not selected is untouched.
+	expect(await cellFills(page, keep)).toHaveLength(8);
+
+	// And it is one undo for the pair.
+	await page.keyboard.press('ControlOrMeta+z');
+	await parkMouse(page);
+	expect(await cellFills(page, a)).toHaveLength(8);
+	expect(await cellFills(page, b)).toHaveLength(8);
+});
+
+test('delete on a selected piece clears only that piece', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	const cols = await gridCols(page);
+	const target = at(cols, 1, 1);
+
+	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	await cell(page, target).click();
+	await parkMouse(page);
+	const before = await cellFills(page, target);
+	const filled = before.filter((f) => f === '#4f7fe8').length;
+
+	await tool(page, /^Mouse/).click();
+	await altClick(page, target, 0.25, 0.12);
+	await page.keyboard.press('Delete');
+	await parkMouse(page);
+
+	const after = await cellFills(page, target);
+	expect(after).toHaveLength(8);
+	expect(after.filter((f) => f === '#4f7fe8')).toHaveLength(filled - 1);
+});
+
+test('delete with nothing selected arms the eraser instead', async ({ page }) => {
+	await tool(page, /^Mouse/).click();
+	await page.keyboard.press('Delete');
+	await expect(tool(page, /^Erase/)).toHaveClass(/active/);
+});

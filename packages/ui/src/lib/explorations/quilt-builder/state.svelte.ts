@@ -27,6 +27,7 @@ import {
 	cloneBoard,
 	colOf,
 	divisionOf,
+	emptyBlock,
 	emptyBoard,
 	flatten,
 	isEmpty,
@@ -504,6 +505,23 @@ export class QuiltStore {
 		}
 	}
 
+	/*
+	 * Delete: empty whatever is selected. A piece loses its fabric; a block or
+	 * a square resets to blank, grid and all, which is what "reset the square"
+	 * means. Returns false when nothing was selected, so the key can fall back
+	 * to arming the Erase tool.
+	 */
+	clearSelected(): boolean {
+		if (this.gesture) return false;
+		if (this.selectedPiece) {
+			this.setPieceFabric(null);
+			return true;
+		}
+		if (!this.activeScope.length) return false;
+		this.editScope(() => emptyBlock());
+		return true;
+	}
+
 	/** Recolour just the selected piece. */
 	setPieceFabric(materialId: MaterialId | null) {
 		const ref = this.selectedPiece;
@@ -873,9 +891,13 @@ export class QuiltStore {
 		}
 		if (e.metaKey || e.ctrlKey) return;
 		if (e.key === 'r' || e.key === 'R') this.rotate();
-		if (e.key === 'e' || e.key === 'E' || e.key === 'Delete' || e.key === 'Backspace') {
-			this.tool = 'erase';
+		if (e.key === 'Delete' || e.key === 'Backspace') {
+			// Also stops Backspace navigating the page back.
+			e.preventDefault();
+			if (!this.clearSelected()) this.tool = 'erase';
+			return;
 		}
+		if (e.key === 'e' || e.key === 'E') this.tool = 'erase';
 		if (e.key === 'p' || e.key === 'P') this.tool = 'place';
 		if (e.key === 'v' || e.key === 'V') this.tool = 'mouse';
 		if (e.key === 'g' || e.key === 'G') this.cycleGrid();
