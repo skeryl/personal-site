@@ -832,3 +832,47 @@ test('rotate turns the selected squares, not just the palette', async ({ page })
 	// Each turn is its own undo step, not a lost edit.
 	await expect(tool(page, /^Undo/)).toBeEnabled();
 });
+
+test('column and row headers stay frozen when the wall scrolls', async ({ page }) => {
+	await page.selectOption('.size select', 'king');
+
+	const probe = () =>
+		page.evaluate(() => {
+			const round = (n: number) => Math.round(n);
+			const strip = document.querySelector('.col-strip')!.getBoundingClientRect();
+			const rowStrip = document.querySelector('.row-strip')!.getBoundingClientRect();
+			const firstCol = document.querySelector('.col-headers .head')!.getBoundingClientRect();
+			const firstRow = document.querySelector('.row-headers .head')!.getBoundingClientRect();
+			const cell = document.querySelector('[data-cell-index="0"]')!.getBoundingClientRect();
+			return {
+				stripTop: round(strip.top),
+				stripLeft: round(rowStrip.left),
+				colLeft: round(firstCol.left),
+				rowTop: round(firstRow.top),
+				cellLeft: round(cell.left),
+				cellTop: round(cell.top)
+			};
+		});
+
+	const fit = await probe();
+	// Headers line up with the squares they label.
+	expect(fit.colLeft).toBe(fit.cellLeft);
+	expect(fit.rowTop).toBe(fit.cellTop);
+
+	for (let i = 0; i < 7; i++) await page.keyboard.press('+');
+	await page.locator('.viewport').evaluate((el) => {
+		el.scrollLeft = 900;
+		el.scrollTop = 700;
+		el.dispatchEvent(new Event('scroll'));
+	});
+
+	const scrolled = await probe();
+	// The gutters have not moved: they are pinned to the edges of the wall.
+	expect(scrolled.stripTop).toBe(fit.stripTop);
+	expect(scrolled.stripLeft).toBe(fit.stripLeft);
+	// Their contents slid with the quilt, so labels still match their squares.
+	expect(scrolled.colLeft).toBe(scrolled.cellLeft);
+	expect(scrolled.rowTop).toBe(scrolled.cellTop);
+	// And the quilt really did scroll away from the origin.
+	expect(scrolled.cellLeft).toBeLessThan(fit.cellLeft);
+});

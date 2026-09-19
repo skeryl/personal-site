@@ -60,30 +60,38 @@
 	let viewport = $state<HTMLElement | null>(null);
 	let viewW = $state(0);
 	let viewH = $state(0);
-	/* The headers live inside the scroller, so they eat into the fit. */
-	let headerH = $state(0);
-	let headerW = $state(0);
 	let scrollX = $state(0);
 	let scrollY = $state(0);
 
 	const aspect = $derived(store.dims.cols / store.dims.rows);
 
 	/*
-	 * Size at zoom 1: the whole quilt, contained in the viewport. The column
-	 * and row headers scroll with the quilt, so they take space away from the
-	 * fit; not subtracting them is what put a scrollbar on a zoomed-out wall
-	 * and clipped the letters off the top.
+	 * Size at zoom 1: the whole quilt, contained in the viewport. The headers
+	 * sit in their own gutters outside the scroller, so the viewport's own
+	 * size is already the space available; the slack just keeps the border off
+	 * the edge so fitting never raises a scrollbar.
 	 */
 	const FIT_SLACK = 8;
 	const base = $derived.by(() => {
-		const availW = viewW - headerW - FIT_SLACK;
-		const availH = viewH - headerH - FIT_SLACK;
+		const availW = viewW - FIT_SLACK;
+		const availH = viewH - FIT_SLACK;
 		if (availW <= 0 || availH <= 0) return { w: 0, h: 0 };
 		const w = Math.max(Math.min(availW, availH * aspect), 80);
 		return { w, h: w / aspect };
 	});
+
 	const content = $derived({ w: base.w * store.zoom, h: base.h * store.zoom });
 	const zoomed = $derived(content.w > viewW + 1 || content.h > viewH + 1);
+
+	/*
+	 * Where the quilt's top-left corner sits relative to the gutters. The
+	 * canvas centres the quilt when it is smaller than the viewport, so the
+	 * headers have to follow that slack as well as the scroll.
+	 */
+	const offset = $derived({
+		x: Math.max(0, (viewW - content.w) / 2) - scrollX,
+		y: Math.max(0, (viewH - content.h) / 2) - scrollY
+	});
 
 	const readView = () => {
 		const el = viewport;
@@ -224,128 +232,129 @@
 		</div>
 
 		<div class="stage">
+			<!--
+				Headers live OUTSIDE the scroller and are translated by the scroll
+				offset, so they stay pinned to the edges the way a spreadsheet
+				freezes its row and column labels.
+			-->
+			<div class="corner" aria-hidden="true"></div>
+			<div class="col-strip" aria-hidden="true">
+				<div
+					class="col-headers"
+					style="grid-template-columns: repeat({store.dims
+						.cols}, 1fr); width: {content.w}px; transform: translateX({offset.x}px)"
+				>
+					{#each { length: store.dims.cols } as _, c (c)}
+						<span class="head">{columnLabel(c)}</span>
+					{/each}
+				</div>
+			</div>
+			<div class="row-strip" aria-hidden="true">
+				<div
+					class="row-headers"
+					style="grid-template-rows: repeat({store.dims
+						.rows}, 1fr); height: {content.h}px; transform: translateY({offset.y}px)"
+				>
+					{#each { length: store.dims.rows } as _, r (r)}
+						<span class="head">{r + 1}</span>
+					{/each}
+				</div>
+			</div>
 			<div class="viewport" class:panning bind:this={viewport} onscroll={readView}>
 				<div class="canvas">
-					<!--
-						Headers scroll with the quilt rather than sticking, which is how the
-						design shows the zoomed-in state: the letters and numbers go with it.
-					-->
-					<div class="sheet">
-						<div class="corner" aria-hidden="true"></div>
-						<div
-							class="col-headers"
-							bind:clientHeight={headerH}
-							aria-hidden="true"
-							style="grid-template-columns: repeat({store.dims.cols}, 1fr); width: {content.w}px"
-						>
-							{#each { length: store.dims.cols } as _, c (c)}
-								<span class="head">{columnLabel(c)}</span>
-							{/each}
-						</div>
-						<div
-							class="row-headers"
-							bind:clientWidth={headerW}
-							aria-hidden="true"
-							style="grid-template-rows: repeat({store.dims.rows}, 1fr); height: {content.h}px"
-						>
-							{#each { length: store.dims.rows } as _, r (r)}
-								<span class="head">{r + 1}</span>
-							{/each}
-						</div>
-						<div
-							class="blanket"
-							class:tool-erase={store.tool === 'erase'}
-							class:tool-mouse={store.tool === 'mouse'}
-							class:copying={store.copyDrag !== null}
-							class:tool-grid={store.tool === 'grid'}
-							class:locked={store.tool === 'place' && !store.canPlace}
-							style="grid-template-columns: repeat({store.dims
-								.cols}, 1fr); width: {content.w}px; height: {content.h}px"
-						>
-							{#if store.marqueeRect}
-								{@const rect = store.marqueeRect}
-								<div
-									class="lasso"
-									aria-hidden="true"
-									style="grid-column: {rect.c0 + 1} / {rect.c1 + 2}; grid-row: {rect.r0 +
-										1} / {rect.r1 + 2}"
-								></div>
-							{/if}
-							{#each store.cells as cell, i (i)}
-								{@const pv =
-									(store.placePreview ?? store.gridPreview ?? store.copyPreview)?.get(i) ?? null}
-								{@const ev = store.erasePreview?.get(i) ?? null}
-								{@const display = pv ?? cell}
-								{@const pieces = flatten(display)}
-								{@const before = pv ? new Map(flatten(cell).map((p) => [p.key, p.fabric])) : null}
-								{@const pieceMarks = marksFor(i)}
-								{@const after = ev ? new Map(flatten(ev).map((p) => [p.key, p.fabric])) : null}
-								<button
-									class="cell"
-									class:hovered={store.hover?.index === i}
-									class:selected={store.highlighted.has(i)}
-									class:context={store.contextCell === i}
-									data-cell-index={i}
-									aria-label={cellLabel(i, cell)}
-									onpointerdown={(e) => store.onCellPointerDown(e, i)}
-									onclick={(e) => {
-										// detail 0 = keyboard activation; pointer clicks are
-										// handled by the pointer gesture machinery.
-										if (e.detail === 0) store.activateCell(i);
-									}}
-									oncontextmenu={(e) => {
-										e.preventDefault();
-										store.rotateCell(i);
-									}}
-								>
-									<svg viewBox="0 0 {VB} {VB}" preserveAspectRatio="none" aria-hidden="true">
-										{#each pieces as piece (piece.key)}
+					<div
+						class="blanket"
+						class:tool-erase={store.tool === 'erase'}
+						class:tool-mouse={store.tool === 'mouse'}
+						class:copying={store.copyDrag !== null}
+						class:tool-grid={store.tool === 'grid'}
+						class:locked={store.tool === 'place' && !store.canPlace}
+						style="grid-template-columns: repeat({store.dims
+							.cols}, 1fr); width: {content.w}px; height: {content.h}px"
+					>
+						{#if store.marqueeRect}
+							{@const rect = store.marqueeRect}
+							<div
+								class="lasso"
+								aria-hidden="true"
+								style="grid-column: {rect.c0 + 1} / {rect.c1 + 2}; grid-row: {rect.r0 +
+									1} / {rect.r1 + 2}"
+							></div>
+						{/if}
+						{#each store.cells as cell, i (i)}
+							{@const pv =
+								(store.placePreview ?? store.gridPreview ?? store.copyPreview)?.get(i) ?? null}
+							{@const ev = store.erasePreview?.get(i) ?? null}
+							{@const display = pv ?? cell}
+							{@const pieces = flatten(display)}
+							{@const before = pv ? new Map(flatten(cell).map((p) => [p.key, p.fabric])) : null}
+							{@const pieceMarks = marksFor(i)}
+							{@const after = ev ? new Map(flatten(ev).map((p) => [p.key, p.fabric])) : null}
+							<button
+								class="cell"
+								class:hovered={store.hover?.index === i}
+								class:selected={store.highlighted.has(i)}
+								class:context={store.contextCell === i}
+								data-cell-index={i}
+								aria-label={cellLabel(i, cell)}
+								onpointerdown={(e) => store.onCellPointerDown(e, i)}
+								onclick={(e) => {
+									// detail 0 = keyboard activation; pointer clicks are
+									// handled by the pointer gesture machinery.
+									if (e.detail === 0) store.activateCell(i);
+								}}
+								oncontextmenu={(e) => {
+									e.preventDefault();
+									store.rotateCell(i);
+								}}
+							>
+								<svg viewBox="0 0 {VB} {VB}" preserveAspectRatio="none" aria-hidden="true">
+									{#each pieces as piece (piece.key)}
+										<polygon
+											points={toPolygonPoints(piece.points, VB)}
+											fill={hexOf(piece.fabric)}
+											class:ghost={before !== null &&
+												(before.get(piece.key) ?? null) !== piece.fabric}
+											class:erasing={after !== null &&
+												piece.fabric !== null &&
+												(after.get(piece.key) ?? null) !== piece.fabric}
+											stroke={pieces.length > 1 ? 'rgba(0, 0, 0, 0.18)' : 'none'}
+											stroke-width="1"
+											vector-effect="non-scaling-stroke"
+										/>
+									{/each}
+									{#if store.selectedNode?.cell === i}
+										{@const node = rectAt(display, store.selectedNode.path)}
+										<rect
+											class="node-outline"
+											x={node.x * VB}
+											y={node.y * VB}
+											width={node.w * VB}
+											height={node.h * VB}
+										/>
+									{/if}
+									<!-- Drawn after the fills so the outline is not painted over. -->
+									{#each pieces as piece (piece.key)}
+										{#if pieceMarks.selected === piece.key || pieceMarks.hovered === piece.key}
 											<polygon
+												class="piece-outline"
+												class:preview={pieceMarks.selected !== piece.key}
 												points={toPolygonPoints(piece.points, VB)}
-												fill={hexOf(piece.fabric)}
-												class:ghost={before !== null &&
-													(before.get(piece.key) ?? null) !== piece.fabric}
-												class:erasing={after !== null &&
-													piece.fabric !== null &&
-													(after.get(piece.key) ?? null) !== piece.fabric}
-												stroke={pieces.length > 1 ? 'rgba(0, 0, 0, 0.18)' : 'none'}
-												stroke-width="1"
-												vector-effect="non-scaling-stroke"
-											/>
-										{/each}
-										{#if store.selectedNode?.cell === i}
-											{@const node = rectAt(display, store.selectedNode.path)}
-											<rect
-												class="node-outline"
-												x={node.x * VB}
-												y={node.y * VB}
-												width={node.w * VB}
-												height={node.h * VB}
 											/>
 										{/if}
-										<!-- Drawn after the fills so the outline is not painted over. -->
-										{#each pieces as piece (piece.key)}
-											{#if pieceMarks.selected === piece.key || pieceMarks.hovered === piece.key}
-												<polygon
-													class="piece-outline"
-													class:preview={pieceMarks.selected !== piece.key}
-													points={toPolygonPoints(piece.points, VB)}
-												/>
-											{/if}
-										{/each}
-										{#each leafRects(display) as seam, s (s)}
-											<rect
-												class="seam"
-												x={seam.x * VB}
-												y={seam.y * VB}
-												width={seam.w * VB}
-												height={seam.h * VB}
-											/>
-										{/each}
-									</svg>
-								</button>
-							{/each}
-						</div>
+									{/each}
+									{#each leafRects(display) as seam, s (s)}
+										<rect
+											class="seam"
+											x={seam.x * VB}
+											y={seam.y * VB}
+											width={seam.w * VB}
+											height={seam.h * VB}
+										/>
+									{/each}
+								</svg>
+							</button>
+						{/each}
 					</div>
 				</div>
 			</div>
@@ -476,8 +485,12 @@
 		max-width: 80rem;
 		flex: 1;
 		min-height: 0;
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr);
+		grid-template-rows: auto minmax(0, 1fr);
 	}
 	.viewport {
+		grid-area: 2 / 2;
 		height: 100%;
 		overflow: auto;
 		/*
@@ -514,23 +527,31 @@
 	 * Headers align to the blanket's tracks by repeating its column and row
 	 * template, its 1px gaps, and padding that matches its 2px border.
 	 */
-	.sheet {
-		display: grid;
-		grid-template-columns: auto auto;
-		grid-template-rows: auto auto;
-		align-items: start;
+	.corner {
+		grid-area: 1 / 1;
+	}
+	/* Gutters clip their strip; the strip inside slides with the scroll. */
+	.col-strip {
+		grid-area: 1 / 2;
+		overflow: hidden;
+	}
+	.row-strip {
+		grid-area: 2 / 1;
+		overflow: hidden;
 	}
 	.col-headers {
 		display: grid;
 		gap: 1px;
 		padding: 0 2px;
 		box-sizing: border-box;
+		will-change: transform;
 	}
 	.row-headers {
 		display: grid;
 		gap: 1px;
 		padding: 2px 0;
 		box-sizing: border-box;
+		will-change: transform;
 	}
 	.head {
 		display: flex;
