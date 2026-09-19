@@ -54,6 +54,24 @@
 	};
 
 	const activeMaterial = $derived(store.selectedMaterial);
+
+	/*
+	 * Double-clicking a palette swatch reopens the colour picker for that
+	 * fabric. Blocks reference fabrics by id, so changing the hex repaints
+	 * every piece cut from it, wherever it is on the quilt.
+	 *
+	 * One shared input rather than one per swatch: it only has to be somewhere
+	 * a user gesture can reach to open it.
+	 */
+	let recolorInput = $state<HTMLInputElement | null>(null);
+	let recolorId = $state<string | null>(null);
+
+	const openRecolor = (id: string, hex: string) => {
+		recolorId = id;
+		if (!recolorInput) return;
+		recolorInput.value = hex;
+		recolorInput.click();
+	};
 </script>
 
 <details class="attributes" data-panel="attributes" bind:open={store.panels.attributes}>
@@ -172,11 +190,20 @@
 				class="swatch"
 				class:current={material.id === store.selectedMaterialId}
 				style="background: {material.hex}"
-				title={material.name.trim() || material.hex.toUpperCase()}
-				aria-label={`Paint with ${material.name.trim() || material.hex.toUpperCase()}`}
+				title={`${material.name.trim() || material.hex.toUpperCase()} — double-click to edit`}
+				aria-label={`Paint with ${material.name.trim() || material.hex.toUpperCase()}. Double-click to edit it.`}
 				onclick={() => store.selectMaterial(material.id)}
+				ondblclick={() => openRecolor(material.id, material.hex)}
 			></button>
 		{/each}
+		<input
+			class="recolor-picker"
+			type="color"
+			tabindex="-1"
+			aria-hidden="true"
+			bind:this={recolorInput}
+			oninput={(e) => recolorId && store.recolorMaterial(recolorId, e.currentTarget.value)}
+		/>
 		<label class="swatch add" title="Add a color">
 			<span aria-hidden="true">+</span>
 			<input
@@ -364,7 +391,16 @@
 		flex-wrap: wrap;
 		gap: 0.35rem;
 	}
+	/* Offscreen, but real: it is opened by the double-click, not clicked itself. */
+	.recolor-picker {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		opacity: 0;
+		pointer-events: none;
+	}
 	.palette {
+		position: relative;
 		padding: 0 1rem;
 	}
 

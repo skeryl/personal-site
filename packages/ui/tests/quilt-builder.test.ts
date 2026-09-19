@@ -65,7 +65,7 @@ const parkMouse = (page: Page) => page.mouse.move(10, 10);
  * swatch makes it the active fabric, and naming it is optional.
  */
 const addFabric = async (page: Page, name: string, hex: string) => {
-	await page.locator('.palette input[type="color"]').fill(`#${hex}`);
+	await page.locator('.palette .add input[type="color"]').fill(`#${hex}`);
 	await page.locator('.active .name').fill(name);
 };
 
@@ -91,7 +91,7 @@ test('nothing can be placed until a colour exists, and naming is optional', asyn
 	expect(await cellFills(page, 0)).toEqual(['#ffffff']);
 
 	// Adding a colour is enough: it becomes active and placing works unnamed.
-	await page.locator('.palette input[type="color"]').fill('#4f7fe8');
+	await page.locator('.palette .add input[type="color"]').fill('#4f7fe8');
 	await expect(page.locator('.banner')).toHaveCount(0);
 	await cell(page, 0).click();
 	await parkMouse(page);
@@ -968,4 +968,37 @@ test('delete with nothing selected arms the eraser instead', async ({ page }) =>
 	await tool(page, /^Mouse/).click();
 	await page.keyboard.press('Delete');
 	await expect(tool(page, /^Erase/)).toHaveClass(/active/);
+});
+
+test('double-clicking a palette colour repaints every piece cut from it', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await addFabric(page, 'Green', '38511f');
+	const cols = await gridCols(page);
+	const a = at(cols, 1, 1);
+	const b = at(cols, 3, 2);
+
+	// Two squares in blue, in different places, plus one in green.
+	await page.getByRole('button', { name: 'Paint with Blue' }).click();
+	await pickShape(page, 'Square');
+	await cell(page, a).click();
+	await cell(page, b).click();
+	await page.getByRole('button', { name: 'Paint with Green' }).click();
+	await cell(page, at(cols, 5, 4)).click();
+	await parkMouse(page);
+	expect(await cellFills(page, a)).toEqual(['#4f7fe8']);
+
+	// Double-click aims the picker at Blue, and editing it repaints both.
+	await page.getByRole('button', { name: /^Paint with Blue/ }).dblclick();
+	await page.locator('.recolor-picker').fill('#ff0000');
+	await parkMouse(page);
+
+	expect(await cellFills(page, a)).toEqual(['#ff0000']);
+	expect(await cellFills(page, b)).toEqual(['#ff0000']);
+	// Green is untouched: only the fabric that was edited changed.
+	expect(await cellFills(page, at(cols, 5, 4))).toEqual(['#38511f']);
+
+	// The palette entry itself moved too, name intact.
+	await page.getByRole('button', { name: /^Paint with Blue/ }).click();
+	await expect(page.locator('.active .name')).toHaveValue('Blue');
+	await expect(page.locator('.active .hex')).toHaveValue('FF0000');
 });
