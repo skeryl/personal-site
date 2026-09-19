@@ -9,7 +9,8 @@ import type { CalcNode, MapNode, OpNode, SwitchNode } from './ast';
 import type { OperatorId } from './operators';
 
 export type ParseResult =
-	{ ok: true; root: CalcNode | null } | { ok: false; error: string; position: number };
+	| { ok: true; root: CalcNode | null }
+	| { ok: false; error: string; position: number };
 
 /* ── Printing ──────────────────────────────────────────────────── */
 
