@@ -239,3 +239,60 @@ test('a pattern can be a non-rectangular shape', async ({ page }) => {
 	// The cell right of the top is NOT part of the pattern.
 	expect(await cellFills(page, 61)).toEqual(['#ffffff']);
 });
+
+const zoomLevel = (page: Page) => page.locator('.zoom-level');
+
+test('ctrl and wheel zooms the wall, and the minimap appears once it overflows', async ({
+	page
+}) => {
+	await expect(zoomLevel(page)).toHaveText('100%');
+	await expect(page.locator('.minimap')).toHaveCount(0);
+
+	const viewport = await page.locator('.viewport').boundingBox();
+	if (!viewport) throw new Error('viewport not found');
+	await page.mouse.move(viewport.x + viewport.width / 2, viewport.y + viewport.height / 2);
+
+	// A plain wheel scrolls; it must not zoom.
+	await page.mouse.wheel(0, -240);
+	await expect(zoomLevel(page)).toHaveText('100%');
+
+	await page.keyboard.down('Control');
+	for (let i = 0; i < 6; i++) await page.mouse.wheel(0, -120);
+	await page.keyboard.up('Control');
+
+	await expect(zoomLevel(page)).not.toHaveText('100%');
+	await expect(page.locator('.minimap')).toBeVisible();
+
+	// The zoom readout doubles as a reset.
+	await zoomLevel(page).click();
+	await expect(zoomLevel(page)).toHaveText('100%');
+	await expect(page.locator('.minimap')).toHaveCount(0);
+});
+
+test('the zoom buttons step and clamp', async ({ page }) => {
+	await page.getByRole('button', { name: 'Zoom in' }).click();
+	await expect(zoomLevel(page)).toHaveText('125%');
+	await page.getByRole('button', { name: 'Zoom out' }).click();
+	await expect(zoomLevel(page)).toHaveText('100%');
+	// 100% fits the whole quilt, so zooming out further is not offered.
+	await expect(page.getByRole('button', { name: 'Zoom out' })).toBeDisabled();
+});
+
+test('the minimap moves the visible region', async ({ page }) => {
+	await page.keyboard.press('+');
+	await page.keyboard.press('+');
+	await page.keyboard.press('+');
+	await page.keyboard.press('+');
+	await page.keyboard.press('+');
+	await page.keyboard.press('+');
+	const minimap = page.locator('.minimap');
+	await expect(minimap).toBeVisible();
+
+	const before = await page.locator('.viewport').evaluate((el) => el.scrollLeft);
+	const box = await minimap.boundingBox();
+	if (!box) throw new Error('minimap not found');
+	// Click near the right edge of the overview to jump the viewport right.
+	await page.mouse.click(box.x + box.width * 0.9, box.y + box.height * 0.5);
+	const after = await page.locator('.viewport').evaluate((el) => el.scrollLeft);
+	expect(after).toBeGreaterThan(before);
+});

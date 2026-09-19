@@ -69,8 +69,14 @@
 		--qb-wall: #efefef;
 		--qb-line: #cfcfcf;
 
-		max-width: 1400px;
-		margin: 0 auto;
+		/*
+		 * Full bleed: cancel the page layout's horizontal padding (px-6, and
+		 * px-3 on small screens) so the wall can use the whole window. The
+		 * explicit width matters because the parent is a flex container, where
+		 * negative margins alone would shift the box rather than widen it.
+		 */
+		width: calc(100% + 3rem);
+		margin-inline: -1.5rem;
 		padding: 1.5rem 0 6rem;
 		color: var(--color-text);
 		line-height: 1.5;
@@ -135,9 +141,16 @@
 
 	.body {
 		display: grid;
-		grid-template-columns: 22rem minmax(0, 1fr) 15rem;
+		grid-template-columns: 22rem minmax(0, 1fr) 17rem;
 		align-items: start;
 		border-top: 1px solid var(--qb-line);
+	}
+
+	@media (max-width: 639px) {
+		.qb {
+			width: calc(100% + 1.5rem);
+			margin-inline: -0.75rem;
+		}
 	}
 
 	@media (max-width: 1100px) {

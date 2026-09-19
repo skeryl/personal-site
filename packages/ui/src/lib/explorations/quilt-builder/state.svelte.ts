@@ -70,6 +70,11 @@ export type Tool = 'place' | 'erase' | 'select';
 /** Compositions offered in the toolbar: one piece, 2x2, or 4x4. */
 export const DIVISIONS = [1, 2, 4] as const;
 
+/** Zoom is view state: never saved, never undone. */
+export const ZOOM_MIN = 1;
+export const ZOOM_MAX = 12;
+export const ZOOM_STEP = 1.25;
+
 export interface Hover {
 	index: number;
 	point: Point;
@@ -108,6 +113,8 @@ export class QuiltStore {
 	blockId = $state(BLOCK_TYPES[0].id);
 	rotation = $state(0);
 	tool = $state<Tool>('place');
+	/** 1 fits the whole quilt in the viewport; above that the wall scrolls. */
+	zoom = $state(1);
 
 	hover = $state<Hover | null>(null);
 	gesture = $state<PaintGesture | null>(null);
@@ -326,6 +333,20 @@ export class QuiltStore {
 		this.replaceBoard(emptyBoard(this.dims));
 	}
 
+	// ── Zoom ─────────────────────────────────────────────────────────
+
+	setZoom(next: number) {
+		this.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next));
+	}
+
+	zoomBy(factor: number) {
+		this.setZoom(this.zoom * factor);
+	}
+
+	resetZoom() {
+		this.zoom = 1;
+	}
+
 	// ── Selection ────────────────────────────────────────────────────
 
 	clearSelection() {
@@ -487,6 +508,9 @@ export class QuiltStore {
 		}
 		if (e.key === 'p' || e.key === 'P') this.tool = 'place';
 		if (e.key === 's' || e.key === 'S') this.tool = 'select';
+		if (e.key === '+' || e.key === '=') this.zoomBy(ZOOM_STEP);
+		if (e.key === '-' || e.key === '_') this.zoomBy(1 / ZOOM_STEP);
+		if (e.key === '0') this.resetZoom();
 	}
 
 	// ── Palette ──────────────────────────────────────────────────────

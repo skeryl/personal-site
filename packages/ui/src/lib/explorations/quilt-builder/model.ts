@@ -358,3 +358,41 @@ export const materialsInUse = (board: readonly Block[]): Set<MaterialId> =>
 			)
 		)
 	);
+
+/*
+ * The fabric covering the most of a block, for views too small to draw real
+ * geometry (the minimap). Area-weighted rather than "first non-null", so a
+ * block reads as the colour it actually looks like.
+ */
+const polygonArea = (points: readonly Point[]): number => {
+	const n = points.length;
+	let sum = 0;
+	for (let i = 0; i < n; i++) {
+		const [x, y] = points[i];
+		const [nx, ny] = points[(i + 1) % n];
+		sum += x * ny - nx * y;
+	}
+	return Math.abs(sum) / 2;
+};
+
+const dominantCache = new WeakMap<Block, MaterialId | null>();
+
+export const dominantFabric = (block: Block): MaterialId | null => {
+	const cached = dominantCache.get(block);
+	if (cached !== undefined) return cached;
+	const areas = new Map<MaterialId, number>();
+	for (const piece of flatten(block)) {
+		if (!piece.fabric) continue;
+		areas.set(piece.fabric, (areas.get(piece.fabric) ?? 0) + polygonArea(piece.points));
+	}
+	let best: MaterialId | null = null;
+	let bestArea = 0;
+	for (const [id, area] of areas) {
+		if (area > bestArea) {
+			best = id;
+			bestArea = area;
+		}
+	}
+	dominantCache.set(block, best);
+	return best;
+};

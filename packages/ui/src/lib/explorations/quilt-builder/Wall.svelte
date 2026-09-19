@@ -1,9 +1,12 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { isNamed } from './data';
+	import Minimap from './Minimap.svelte';
 	import { toPolygonPoints } from './geometry';
 	import {
 		colOf,
 		divisionOf,
+		dominantFabric,
 		flatten,
 		isEmpty,
 		leafRects,
@@ -11,7 +14,7 @@
 		walkLeaves,
 		type Block
 	} from './model';
-	import type { QuiltStore } from './state.svelte';
+	import { ZOOM_MAX, ZOOM_MIN, ZOOM_STEP, type QuiltStore } from './state.svelte';
 
 	let { store }: { store: QuiltStore } = $props();
 
@@ -49,6 +52,100 @@
 
 	const finishedW = $derived(store.dims.cols * store.blockSize);
 	const finishedH = $derived(store.dims.rows * store.blockSize);
+
+	// ── Zoom and pan ─────────────────────────────────────────────────
+
+	let viewport = $state<HTMLElement | null>(null);
+	let viewW = $state(0);
+	let viewH = $state(0);
+	let scrollX = $state(0);
+	let scrollY = $state(0);
+
+	const aspect = $derived(store.dims.cols / store.dims.rows);
+
+	/*
+	 * Size at zoom 1: the whole quilt, contained in the viewport. The slack
+	 * keeps the border off the edge so fitting never raises a scrollbar.
+	 */
+	const FIT_SLACK = 12;
+	const base = $derived.by(() => {
+		if (!viewW || !viewH) return { w: 0, h: 0 };
+		const w = Math.max(Math.min(viewW - FIT_SLACK, (viewH - FIT_SLACK) * aspect), 80);
+		return { w, h: w / aspect };
+	});
+	const content = $derived({ w: base.w * store.zoom, h: base.h * store.zoom });
+	const zoomed = $derived(content.w > viewW + 1 || content.h > viewH + 1);
+
+	const readView = () => {
+		const el = viewport;
+		if (!el) return;
+		scrollX = el.scrollLeft;
+		scrollY = el.scrollTop;
+	};
+
+	$effect(() => {
+		const el = viewport;
+		if (!el) return;
+		const measure = () => {
+			viewW = el.clientWidth;
+			viewH = el.clientHeight;
+			readView();
+		};
+		measure();
+		const observer = new ResizeObserver(measure);
+		observer.observe(el);
+		return () => observer.disconnect();
+	});
+
+	/*
+	 * Ctrl (or cmd) plus wheel zooms about the pointer, so the block under the
+	 * cursor stays under the cursor. Registered by hand because preventDefault
+	 * needs a non-passive listener.
+	 */
+	$effect(() => {
+		const el = viewport;
+		if (!el) return;
+		const onWheel = async (e: WheelEvent) => {
+			if (!e.ctrlKey && !e.metaKey) return;
+			e.preventDefault();
+			const rect = el.getBoundingClientRect();
+			const cx = e.clientX - rect.left;
+			const cy = e.clientY - rect.top;
+			const before = store.zoom;
+			store.zoomBy(Math.exp(-e.deltaY * 0.0025));
+			const ratio = store.zoom / before;
+			if (ratio === 1) return;
+			await tick();
+			el.scrollLeft = (el.scrollLeft + cx) * ratio - cx;
+			el.scrollTop = (el.scrollTop + cy) * ratio - cy;
+			readView();
+		};
+		el.addEventListener('wheel', onWheel, { passive: false });
+		return () => el.removeEventListener('wheel', onWheel);
+	});
+
+	const clamp01 = (v: number) => Math.min(Math.max(v, 0), 1);
+
+	/** Fraction of the quilt currently visible, for the minimap. */
+	const view = $derived({
+		x: content.w ? clamp01(scrollX / content.w) : 0,
+		y: content.h ? clamp01(scrollY / content.h) : 0,
+		w: content.w ? clamp01(viewW / content.w) : 1,
+		h: content.h ? clamp01(viewH / content.h) : 1
+	});
+
+	const panTo = (fx: number, fy: number) => {
+		const el = viewport;
+		if (!el) return;
+		el.scrollLeft = fx * content.w - el.clientWidth / 2;
+		el.scrollTop = fy * content.h - el.clientHeight / 2;
+		readView();
+	};
+
+	/** One fill per block, by dominant fabric, for the minimap. */
+	const minimapFills = $derived(store.cells.map((block) => hexOf(dominantFabric(block))));
+
+	const zoomPercent = $derived(Math.round(store.zoom * 100));
 </script>
 
 <section class="wall">
@@ -59,64 +156,82 @@
 			{/if}
 		</div>
 
-		<div
-			class="blanket"
-			class:tool-erase={store.tool === 'erase'}
-			class:tool-select={store.tool === 'select'}
-			class:locked={store.tool === 'place' && !store.canPlace}
-			style="grid-template-columns: repeat({store.dims.cols}, 1fr); aspect-ratio: {store.dims
-				.cols} / {store.dims.rows}"
-		>
-			{#each store.cells as cell, i (i)}
-				{@const pv = store.placePreview?.get(i) ?? null}
-				{@const ev = store.erasePreview?.get(i) ?? null}
-				{@const display = pv ?? cell}
-				{@const pieces = flatten(display)}
-				{@const before = pv ? new Map(flatten(cell).map((p) => [p.key, p.fabric])) : null}
-				{@const after = ev ? new Map(flatten(ev).map((p) => [p.key, p.fabric])) : null}
-				<button
-					class="cell"
-					class:hovered={store.hover?.index === i}
-					class:selected={store.highlighted.has(i)}
-					data-cell-index={i}
-					aria-label={cellLabel(i, cell)}
-					onpointerdown={(e) => store.onCellPointerDown(e, i)}
-					onclick={(e) => {
-						// detail 0 = keyboard activation; pointer clicks are
-						// handled by the pointer gesture machinery.
-						if (e.detail === 0) store.activateCell(i);
-					}}
-					oncontextmenu={(e) => {
-						e.preventDefault();
-						store.rotateCell(i);
-					}}
-				>
-					<svg viewBox="0 0 {VB} {VB}" preserveAspectRatio="none" aria-hidden="true">
-						{#each pieces as piece (piece.key)}
-							<polygon
-								points={toPolygonPoints(piece.points, VB)}
-								fill={hexOf(piece.fabric)}
-								class:ghost={before !== null && (before.get(piece.key) ?? null) !== piece.fabric}
-								class:erasing={after !== null &&
-									piece.fabric !== null &&
-									(after.get(piece.key) ?? null) !== piece.fabric}
-								stroke={pieces.length > 1 ? 'rgba(0, 0, 0, 0.18)' : 'none'}
-								stroke-width="1"
-								vector-effect="non-scaling-stroke"
-							/>
+		<div class="stage">
+			<div class="viewport" bind:this={viewport} onscroll={readView}>
+				<div class="canvas">
+					<div
+						class="blanket"
+						class:tool-erase={store.tool === 'erase'}
+						class:tool-select={store.tool === 'select'}
+						class:locked={store.tool === 'place' && !store.canPlace}
+						style="grid-template-columns: repeat({store.dims
+							.cols}, 1fr); width: {content.w}px; height: {content.h}px"
+					>
+						{#each store.cells as cell, i (i)}
+							{@const pv = store.placePreview?.get(i) ?? null}
+							{@const ev = store.erasePreview?.get(i) ?? null}
+							{@const display = pv ?? cell}
+							{@const pieces = flatten(display)}
+							{@const before = pv ? new Map(flatten(cell).map((p) => [p.key, p.fabric])) : null}
+							{@const after = ev ? new Map(flatten(ev).map((p) => [p.key, p.fabric])) : null}
+							<button
+								class="cell"
+								class:hovered={store.hover?.index === i}
+								class:selected={store.highlighted.has(i)}
+								data-cell-index={i}
+								aria-label={cellLabel(i, cell)}
+								onpointerdown={(e) => store.onCellPointerDown(e, i)}
+								onclick={(e) => {
+									// detail 0 = keyboard activation; pointer clicks are
+									// handled by the pointer gesture machinery.
+									if (e.detail === 0) store.activateCell(i);
+								}}
+								oncontextmenu={(e) => {
+									e.preventDefault();
+									store.rotateCell(i);
+								}}
+							>
+								<svg viewBox="0 0 {VB} {VB}" preserveAspectRatio="none" aria-hidden="true">
+									{#each pieces as piece (piece.key)}
+										<polygon
+											points={toPolygonPoints(piece.points, VB)}
+											fill={hexOf(piece.fabric)}
+											class:ghost={before !== null &&
+												(before.get(piece.key) ?? null) !== piece.fabric}
+											class:erasing={after !== null &&
+												piece.fabric !== null &&
+												(after.get(piece.key) ?? null) !== piece.fabric}
+											stroke={pieces.length > 1 ? 'rgba(0, 0, 0, 0.18)' : 'none'}
+											stroke-width="1"
+											vector-effect="non-scaling-stroke"
+										/>
+									{/each}
+									{#each leafRects(display) as seam, s (s)}
+										<rect
+											class="seam"
+											x={seam.x * VB}
+											y={seam.y * VB}
+											width={seam.w * VB}
+											height={seam.h * VB}
+										/>
+									{/each}
+								</svg>
+							</button>
 						{/each}
-						{#each leafRects(display) as seam, s (s)}
-							<rect
-								class="seam"
-								x={seam.x * VB}
-								y={seam.y * VB}
-								width={seam.w * VB}
-								height={seam.h * VB}
-							/>
-						{/each}
-					</svg>
-				</button>
-			{/each}
+					</div>
+				</div>
+			</div>
+			{#if zoomed}
+				<div class="minimap-slot">
+					<Minimap
+						cols={store.dims.cols}
+						rows={store.dims.rows}
+						fills={minimapFills}
+						{view}
+						onPan={panTo}
+					/>
+				</div>
+			{/if}
 		</div>
 
 		<p class="caption">
@@ -158,6 +273,25 @@
 			>
 		</div>
 
+		<div class="zoom" role="group" aria-label="Zoom">
+			<button
+				class="action"
+				aria-label="Zoom out"
+				onclick={() => store.zoomBy(1 / ZOOM_STEP)}
+				disabled={store.zoom <= ZOOM_MIN}>−</button
+			>
+			<button class="action zoom-level" onclick={() => store.resetZoom()} title="Reset zoom">
+				{zoomPercent}%
+			</button>
+			<button
+				class="action"
+				aria-label="Zoom in"
+				onclick={() => store.zoomBy(ZOOM_STEP)}
+				disabled={store.zoom >= ZOOM_MAX}>+</button
+			>
+			<span class="zoom-hint">⌃scroll</span>
+		</div>
+
 		<button
 			class="export"
 			onclick={() => store.exportMaterialsList()}
@@ -193,18 +327,51 @@
 		color: var(--color-text-secondary);
 	}
 
+	.stage {
+		position: relative;
+		width: 100%;
+		max-width: 80rem;
+	}
+	.viewport {
+		height: clamp(18rem, 58vh, 52rem);
+		overflow: auto;
+		/*
+		 * Scroll chaining stays on: the wall fills most of the window, so
+		 * trapping the wheel here would strand the toolbar below it.
+		 */
+		background: var(--qb-wall);
+	}
+	/*
+	 * Grows with the blanket so the viewport scrolls once zoomed in, and stays
+	 * viewport-sized when it fits, which centres the quilt.
+	 */
+	.canvas {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: max-content;
+		height: max-content;
+		min-width: 100%;
+		min-height: 100%;
+	}
+	.minimap-slot {
+		position: absolute;
+		right: 0.75rem;
+		bottom: 0.75rem;
+		z-index: 4;
+	}
+
 	.blanket {
 		position: relative;
 		display: grid;
-		width: 100%;
-		max-width: 46rem;
 		gap: 1px;
 		background: var(--qb-line);
 		border: 2px solid #1a1a1a;
+		/* Width and height are set from the fit, so the border must sit inside. */
+		box-sizing: border-box;
 	}
 	.cell {
 		position: relative;
-		aspect-ratio: 1;
 		border: none;
 		padding: 0;
 		background: #fff;
@@ -262,6 +429,22 @@
 		margin: 1rem 0 0;
 		font-size: 0.7rem;
 		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--color-text-secondary);
+	}
+	.zoom {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.4rem;
+		margin-top: 0.5rem;
+	}
+	.zoom-level {
+		min-width: 3.5rem;
+	}
+	.zoom-hint {
+		font-size: 0.65rem;
+		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		color: var(--color-text-secondary);
 	}
