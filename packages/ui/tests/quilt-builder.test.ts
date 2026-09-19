@@ -529,16 +529,47 @@ test('mouse is the default tool, and dragging lassos a rectangle', async ({ page
 	await expect(page.locator('.readout')).toHaveText('6 squares selected');
 });
 
+/*
+ * Each cell's svg covers it exactly, and an inset box-shadow paints under
+ * child content, so cell state has to be drawn with an outline. These assert
+ * the state is actually VISIBLE, not merely that the class is applied.
+ */
+const outlineOf = (page: Page, index: number) =>
+	cell(page, index).evaluate((el) => {
+		const style = getComputedStyle(el);
+		return { width: style.outlineWidth, style: style.outlineStyle, color: style.outlineColor };
+	});
+
 test('the mouse tool outlines the block under the cursor', async ({ page }) => {
 	const cols = await gridCols(page);
-	const target = cell(page, at(cols, 2, 2));
-	await target.hover();
-	await expect(target).toHaveClass(/hovered/);
+	const target = at(cols, 2, 2);
 
-	// The hover outline is the accent colour only while selecting.
-	const mouseShadow = await target.evaluate((el) => getComputedStyle(el).boxShadow);
+	await cell(page, target).hover();
+	await expect(cell(page, target)).toHaveClass(/hovered/);
+	const hovered = await outlineOf(page, target);
+	expect(hovered.style).toBe('solid');
+	expect(parseFloat(hovered.width)).toBeGreaterThan(0);
+
+	// A different tool hovers in a neutral colour, not the accent.
 	await pickShape(page, 'Square');
-	await target.hover();
-	const placeShadow = await target.evaluate((el) => getComputedStyle(el).boxShadow);
-	expect(mouseShadow).not.toBe(placeShadow);
+	await cell(page, target).hover();
+	const placing = await outlineOf(page, target);
+	expect(placing.color).not.toBe(hovered.color);
+});
+
+test('selected blocks are outlined, not just labelled', async ({ page }) => {
+	const cols = await gridCols(page);
+	const target = at(cols, 2, 2);
+
+	await cell(page, target).click();
+	await parkMouse(page);
+	await expect(page.locator('.readout')).toHaveText('C3 square selected');
+
+	const outline = await outlineOf(page, target);
+	expect(outline.style).toBe('solid');
+	expect(parseFloat(outline.width)).toBeGreaterThanOrEqual(3);
+
+	// An unselected neighbour has no outline at all.
+	const other = await outlineOf(page, at(cols, 2, 3));
+	expect(parseFloat(other.width) || 0).toBe(0);
 });

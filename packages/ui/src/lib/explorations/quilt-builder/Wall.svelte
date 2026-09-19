@@ -545,17 +545,29 @@
 	.tool-grid .cell {
 		cursor: crosshair;
 	}
-	.cell.selected {
-		box-shadow: inset 0 0 0 3px var(--qb-accent);
-		z-index: 2;
-	}
+	/*
+	 * Outlines, not inset box-shadows. Each cell's svg covers it exactly, and
+	 * an inset shadow paints UNDER child content, so every one of these was
+	 * invisible. Outlines paint above descendants, which is why the focus ring
+	 * was the only state that ever showed. Negative offsets keep them inside
+	 * the cell so they do not overlap the neighbour.
+	 *
+	 * Source order is the precedence: hover, then selected, then focus.
+	 */
 	.cell.hovered {
-		box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.35);
+		outline: 2px solid rgba(0, 0, 0, 0.35);
+		outline-offset: -2px;
 		z-index: 1;
 	}
 	/* With the mouse tool, hover previews what a click would select. */
 	.tool-mouse .cell.hovered {
-		box-shadow: inset 0 0 0 2px rgba(199, 102, 228, 0.6);
+		outline-color: rgba(199, 102, 228, 0.7);
+	}
+	.cell.selected,
+	.tool-mouse .cell.selected {
+		outline: 3px solid var(--qb-accent);
+		outline-offset: -3px;
+		z-index: 2;
 	}
 	/*
 	 * Absolute, so it does not take part in auto-placement: as a grid ITEM it
