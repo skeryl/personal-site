@@ -858,6 +858,21 @@ test('column and row headers stay frozen when the wall scrolls', async ({ page }
 	// Headers line up with the squares they label.
 	expect(fit.colLeft).toBe(fit.cellLeft);
 	expect(fit.rowTop).toBe(fit.cellTop);
+	/*
+	 * And they sit beside the quilt, not at the far edge of the wall. Zoomed
+	 * out the quilt is centred, and the labels have to cross that slack with
+	 * it rather than staying pinned to their gutters.
+	 */
+	const gap = await page.evaluate(() => {
+		const rows = document.querySelector('.row-headers')!.getBoundingClientRect();
+		const cols = document.querySelector('.col-headers')!.getBoundingClientRect();
+		const quilt = document.querySelector('.blanket')!.getBoundingClientRect();
+		return { left: quilt.left - rows.right, top: quilt.top - cols.bottom };
+	});
+	expect(gap.left).toBeGreaterThanOrEqual(0);
+	expect(gap.left).toBeLessThan(12);
+	expect(gap.top).toBeGreaterThanOrEqual(0);
+	expect(gap.top).toBeLessThan(12);
 
 	for (let i = 0; i < 7; i++) await page.keyboard.press('+');
 	await page.locator('.viewport').evaluate((el) => {

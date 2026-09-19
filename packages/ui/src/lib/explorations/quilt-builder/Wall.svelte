@@ -84,14 +84,17 @@
 	const zoomed = $derived(content.w > viewW + 1 || content.h > viewH + 1);
 
 	/*
-	 * Where the quilt's top-left corner sits relative to the gutters. The
-	 * canvas centres the quilt when it is smaller than the viewport, so the
-	 * headers have to follow that slack as well as the scroll.
+	 * The canvas centres the quilt when it is smaller than the viewport. The
+	 * labels have to cross that slack to stay beside the quilt, otherwise they
+	 * sit marooned at the far edge of the wall when fully zoomed out.
 	 */
-	const offset = $derived({
-		x: Math.max(0, (viewW - content.w) / 2) - scrollX,
-		y: Math.max(0, (viewH - content.h) / 2) - scrollY
+	const slack = $derived({
+		x: Math.max(0, (viewW - content.w) / 2),
+		y: Math.max(0, (viewH - content.h) / 2)
 	});
+
+	/** Where the quilt's top-left corner sits: slack and scroll together. */
+	const offset = $derived({ x: slack.x - scrollX, y: slack.y - scrollY });
 
 	const readView = () => {
 		const el = viewport;
@@ -238,22 +241,22 @@
 				freezes its row and column labels.
 			-->
 			<div class="corner" aria-hidden="true"></div>
-			<div class="col-strip" aria-hidden="true">
+			<div class="col-strip" aria-hidden="true" style="height: calc(var(--head-h) + {slack.y}px)">
 				<div
 					class="col-headers"
 					style="grid-template-columns: repeat({store.dims
-						.cols}, 1fr); width: {content.w}px; transform: translateX({offset.x}px)"
+						.cols}, 1fr); width: {content.w}px; transform: translate({offset.x}px, {slack.y}px)"
 				>
 					{#each { length: store.dims.cols } as _, c (c)}
 						<span class="head">{columnLabel(c)}</span>
 					{/each}
 				</div>
 			</div>
-			<div class="row-strip" aria-hidden="true">
+			<div class="row-strip" aria-hidden="true" style="width: calc(var(--head-w) + {slack.x}px)">
 				<div
 					class="row-headers"
 					style="grid-template-rows: repeat({store.dims
-						.rows}, 1fr); height: {content.h}px; transform: translateY({offset.y}px)"
+						.rows}, 1fr); height: {content.h}px; transform: translate({slack.x}px, {offset.y}px)"
 				>
 					{#each { length: store.dims.rows } as _, r (r)}
 						<span class="head">{r + 1}</span>
@@ -486,8 +489,10 @@
 		flex: 1;
 		min-height: 0;
 		display: grid;
-		grid-template-columns: auto minmax(0, 1fr);
-		grid-template-rows: auto minmax(0, 1fr);
+		--head-w: 2.25rem;
+		--head-h: 1.5rem;
+		grid-template-columns: var(--head-w) minmax(0, 1fr);
+		grid-template-rows: var(--head-h) minmax(0, 1fr);
 	}
 	.viewport {
 		grid-area: 2 / 2;
@@ -530,14 +535,24 @@
 	.corner {
 		grid-area: 1 / 1;
 	}
-	/* Gutters clip their strip; the strip inside slides with the scroll. */
+	/*
+	 * Gutters clip their strip; the strip inside slides with the scroll. Each
+	 * strip may grow past its track, across the centring slack, so the labels
+	 * stay beside the quilt rather than pinned to the wall's edge. The tracks
+	 * are a fixed size so that growth cannot feed back into the slack it was
+	 * measured from.
+	 */
 	.col-strip {
 		grid-area: 1 / 2;
 		overflow: hidden;
+		pointer-events: none;
+		align-self: start;
 	}
 	.row-strip {
 		grid-area: 2 / 1;
 		overflow: hidden;
+		pointer-events: none;
+		justify-self: start;
 	}
 	.col-headers {
 		display: grid;
@@ -557,13 +572,18 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		min-width: 1.5rem;
+		height: var(--head-h);
 		font-size: 0.8rem;
 		color: var(--color-text-secondary);
-		line-height: 1.6;
+		line-height: 1;
+	}
+	.row-headers {
+		width: var(--head-w);
 	}
 	.row-headers .head {
-		padding-right: 0.35rem;
+		height: auto;
+		justify-content: flex-end;
+		padding-right: 0.45rem;
 	}
 
 	.blanket {
