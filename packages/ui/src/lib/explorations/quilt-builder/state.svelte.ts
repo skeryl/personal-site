@@ -131,6 +131,8 @@ interface Marquee {
 	anchor: number;
 	head: number;
 	additive: boolean;
+	/** Sweeps skip empty squares unless this is held. */
+	includeEmpty: boolean;
 }
 
 /** An alt-drag: whole blocks being duplicated to wherever they are dropped. */
@@ -243,7 +245,7 @@ export class QuiltStore {
 	/** Highlighted while a marquee drag is in flight, selected once it ends. */
 	highlighted = $derived.by(() => {
 		if (!this.marquee) return this.selectionSet;
-		const swept = this.marqueeIndices(this.marquee);
+		const swept = this.sweptIndices(this.marquee);
 		return this.marquee.additive ? new Set([...this.selection, ...swept]) : new Set(swept);
 	});
 	/** The shared composition of the selection, or 0 when they disagree. */
@@ -612,6 +614,17 @@ export class QuiltStore {
 		if (drag && drag.over === drag.origin) this.selectPieceAt(drag.origin, drag.point);
 	}
 
+	/*
+	 * What a sweep would take. A click names one square and means it, empty or
+	 * not; dragging a box over half the quilt does not, so a sweep keeps only
+	 * the filled squares unless asked for everything.
+	 */
+	private sweptIndices(marquee: Marquee): number[] {
+		const swept = this.marqueeIndices(marquee);
+		if (marquee.includeEmpty || marquee.anchor === marquee.head) return swept;
+		return swept.filter((index) => !isEmpty(this.cells[index]));
+	}
+
 	private endMarquee() {
 		const marquee = this.marquee;
 		this.marquee = null;
@@ -621,7 +634,9 @@ export class QuiltStore {
 			this.toggle(marquee.anchor);
 			return;
 		}
-		const swept = this.marqueeIndices(marquee);
+		const swept = this.sweptIndices(marquee);
+		this.selectedPiece = null;
+		this.selectedNode = null;
 		this.selection = marquee.additive ? [...new Set([...this.selection, ...swept])] : swept;
 	}
 
@@ -799,7 +814,13 @@ export class QuiltStore {
 				};
 				return;
 			}
-			this.marquee = { pointerId: e.pointerId, anchor: index, head: index, additive: e.shiftKey };
+			this.marquee = {
+				pointerId: e.pointerId,
+				anchor: index,
+				head: index,
+				additive: e.shiftKey,
+				includeEmpty: e.metaKey || e.ctrlKey
+			};
 			return;
 		}
 		const hit = this.resolve(e.clientX, e.clientY);

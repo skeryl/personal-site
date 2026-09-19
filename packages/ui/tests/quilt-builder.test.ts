@@ -82,7 +82,7 @@ test.beforeEach(async ({ page }) => {
 test('nothing can be placed until a colour exists, and naming is optional', async ({ page }) => {
 	// Mouse is the resting tool, so the wall talks about selecting until you
 	// arm a shape.
-	await expect(page.locator('.banner')).toContainText(/select blocks/i);
+	await expect(page.locator('.banner')).toContainText(/select filled squares/i);
 
 	await pickShape(page, 'Square');
 	await expect(page.locator('.banner')).toContainText(/add a color/i);
@@ -515,6 +515,8 @@ test('mouse is the default tool, and dragging lassos a rectangle', async ({ page
 	const b = await cell(page, at(cols, 2, 3)).boundingBox();
 	if (!a || !b) throw new Error('cells not found');
 
+	// These squares are empty, so sweep with the modifier that takes them.
+	await page.keyboard.down('ControlOrMeta');
 	await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
 	await page.mouse.down();
 	await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 8 });
@@ -527,8 +529,9 @@ test('mouse is the default tool, and dragging lassos a rectangle', async ({ page
 	expect(during!.y).toBeCloseTo(a.y, 0);
 
 	await page.mouse.up();
+	await page.keyboard.up('ControlOrMeta');
 	await expect(page.locator('.lasso')).toHaveCount(0);
-	// Two columns by two rows.
+	// Three columns by two rows.
 	await expect(page.locator('.readout')).toHaveText('6 squares selected');
 });
 
@@ -1049,4 +1052,45 @@ test('seam detail follows how much room a sub-cell has on screen', async ({ page
 	// A plain square keeps its outline at every zoom: it has room either way.
 	const plain = at(cols, 2, 4);
 	await expect(page.locator(`[data-cell-index="${plain}"] polygon`)).toHaveCount(1);
+});
+
+test('a sweep takes filled squares, and a click takes whatever it names', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	const cols = await gridCols(page);
+	const filled = [at(cols, 1, 1), at(cols, 2, 2)];
+	await pickShape(page, 'Square');
+	for (const i of filled) await cell(page, i).click();
+	await parkMouse(page);
+
+	const sweep = async (from: number, to: number, modifier?: 'ControlOrMeta') => {
+		const a = await cell(page, from).boundingBox();
+		const b = await cell(page, to).boundingBox();
+		if (!a || !b) throw new Error('cells not found');
+		if (modifier) await page.keyboard.down(modifier);
+		await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+		await page.mouse.down();
+		await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 6 });
+		await page.mouse.up();
+		if (modifier) await page.keyboard.up(modifier);
+		await parkMouse(page);
+	};
+
+	await tool(page, /^Mouse/).click();
+
+	// A box over nine squares, only two of which hold anything.
+	await sweep(at(cols, 1, 1), at(cols, 3, 3));
+	await expect(page.locator('.readout')).toHaveText('B2, C3 squares selected');
+
+	// The same box with the modifier takes the empty ones too.
+	await sweep(at(cols, 1, 1), at(cols, 3, 3), 'ControlOrMeta');
+	await expect(page.locator('.readout')).toHaveText('9 squares selected');
+
+	// Sweeping a region with nothing in it selects nothing, rather than
+	// quietly falling back to taking everything.
+	await sweep(at(cols, 5, 1), at(cols, 6, 3));
+	await expect(page.locator('.readout')).toHaveText('no squares selected');
+
+	// A click names one square and means it, empty or not.
+	await cell(page, at(cols, 5, 1)).click();
+	await expect(page.locator('.readout')).toHaveText('B6 square selected');
 });

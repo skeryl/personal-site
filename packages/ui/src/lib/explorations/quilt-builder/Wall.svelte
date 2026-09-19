@@ -43,7 +43,9 @@
 
 	const banner = $derived.by(() => {
 		if (store.tool === 'mouse') {
-			return store.selection.length ? null : 'Click, shift-click, or drag a box to select blocks';
+			return store.selection.length
+				? null
+				: 'Drag a box to select filled squares · hold ⌘ or Ctrl to include empty ones';
 		}
 		if (store.tool === 'grid') return 'Click or drag to paint the grid chosen on the left';
 		if (store.tool === 'erase') return null;
