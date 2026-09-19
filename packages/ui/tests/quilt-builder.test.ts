@@ -73,8 +73,12 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('nothing can be placed until a colour exists, and naming is optional', async ({ page }) => {
-	await expect(page.locator('.banner')).toContainText(/add a color/i);
+	// Mouse is the resting tool, so the wall talks about selecting until you
+	// arm a shape.
+	await expect(page.locator('.banner')).toContainText(/select blocks/i);
+
 	await pickShape(page, 'Square');
+	await expect(page.locator('.banner')).toContainText(/add a color/i);
 	await cell(page, 0).click();
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#ffffff']);
@@ -498,4 +502,43 @@ test('the app fits the window: only the wall and the palette scroll', async ({ p
 		.locator('.viewport')
 		.evaluate((el) => el.scrollHeight > el.clientHeight);
 	expect(zoomed).toBe(true);
+});
+
+test('mouse is the default tool, and dragging lassos a rectangle', async ({ page }) => {
+	await expect(tool(page, /^Mouse/)).toHaveClass(/active/);
+
+	const cols = await gridCols(page);
+	const a = await cell(page, at(cols, 1, 1)).boundingBox();
+	const b = await cell(page, at(cols, 2, 3)).boundingBox();
+	if (!a || !b) throw new Error('cells not found');
+
+	await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 8 });
+
+	// The lasso is drawn while the drag is in flight.
+	await expect(page.locator('.lasso')).toBeVisible();
+	// It must not displace the cells it covers: that would break the drag.
+	const during = await cell(page, at(cols, 1, 1)).boundingBox();
+	expect(during!.x).toBeCloseTo(a.x, 0);
+	expect(during!.y).toBeCloseTo(a.y, 0);
+
+	await page.mouse.up();
+	await expect(page.locator('.lasso')).toHaveCount(0);
+	// Two columns by two rows.
+	await expect(page.locator('.readout')).toHaveText('6 squares selected');
+});
+
+test('the mouse tool outlines the block under the cursor', async ({ page }) => {
+	const cols = await gridCols(page);
+	const target = cell(page, at(cols, 2, 2));
+	await target.hover();
+	await expect(target).toHaveClass(/hovered/);
+
+	// The hover outline is the accent colour only while selecting.
+	const mouseShadow = await target.evaluate((el) => getComputedStyle(el).boxShadow);
+	await pickShape(page, 'Square');
+	await target.hover();
+	const placeShadow = await target.evaluate((el) => getComputedStyle(el).boxShadow);
+	expect(mouseShadow).not.toBe(placeShadow);
 });

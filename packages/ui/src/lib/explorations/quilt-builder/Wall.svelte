@@ -248,6 +248,15 @@
 							style="grid-template-columns: repeat({store.dims
 								.cols}, 1fr); width: {content.w}px; height: {content.h}px"
 						>
+							{#if store.marqueeRect}
+								{@const rect = store.marqueeRect}
+								<div
+									class="lasso"
+									aria-hidden="true"
+									style="grid-column: {rect.c0 + 1} / {rect.c1 + 2}; grid-row: {rect.r0 +
+										1} / {rect.r1 + 2}"
+								></div>
+							{/if}
 							{#each store.cells as cell, i (i)}
 								{@const pv = (store.placePreview ?? store.gridPreview)?.get(i) ?? null}
 								{@const ev = store.erasePreview?.get(i) ?? null}
@@ -543,6 +552,24 @@
 	.cell.hovered {
 		box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.35);
 		z-index: 1;
+	}
+	/* With the mouse tool, hover previews what a click would select. */
+	.tool-mouse .cell.hovered {
+		box-shadow: inset 0 0 0 2px rgba(199, 102, 228, 0.6);
+	}
+	/*
+	 * Absolute, so it does not take part in auto-placement: as a grid ITEM it
+	 * occupied tracks and shoved every cell along while a drag was in flight.
+	 * Placed by grid line, so it still lines up exactly with the tracks.
+	 */
+	.lasso {
+		position: absolute;
+		/* Fills its grid area: without this it collapses to its own content. */
+		inset: 0;
+		pointer-events: none;
+		z-index: 3;
+		border: 1.5px dashed var(--qb-accent);
+		background: rgba(199, 102, 228, 0.1);
 	}
 	.cell:focus-visible {
 		outline: 3px solid var(--qb-accent);

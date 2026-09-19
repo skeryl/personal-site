@@ -120,7 +120,8 @@ export class QuiltStore {
 	/** A built-in block type id, or `pattern:<id>` for a saved pattern. */
 	blockId = $state(BLOCK_TYPES[0].id);
 	rotation = $state(0);
-	tool = $state<Tool>('place');
+	/* Selecting is the resting state; picking a shape is what arms placing. */
+	tool = $state<Tool>('mouse');
 	/** 1 fits the whole quilt in the viewport; above that the wall scrolls. */
 	zoom = $state(1);
 	/** The grid the Grid tool paints, and the one G cycles through. */
@@ -399,6 +400,16 @@ export class QuiltStore {
 	selectAllFilled() {
 		this.selection = this.cells.flatMap((block, i) => (isEmpty(block) ? [] : [i]));
 	}
+
+	/** The rectangle a marquee drag currently covers, in grid coordinates. */
+	marqueeRect = $derived.by(() => {
+		const marquee = this.marquee;
+		if (!marquee) return null;
+		const { cols } = this.dims;
+		const [c0, c1] = [colOf(marquee.anchor, cols), colOf(marquee.head, cols)].sort((a, b) => a - b);
+		const [r0, r1] = [rowOf(marquee.anchor, cols), rowOf(marquee.head, cols)].sort((a, b) => a - b);
+		return { c0, c1, r0, r1 };
+	});
 
 	/** Every board index inside the rectangle a marquee drag has swept. */
 	private marqueeIndices({ anchor, head }: Marquee): number[] {
@@ -700,7 +711,6 @@ export class QuiltStore {
 		};
 		this.materials = [...this.materials, material];
 		this.selectedMaterialId = material.id;
-		this.tool = 'place';
 		return material;
 	}
 
