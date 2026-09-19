@@ -22,8 +22,15 @@ const cellFills = (page: Page, index: number) =>
 /** Toolbar buttons, scoped so "Select" cannot match a fabric's "Selected". */
 const tool = (page: Page, name: RegExp) => page.locator('.actions').getByRole('button', { name });
 
+/** The composition control lives in the left palette, not the wall toolbar. */
 const composition = (page: Page, name: RegExp) =>
 	page.locator('.composition').getByRole('button', { name });
+
+/** Select tool click: selects, or toggles when shift is held. */
+const selectCell = async (page: Page, index: number) => {
+	await tool(page, /^Select/).click();
+	await cell(page, index).click();
+};
 
 /** Hover previews pollute fill reads; park the pointer off the quilt. */
 const parkMouse = (page: Page) => page.mouse.move(10, 10);
@@ -128,23 +135,22 @@ test('composition subdivides a block without changing how it looks', async ({ pa
 	expect(await cellFills(page, 0)).toEqual(['#4f7fe8']);
 	await expect(page.locator('.material').first()).toContainText('8½” squares: (1)');
 
-	await tool(page, /^Select/).click();
-	await cell(page, 0).click();
+	await selectCell(page, 0);
 
 	// Going finer replicates: four quarters of the same blue, so the picture
 	// is unchanged but the cut list now wants four smaller squares.
-	await composition(page, /^2×2/).click();
+	await composition(page, /^2 by 2$/).click();
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(Array(4).fill('#4f7fe8'));
 	await expect(page.locator('.material').first()).toContainText('4½” squares: (4)');
 
-	await composition(page, /^4×4/).click();
+	await composition(page, /^4 by 4$/).click();
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(Array(16).fill('#4f7fe8'));
 	await expect(page.locator('.material').first()).toContainText('2½” squares: (16)');
 
 	// Coarsening keeps each group's top-left piece, and undo restores the 4x4.
-	await composition(page, /^1\s/).click();
+	await composition(page, /^One piece$/).click();
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#4f7fe8']);
 	await page.keyboard.press('ControlOrMeta+z');
@@ -157,9 +163,8 @@ test('a composed block can be painted one child at a time', async ({ page }) => 
 	await page.getByRole('tab', { name: 'Piece' }).click();
 	await cell(page, 0).click();
 
-	await tool(page, /^Select/).click();
-	await cell(page, 0).click();
-	await composition(page, /^2×2/).click();
+	await selectCell(page, 0);
+	await composition(page, /^2 by 2$/).click();
 
 	await addFabric(page, 'Green', '38511f');
 	await tool(page, /^Place/).click();
@@ -171,4 +176,66 @@ test('a composed block can be painted one child at a time', async ({ page }) => 
 	await page.mouse.click(box.x + box.width * 0.25, box.y + box.height * 0.25);
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#38511f', '#4f7fe8', '#4f7fe8', '#4f7fe8']);
+});
+
+/** prompt() is how a pattern gets named; answer it with `name`. */
+const answerPrompt = (page: Page, name: string) =>
+	page.once('dialog', (dialog) => dialog.accept(name));
+
+test('a multi-block selection saves as one pattern and stamps as one', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await page.getByRole('tab', { name: 'Piece' }).click();
+	await cell(page, 0).click();
+	await addFabric(page, 'Green', '38511f');
+	await cell(page, 1).click();
+	await parkMouse(page);
+
+	// Drag a box across both blocks, then save the selection.
+	await tool(page, /^Select/).click();
+	const a = await cell(page, 0).boundingBox();
+	const b = await cell(page, 1).boundingBox();
+	if (!a || !b) throw new Error('cells not found');
+	await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 5 });
+	await page.mouse.up();
+	await expect(page.locator('.selection .hint')).toContainText('2 blocks selected');
+
+	answerPrompt(page, 'Domino');
+	await page.getByRole('button', { name: '+ Save selection' }).click();
+	await expect(page.getByRole('button', { name: 'Domino', exact: true })).toBeVisible();
+
+	// Stamping it lays both blocks down at once, in order.
+	await tool(page, /^Place/).click();
+	await cell(page, 30).click();
+	await parkMouse(page);
+	expect(await cellFills(page, 30)).toEqual(['#4f7fe8']);
+	expect(await cellFills(page, 31)).toEqual(['#38511f']);
+});
+
+test('a pattern can be a non-rectangular shape', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await page.getByRole('tab', { name: 'Piece' }).click();
+	for (const i of [0, 14, 15]) await cell(page, i).click();
+	await parkMouse(page);
+
+	// Shift-click three blocks in an L, which no rectangle covers.
+	await tool(page, /^Select/).click();
+	await cell(page, 0).click();
+	await cell(page, 14).click({ modifiers: ['Shift'] });
+	await cell(page, 15).click({ modifiers: ['Shift'] });
+	await expect(page.locator('.selection .hint')).toContainText('3 blocks selected');
+
+	answerPrompt(page, 'Ell');
+	await page.getByRole('button', { name: '+ Save selection' }).click();
+
+	await tool(page, /^Place/).click();
+	await cell(page, 60).click();
+	await parkMouse(page);
+	// The L lands as an L: two down the left, one to the right of the bottom.
+	expect(await cellFills(page, 60)).toEqual(['#4f7fe8']);
+	expect(await cellFills(page, 74)).toEqual(['#4f7fe8']);
+	expect(await cellFills(page, 75)).toEqual(['#4f7fe8']);
+	// The cell right of the top is NOT part of the pattern.
+	expect(await cellFills(page, 61)).toEqual(['#ffffff']);
 });

@@ -20,8 +20,9 @@ import { CUTS, type Point } from './geometry';
 import {
 	applyUpdates,
 	boardsEqual,
-	cloneBlock,
+	cellIndex,
 	cloneBoard,
+	colOf,
 	divisionOf,
 	emptyBoard,
 	isEmpty,
@@ -30,6 +31,7 @@ import {
 	recompose,
 	resizeBoard,
 	rotateBlock,
+	rowOf,
 	withoutMaterial,
 	type Block,
 	type Board
@@ -41,6 +43,15 @@ import {
 	keyboardPoint,
 	type Pending
 } from './placement';
+import {
+	anchorFor,
+	blocksFrom,
+	boundsOf,
+	placementAt,
+	rotatePattern,
+	type Pattern,
+	type PatternBlocks
+} from './pattern';
 import { emptyHistory, record, redo as redoHistory, undo as undoHistory } from './history';
 import {
 	LEGACY_STATE_KEY,
@@ -49,7 +60,6 @@ import {
 	parseSavedState,
 	readJson,
 	writeJson,
-	type CustomBlock,
 	type SavedState
 } from './persistence';
 import { cuttingListFor, materialsListText } from './cutting';
@@ -70,7 +80,15 @@ interface PaintGesture {
 	mode: Tool;
 }
 
-const CUSTOM_PREFIX = 'custom:';
+const PATTERN_PREFIX = 'pattern:';
+
+/** A drag with the Select tool: a rectangle from `anchor` to `head`. */
+interface Marquee {
+	pointerId: number;
+	anchor: number;
+	head: number;
+	additive: boolean;
+}
 
 export class QuiltStore {
 	name = $state('');
@@ -78,19 +96,18 @@ export class QuiltStore {
 	blockSize = $state(DEFAULT_BLOCK_SIZE);
 	materials = $state<Material[]>([]);
 	selectedMaterialId = $state<string | null>(null);
-	customBlocks = $state<CustomBlock[]>([]);
+	patterns = $state<Pattern[]>([]);
 	cells = $state<Board>(emptyBoard(gridDims(DEFAULT_SIZE_ID, DEFAULT_BLOCK_SIZE)));
-	/** The block the composition control acts on. */
-	selectedIndex = $state<number | null>(null);
+	/** Board indices the composition control and pattern capture act on. */
+	selection = $state<number[]>([]);
+	marquee = $state<Marquee | null>(null);
 
 	tab = $state<Tab>('block');
 	pieceId = $state('square');
-	/** A built-in layout id, or `custom:<id>` for a saved block. */
+	/** A built-in block type id, or `pattern:<id>` for a saved pattern. */
 	blockId = $state(BLOCK_TYPES[0].id);
 	rotation = $state(0);
 	tool = $state<Tool>('place');
-	/** "+ Add new" is waiting for a cell to be picked. */
-	capturing = $state(false);
 
 	hover = $state<Hover | null>(null);
 	gesture = $state<PaintGesture | null>(null);
@@ -113,7 +130,7 @@ export class QuiltStore {
 		this.blockSize = saved.blockSize;
 		this.materials = saved.materials;
 		this.selectedMaterialId = saved.selectedMaterialId;
-		this.customBlocks = saved.customBlocks;
+		this.patterns = saved.patterns;
 		this.cells = saved.cells;
 	}
 
@@ -133,17 +150,26 @@ export class QuiltStore {
 	canRedo = $derived(this.history.future.length > 0);
 	cutting = $derived(cuttingListFor(this.cells, this.materials, this.blockSize));
 
-	selectedCustom = $derived(
-		this.blockId.startsWith(CUSTOM_PREFIX)
-			? (this.customBlocks.find((b) => b.id === this.blockId.slice(CUSTOM_PREFIX.length)) ?? null)
+	selectedPattern = $derived(
+		this.blockId.startsWith(PATTERN_PREFIX)
+			? (this.patterns.find((p) => p.id === this.blockId.slice(PATTERN_PREFIX.length)) ?? null)
 			: null
 	);
 
-	/** The block under the composition control, if one is selected. */
-	selectedBlock = $derived(
-		this.selectedIndex === null ? null : (this.cells[this.selectedIndex] ?? null)
-	);
-	selectedDivision = $derived(this.selectedBlock ? divisionOf(this.selectedBlock) : 0);
+	selectionSet = $derived(new Set(this.selection));
+	selectedBlocks = $derived(this.selection.map((i) => this.cells[i]).filter(Boolean));
+	/** Highlighted while a marquee drag is in flight, selected once it ends. */
+	highlighted = $derived.by(() => {
+		if (!this.marquee) return this.selectionSet;
+		const swept = this.marqueeIndices(this.marquee);
+		return this.marquee.additive ? new Set([...this.selection, ...swept]) : new Set(swept);
+	});
+	/** The shared composition of the selection, or 0 when they disagree. */
+	selectedDivision = $derived.by(() => {
+		if (!this.selectedBlocks.length) return 0;
+		const divisions = new Set(this.selectedBlocks.map(divisionOf));
+		return divisions.size === 1 ? [...divisions][0] : 0;
+	});
 
 	/** Drop references to fabrics that have since been deleted. */
 	private withKnownFabrics = (block: Block): Block =>
@@ -158,30 +184,39 @@ export class QuiltStore {
 			const cut = this.pieceId in CUTS ? this.pieceId : 'square';
 			return { mode: 'paint', cut, rotation: this.rotation };
 		}
-		const custom = this.selectedCustom;
-		if (custom) {
-			return {
-				mode: 'exact',
-				block: rotateBlock(this.withKnownFabrics(custom.block), this.rotation)
-			};
+		const pattern = this.selectedPattern;
+		if (pattern) {
+			const blocks = Object.fromEntries(
+				Object.entries(pattern.blocks).map(([at, block]) => [at, this.withKnownFabrics(block)])
+			) as PatternBlocks;
+			return { mode: 'pattern', blocks: rotatePattern(blocks, this.rotation) };
 		}
 		const type = BLOCK_TYPE_BY_ID[this.blockId] ?? BLOCK_TYPES[0];
 		return { mode: 'stamp', block: rotateBlock(type.block, this.rotation) };
 	});
 
-	/** The hovered cell renders as the exact state a click would produce. */
+	/** Board cells a pattern stamp would cover, or null if it would overhang. */
+	private patternUpdates(index: number, blocks: PatternBlocks): Map<number, Block> | null {
+		const { col, row } = anchorFor(index, this.dims);
+		return placementAt(blocks, col, row, this.dims);
+	}
+
+	/** The hovered cells render as the exact state a click would produce. */
 	placePreview = $derived.by(() => {
-		if (this.tool !== 'place' || this.gesture || this.capturing || !this.hover) return null;
+		if (this.tool !== 'place' || this.gesture || !this.hover) return null;
 		if (!this.canPlace || !this.selectedMaterialId) return null;
 		const { index, point } = this.hover;
-		const block = buildPlacement(this.cells[index], point, this.pending, this.selectedMaterialId);
-		return { index, block };
+		const pending = this.pending;
+		if (pending.mode === 'pattern') return this.patternUpdates(index, pending.blocks);
+		return new Map([
+			[index, buildPlacement(this.cells[index], point, pending, this.selectedMaterialId)]
+		]);
 	});
 
 	erasePreview = $derived.by(() => {
 		if (this.tool !== 'erase' || this.gesture || !this.hover) return null;
 		const block = buildErase(this.cells[this.hover.index], this.hover.point);
-		return block ? { index: this.hover.index, block } : null;
+		return block ? new Map([[this.hover.index, block]]) : null;
 	});
 
 	savedState = $derived<SavedState>({
@@ -190,7 +225,7 @@ export class QuiltStore {
 		blockSize: this.blockSize,
 		materials: this.materials,
 		selectedMaterialId: this.selectedMaterialId,
-		customBlocks: this.customBlocks,
+		patterns: this.patterns,
 		cells: this.cells
 	});
 
@@ -259,7 +294,12 @@ export class QuiltStore {
 
 	private placeAt(index: number, point: Point): boolean {
 		if (!this.canPlace || !this.selectedMaterialId) return false;
-		const block = buildPlacement(this.cells[index], point, this.pending, this.selectedMaterialId);
+		const pending = this.pending;
+		if (pending.mode === 'pattern') {
+			const updates = this.patternUpdates(index, pending.blocks);
+			return updates ? this.commit(updates) : false;
+		}
+		const block = buildPlacement(this.cells[index], point, pending, this.selectedMaterialId);
 		return this.commit(new Map([[index, block]]));
 	}
 
@@ -282,26 +322,71 @@ export class QuiltStore {
 
 	clearAll() {
 		if (this.filled === 0 || !confirm('Clear every block on the quilt?')) return;
-		this.selectedIndex = null;
+		this.clearSelection();
 		this.replaceBoard(emptyBoard(this.dims));
 	}
 
-	// ── Composition ──────────────────────────────────────────────────
+	// ── Selection ────────────────────────────────────────────────────
 
-	select(index: number | null) {
-		this.selectedIndex = index;
+	clearSelection() {
+		this.selection = [];
+		this.marquee = null;
 	}
+
+	select(index: number) {
+		this.selection = [index];
+	}
+
+	/** Shift-click: add or remove one block, so a selection can be any shape. */
+	toggle(index: number) {
+		this.selection = this.selectionSet.has(index)
+			? this.selection.filter((i) => i !== index)
+			: [...this.selection, index];
+	}
+
+	selectAllFilled() {
+		this.selection = this.cells.flatMap((block, i) => (isEmpty(block) ? [] : [i]));
+	}
+
+	/** Every board index inside the rectangle a marquee drag has swept. */
+	private marqueeIndices({ anchor, head }: Marquee): number[] {
+		const { cols } = this.dims;
+		const [c0, c1] = [colOf(anchor, cols), colOf(head, cols)].sort((a, b) => a - b);
+		const [r0, r1] = [rowOf(anchor, cols), rowOf(head, cols)].sort((a, b) => a - b);
+		const out: number[] = [];
+		for (let r = r0; r <= r1; r++) {
+			for (let c = c0; c <= c1; c++) out.push(cellIndex(r, c, cols));
+		}
+		return out;
+	}
+
+	private endMarquee() {
+		const marquee = this.marquee;
+		this.marquee = null;
+		if (!marquee) return;
+		// A shift-click with no drag toggles one block rather than sweeping.
+		if (marquee.anchor === marquee.head && marquee.additive) {
+			this.toggle(marquee.anchor);
+			return;
+		}
+		const swept = this.marqueeIndices(marquee);
+		this.selection = marquee.additive ? [...new Set([...this.selection, ...swept])] : swept;
+	}
+
+	// ── Composition ──────────────────────────────────────────────────
 
 	/*
 	 * Going finer replicates, so the picture does not change; only the cut list
 	 * does. Going coarser keeps each group's top-left piece.
 	 */
 	setComposition(division: number) {
-		const index = this.selectedIndex;
-		if (index === null || this.gesture) return;
-		const block = this.cells[index];
-		if (!block) return;
-		this.commit(new Map([[index, recompose(block, division)]]));
+		if (this.gesture || !this.selection.length) return;
+		const updates = new Map<number, Block>();
+		this.selection.forEach((index) => {
+			const block = this.cells[index];
+			if (block) updates.set(index, recompose(block, division));
+		});
+		this.commit(updates);
 	}
 
 	// ── Pointer handlers ─────────────────────────────────────────────
@@ -318,13 +403,9 @@ export class QuiltStore {
 	}
 
 	onCellPointerDown(e: PointerEvent, index: number) {
-		if (e.button !== 0 || this.gesture) return;
-		if (this.capturing) {
-			this.captureCell(index);
-			return;
-		}
+		if (e.button !== 0 || this.gesture || this.marquee) return;
 		if (this.tool === 'select') {
-			this.select(index);
+			this.marquee = { pointerId: e.pointerId, anchor: index, head: index, additive: e.shiftKey };
 			return;
 		}
 		const hit = this.resolve(e.clientX, e.clientY);
@@ -335,6 +416,13 @@ export class QuiltStore {
 	}
 
 	onPointerMove(e: PointerEvent) {
+		const m = this.marquee;
+		if (m) {
+			if (m.pointerId !== e.pointerId) return;
+			const swept = this.resolve(e.clientX, e.clientY);
+			if (swept) this.marquee = { ...m, head: swept.index };
+			return;
+		}
 		const g = this.gesture;
 		if (g && g.pointerId !== e.pointerId) return;
 		const hit = this.resolve(e.clientX, e.clientY);
@@ -345,6 +433,10 @@ export class QuiltStore {
 	}
 
 	onPointerUp(e: PointerEvent) {
+		if (this.marquee?.pointerId === e.pointerId) {
+			this.endMarquee();
+			return;
+		}
 		if (this.gesture?.pointerId === e.pointerId) this.endGesture();
 	}
 
@@ -353,12 +445,8 @@ export class QuiltStore {
 	/** Enter/Space on a focused cell: the keyboard version of a click. */
 	activateCell(index: number) {
 		if (this.gesture) return;
-		if (this.capturing) {
-			this.captureCell(index);
-			return;
-		}
 		if (this.tool === 'select') {
-			this.select(index);
+			this.toggle(index);
 			return;
 		}
 		if (this.tool === 'erase') {
@@ -380,8 +468,8 @@ export class QuiltStore {
 		}
 		if (e.key === 'Escape') {
 			if (this.gesture) this.cancelGesture();
-			else if (this.capturing) this.capturing = false;
-			else if (this.selectedIndex !== null) this.selectedIndex = null;
+			else if (this.marquee) this.marquee = null;
+			else if (this.selection.length) this.clearSelection();
 			else this.tool = 'place';
 			return;
 		}
@@ -407,47 +495,57 @@ export class QuiltStore {
 		this.tab = 'piece';
 		this.pieceId = id;
 		this.tool = 'place';
-		this.capturing = false;
 	}
 
 	pickBlock(id: string) {
 		this.tab = 'block';
 		this.blockId = id;
 		this.tool = 'place';
-		this.capturing = false;
 	}
 
-	pickCustomBlock(id: string) {
-		this.pickBlock(`${CUSTOM_PREFIX}${id}`);
+	pickPattern(id: string) {
+		this.pickBlock(`${PATTERN_PREFIX}${id}`);
 	}
 
-	startCapture() {
-		this.capturing = true;
-		this.tab = 'block';
-		this.tool = 'place';
-	}
+	/** Blocks in the selection that actually hold fabric, as pattern cells. */
+	capturable = $derived(
+		this.selection
+			.filter((i) => this.cells[i] && !isEmpty(this.cells[i]))
+			.map((i) => ({
+				x: colOf(i, this.dims.cols),
+				y: rowOf(i, this.dims.cols),
+				block: this.cells[i]
+			}))
+	);
 
-	private captureCell(index: number) {
-		const cell = this.cells[index];
-		if (isEmpty(cell)) return;
-		const name = prompt('Name this block', `Block ${this.customBlocks.length + 1}`)?.trim();
-		this.capturing = false;
+	/*
+	 * Save the selection as a named pattern. The selection may be any shape;
+	 * `blocksFrom` normalizes it into pattern space, so an L saved from the
+	 * middle of the quilt is the same pattern as an L saved from the corner.
+	 */
+	capturePattern() {
+		const cells = this.capturable;
+		if (!cells.length) return;
+		const { w, h } = boundsOf(blocksFrom(cells));
+		const label = w === 1 && h === 1 ? 'block' : `${w} by ${h} pattern`;
+		const name = prompt(`Name this ${label}`, `Pattern ${this.patterns.length + 1}`)?.trim();
 		if (!name) return;
-		const block: CustomBlock = {
+		const pattern: Pattern = {
 			id: crypto.randomUUID(),
 			name,
-			block: cloneBlock(cell)
+			blocks: blocksFrom(cells)
 		};
-		this.customBlocks = [...this.customBlocks, block];
+		this.patterns = [...this.patterns, pattern];
 		this.rotation = 0;
-		this.pickCustomBlock(block.id);
+		this.clearSelection();
+		this.pickPattern(pattern.id);
 	}
 
-	deleteCustomBlock(id: string) {
-		const block = this.customBlocks.find((b) => b.id === id);
-		if (!block || !confirm(`Remove the "${block.name}" block type?`)) return;
-		this.customBlocks = this.customBlocks.filter((b) => b.id !== id);
-		if (this.blockId === `${CUSTOM_PREFIX}${id}`) this.blockId = BLOCK_TYPES[0].id;
+	deletePattern(id: string) {
+		const pattern = this.patterns.find((p) => p.id === id);
+		if (!pattern || !confirm(`Remove the "${pattern.name}" pattern?`)) return;
+		this.patterns = this.patterns.filter((p) => p.id !== id);
+		if (this.blockId === `${PATTERN_PREFIX}${id}`) this.blockId = BLOCK_TYPES[0].id;
 	}
 
 	// ── Materials ────────────────────────────────────────────────────
@@ -492,9 +590,11 @@ export class QuiltStore {
 		}
 		this.materials = this.materials.filter((m) => m.id !== id);
 		if (this.selectedMaterialId === id) this.selectedMaterialId = this.materials[0]?.id ?? null;
-		this.customBlocks = this.customBlocks.map((b) => ({
-			...b,
-			block: this.withKnownFabrics(b.block)
+		this.patterns = this.patterns.map((p) => ({
+			...p,
+			blocks: Object.fromEntries(
+				Object.entries(p.blocks).map(([at, block]) => [at, this.withKnownFabrics(block)])
+			) as PatternBlocks
 		}));
 		this.replaceBoard(withoutMaterial(this.cells, id));
 	}
@@ -515,7 +615,7 @@ export class QuiltStore {
 		apply();
 		const to = gridDims(this.sizeId, this.blockSize);
 		if (from.rows === to.rows && from.cols === to.cols) return;
-		this.selectedIndex = null;
+		this.clearSelection();
 		this.replaceBoard(resizeBoard(this.cells, from, to));
 	}
 

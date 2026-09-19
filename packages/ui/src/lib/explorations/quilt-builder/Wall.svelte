@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { fmtInches, isNamed } from './data';
+	import { isNamed } from './data';
 	import { toPolygonPoints } from './geometry';
 	import {
 		colOf,
@@ -11,7 +11,7 @@
 		walkLeaves,
 		type Block
 	} from './model';
-	import { DIVISIONS, type QuiltStore } from './state.svelte';
+	import type { QuiltStore } from './state.svelte';
 
 	let { store }: { store: QuiltStore } = $props();
 
@@ -37,9 +37,8 @@
 	};
 
 	const banner = $derived.by(() => {
-		if (store.capturing) return 'Pick a block on the quilt to save it as a type';
 		if (store.tool === 'select') {
-			return store.selectedBlock ? null : 'Click a block to change how it is composed';
+			return store.selection.length ? null : 'Click, shift-click, or drag a box to select blocks';
 		}
 		if (store.tool === 'erase') return null;
 		if (!store.materials.length) return 'Add a fabric in Materials to start placing';
@@ -56,7 +55,7 @@
 	<div class="wall-frame">
 		<div class="banner-slot" aria-live="polite">
 			{#if banner}
-				<span class="banner" class:capturing={store.capturing}>{banner}</span>
+				<span class="banner">{banner}</span>
 			{/if}
 		</div>
 
@@ -64,14 +63,13 @@
 			class="blanket"
 			class:tool-erase={store.tool === 'erase'}
 			class:tool-select={store.tool === 'select'}
-			class:locked={store.tool === 'place' && !store.canPlace && !store.capturing}
-			class:capturing={store.capturing}
+			class:locked={store.tool === 'place' && !store.canPlace}
 			style="grid-template-columns: repeat({store.dims.cols}, 1fr); aspect-ratio: {store.dims
 				.cols} / {store.dims.rows}"
 		>
 			{#each store.cells as cell, i (i)}
-				{@const pv = store.placePreview?.index === i ? store.placePreview.block : null}
-				{@const ev = store.erasePreview?.index === i ? store.erasePreview.block : null}
+				{@const pv = store.placePreview?.get(i) ?? null}
+				{@const ev = store.erasePreview?.get(i) ?? null}
 				{@const display = pv ?? cell}
 				{@const pieces = flatten(display)}
 				{@const before = pv ? new Map(flatten(cell).map((p) => [p.key, p.fabric])) : null}
@@ -79,7 +77,7 @@
 				<button
 					class="cell"
 					class:hovered={store.hover?.index === i}
-					class:selected={store.selectedIndex === i}
+					class:selected={store.highlighted.has(i)}
 					data-cell-index={i}
 					aria-label={cellLabel(i, cell)}
 					onpointerdown={(e) => store.onCellPointerDown(e, i)}
@@ -160,24 +158,6 @@
 			>
 		</div>
 
-		{#if store.selectedBlock}
-			<div class="composition" role="group" aria-label="Block composition">
-				<span class="composition-label">Composition</span>
-				{#each DIVISIONS as division (division)}
-					<button
-						class="chip"
-						class:active={store.selectedDivision === division}
-						aria-pressed={store.selectedDivision === division}
-						onclick={() => store.setComposition(division)}
-					>
-						{division === 1 ? '1' : `${division}×${division}`}
-						<span class="chip-size">{fmtInches(store.blockSize / division)}”</span>
-					</button>
-				{/each}
-				<button class="chip done" onclick={() => store.select(null)}>Done</button>
-			</div>
-		{/if}
-
 		<button
 			class="export"
 			onclick={() => store.exportMaterialsList()}
@@ -212,9 +192,6 @@
 		text-transform: uppercase;
 		color: var(--color-text-secondary);
 	}
-	.banner.capturing {
-		color: var(--qb-accent);
-	}
 
 	.blanket {
 		position: relative;
@@ -247,9 +224,7 @@
 	.tool-erase .cell {
 		cursor: crosshair;
 	}
-	.capturing .cell {
-		cursor: copy;
-	}
+
 	.tool-select .cell {
 		cursor: pointer;
 	}
@@ -298,52 +273,6 @@
 		margin-top: 0.75rem;
 	}
 
-	.composition {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		justify-content: center;
-		gap: 0.4rem;
-		margin-top: 0.75rem;
-		padding: 0.5rem 0.75rem;
-		border: 1px solid var(--qb-line);
-		background: #fff;
-	}
-	.composition-label {
-		font-size: 0.65rem;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: var(--color-text-secondary);
-		margin-right: 0.25rem;
-	}
-	.chip {
-		display: inline-flex;
-		align-items: baseline;
-		gap: 0.35rem;
-		font: inherit;
-		font-size: 0.8rem;
-		padding: 0.3rem 0.6rem;
-		border: 1px solid var(--qb-line);
-		background: none;
-		color: var(--color-text-strong);
-		cursor: pointer;
-	}
-	.chip:hover,
-	.chip.active {
-		border-color: var(--color-text-strong);
-	}
-	.chip.active {
-		background: var(--qb-accent);
-		border-color: var(--qb-accent);
-		color: #fff;
-	}
-	.chip-size {
-		font-size: 0.7rem;
-		opacity: 0.7;
-	}
-	.chip.done {
-		margin-left: 0.25rem;
-	}
 	.action {
 		border: none;
 		background: none;

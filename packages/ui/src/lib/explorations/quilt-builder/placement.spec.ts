@@ -68,15 +68,14 @@ describe('buildPlacement', () => {
 		expect(fabrics(block)).toEqual(['green', 'red', 'blue', 'blue', 'blue']);
 	});
 
-	it('places a saved block exactly', () => {
-		const saved = leafBlock('hst', 2, ['red', null]);
+	it('inherits into a stamp whose cut does not match what is there', () => {
 		const block = buildPlacement(
 			solid('blue'),
 			[0.5, 0.5],
-			{ mode: 'exact', block: saved },
+			{ mode: 'stamp', block: leafBlock('hst') },
 			'green'
 		);
-		expect(block).toEqual(saved);
+		expect(fabrics(block)).toEqual(['green', 'blue']);
 	});
 });
 

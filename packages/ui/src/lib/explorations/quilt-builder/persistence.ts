@@ -21,6 +21,7 @@ import { REPLACED_BY } from './blocks';
 import { CUTS, isCutId, normalizeTurns } from './geometry';
 import { cloneBlock, emptyBlock, leafBlock, rotateBlock, type Block, type Board } from './model';
 import { resample } from './placement';
+import { blocksFrom, coordOf, type Pattern, type PatternBlocks } from './pattern';
 
 export const STATE_KEY = 'quilt-builder:v3';
 /** Read once when v3 is absent, so existing designs survive the upgrade. */
@@ -29,11 +30,8 @@ export const LEGACY_STATE_KEY = 'quilt-builder:v2';
 /** Compositions the palette offers. Anything else in a save is rejected. */
 const DIVISIONS = [1, 2, 4];
 
-export interface CustomBlock {
-	id: string;
-	name: string;
-	block: Block;
-}
+/** Guard against a corrupt save claiming an enormous pattern. */
+const MAX_PATTERN_BLOCKS = 256;
 
 export interface SavedState {
 	name: string;
@@ -41,7 +39,7 @@ export interface SavedState {
 	blockSize: number;
 	materials: Material[];
 	selectedMaterialId: string | null;
-	customBlocks: CustomBlock[];
+	patterns: Pattern[];
 	cells: Board;
 }
 
@@ -137,15 +135,34 @@ export const sanitizeMaterials = (raw: unknown): Material[] => {
 	});
 };
 
-const sanitizeCustomBlocks = (raw: unknown, known: ReadonlySet<string>): CustomBlock[] => {
+/*
+ * Three shapes have to read: a pattern's sparse map, the single `block` a
+ * saved block carried before patterns existed, and the v2 layout stored
+ * inline. The last two become a one-by-one pattern.
+ */
+const sanitizePatternBlocks = (raw: Loose, known: ReadonlySet<string>): PatternBlocks => {
+	if (typeof raw.blocks !== 'object' || raw.blocks === null) {
+		return blocksFrom([
+			{ x: 0, y: 0, block: sanitizeBlock('block' in raw ? raw.block : raw, known) }
+		]);
+	}
+	const entries = Object.entries(raw.blocks as Record<string, unknown>)
+		.filter(([key]) => /^-?\d+,-?\d+$/.test(key))
+		.slice(0, MAX_PATTERN_BLOCKS)
+		.map(([key, value]) => {
+			const [x, y] = key.split(',').map(Number);
+			return { x, y, block: sanitizeBlock(value, known) };
+		});
+	return entries.length ? blocksFrom(entries) : { [coordOf(0, 0)]: emptyBlock() };
+};
+
+const sanitizePatterns = (raw: unknown, known: ReadonlySet<string>): Pattern[] => {
 	if (!Array.isArray(raw)) return [];
 	return raw.flatMap((item) => {
 		if (typeof item !== 'object' || item === null) return [];
-		const b = item as Loose;
-		if (typeof b.id !== 'string' || typeof b.name !== 'string') return [];
-		// v2 saved the layout inline; v3 saves a block tree.
-		const block = sanitizeBlock('block' in b ? b.block : b, known);
-		return [{ id: b.id, name: b.name, block }];
+		const p = item as Loose;
+		if (typeof p.id !== 'string' || typeof p.name !== 'string') return [];
+		return [{ id: p.id, name: p.name, blocks: sanitizePatternBlocks(p, known) }];
 	});
 };
 
@@ -159,7 +176,7 @@ export const gridDims = (sizeId: string, blockSize: number): { rows: number; col
 
 export const parseSavedState = (raw: unknown): SavedState | null => {
 	if (typeof raw !== 'object' || raw === null) return null;
-	const s = raw as Partial<Record<keyof SavedState, unknown>>;
+	const s = raw as Partial<Record<keyof SavedState, unknown>> & { customBlocks?: unknown };
 	const sizeId =
 		typeof s.sizeId === 'string' && s.sizeId in QUILT_SIZE_BY_ID ? s.sizeId : DEFAULT_SIZE_ID;
 	const blockSize =
@@ -178,7 +195,8 @@ export const parseSavedState = (raw: unknown): SavedState | null => {
 			typeof s.selectedMaterialId === 'string' && known.has(s.selectedMaterialId)
 				? s.selectedMaterialId
 				: null,
-		customBlocks: sanitizeCustomBlocks(s.customBlocks, known),
+		// Saves written before patterns existed keep their blocks under `customBlocks`.
+		patterns: sanitizePatterns(s.patterns ?? s.customBlocks, known),
 		cells: sanitizeCells(s.cells, rows * cols, known)
 	};
 };

@@ -1,10 +1,12 @@
 <script lang="ts">
-	import { BLOCK_SIZES } from './data';
+	import { BLOCK_SIZES, fmtInches } from './data';
 	import { BLOCK_TYPES } from './blocks';
 	import { PIECE_CUTS } from './geometry';
 	import { flatten, leafBlock, rotateBlock, type Block } from './model';
+	import { boundsOf, coordOf, rotatePattern, type PatternBlocks } from './pattern';
 	import BlockSvg from './BlockSvg.svelte';
-	import type { QuiltStore } from './state.svelte';
+	import PatternSvg from './PatternSvg.svelte';
+	import { DIVISIONS, type QuiltStore } from './state.svelte';
 
 	let { store }: { store: QuiltStore } = $props();
 
@@ -12,8 +14,11 @@
 	const LIGHT = '#d9d9d9';
 
 	/** Icon fills: dark for the fabric role, light for background, white for empty. */
+	const roleFill = (role: number, dark = DARK): string =>
+		role === 0 ? dark : role === 1 ? LIGHT : '#ffffff';
+
 	const roleFills = (block: Block, dark = DARK): string[] =>
-		flatten(block).map((p) => (p.role === 0 ? dark : p.role === 1 ? LIGHT : '#ffffff'));
+		flatten(block).map((p) => roleFill(p.role, dark));
 
 	const hexOf = (id: string | null): string =>
 		id ? (store.materialById.get(id)?.hex ?? '#fff') : '#fff';
@@ -25,29 +30,78 @@
 	const blockEntries = $derived(
 		BLOCK_TYPES.map((type) => ({ type, block: rotateBlock(type.block, store.rotation) }))
 	);
-	const customEntries = $derived(
-		store.customBlocks.map((saved) => ({
-			saved,
-			block: rotateBlock(saved.block, store.rotation)
-		}))
+	const patternEntries = $derived(
+		store.patterns.map((saved) => {
+			const blocks = rotatePattern(saved.blocks, store.rotation);
+			const { w, h } = boundsOf(blocks);
+			return { saved, blocks, size: w === 1 && h === 1 ? null : `${w}×${h}` };
+		})
 	);
 
-	const exampleBlock = $derived(
-		store.pending.mode === 'paint'
-			? leafBlock(store.pending.cut, store.pending.rotation)
-			: store.pending.block
-	);
+	/** The single block, or the pattern, that a click would place. */
+	const example = $derived.by((): { block: Block } | { blocks: PatternBlocks } => {
+		const pending = store.pending;
+		if (pending.mode === 'paint') {
+			return { block: leafBlock(pending.cut, pending.rotation) };
+		}
+		return pending.mode === 'pattern' ? { blocks: pending.blocks } : { block: pending.block };
+	});
 
 	const exampleFills = $derived.by(() => {
+		if (!('block' in example)) return [];
 		const dark = store.selectedMaterial?.hex ?? DARK;
-		const custom = store.selectedCustom !== null;
-		return flatten(exampleBlock).map((p) =>
-			custom ? hexOf(p.fabric) : p.role === 0 ? dark : p.role === 1 ? LIGHT : '#ffffff'
-		);
+		return flatten(example.block).map((p) => roleFill(p.role, dark));
 	});
+
+	const selectedCount = $derived(store.selection.length);
+	const capturableCount = $derived(store.capturable.length);
 </script>
 
 <aside class="side">
+	<section class="selection" aria-label="Selection">
+		<div class="label section">Composition</div>
+		{#if selectedCount}
+			<div class="composition" role="group" aria-label="Block composition">
+				{#each DIVISIONS as division (division)}
+					{@const label = division === 1 ? 'One piece' : `${division} by ${division}`}
+					<button
+						class="chip"
+						class:active={store.selectedDivision === division}
+						aria-pressed={store.selectedDivision === division}
+						aria-label={label}
+						title={`${label}, ${fmtInches(store.blockSize / division)}” pieces`}
+						onclick={() => store.setComposition(division)}
+					>
+						<span class="chip-grid" aria-hidden="true">
+							{#each Array(division * division) as _, i (i)}
+								<span style="--n: {division}"></span>
+							{/each}
+						</span>
+						<span class="chip-size">{fmtInches(store.blockSize / division)}”</span>
+					</button>
+				{/each}
+			</div>
+			<p class="hint">
+				{selectedCount === 1
+					? '1 block selected'
+					: `${selectedCount} blocks selected`}{store.selectedDivision === 0
+					? ', mixed compositions'
+					: ''}
+			</p>
+			<button class="add-new" disabled={!capturableCount} onclick={() => store.capturePattern()}>
+				+ Save selection
+			</button>
+			{#if !capturableCount}
+				<p class="hint">Those blocks are empty; fill one to save it.</p>
+			{/if}
+		{:else}
+			<p class="hint">
+				<button class="link" onclick={() => (store.tool = 'select')}>Select</button>
+				blocks on the quilt to subdivide them. Shift-click to add, or drag a box.
+			</p>
+		{/if}
+	</section>
+
 	<div class="tabs" role="tablist" aria-label="Palette">
 		<button
 			role="tab"
@@ -89,7 +143,7 @@
 				{#each blockEntries as entry (entry.type.id)}
 					<button
 						class="type"
-						class:active={!store.capturing && store.blockId === entry.type.id}
+						class:active={store.blockId === entry.type.id}
 						aria-pressed={store.blockId === entry.type.id}
 						aria-label={entry.type.name}
 						title={entry.type.name}
@@ -98,54 +152,42 @@
 						<BlockSvg block={entry.block} fills={roleFills(entry.block)} />
 					</button>
 				{/each}
-				{#each customEntries as entry (entry.saved.id)}
+				{#each patternEntries as entry (entry.saved.id)}
 					<div class="custom">
 						<button
 							class="type"
-							class:active={!store.capturing && store.selectedCustom?.id === entry.saved.id}
-							aria-pressed={store.selectedCustom?.id === entry.saved.id}
+							class:active={store.selectedPattern?.id === entry.saved.id}
+							aria-pressed={store.selectedPattern?.id === entry.saved.id}
 							aria-label={entry.saved.name}
 							title={entry.saved.name}
-							onclick={() => store.pickCustomBlock(entry.saved.id)}
+							onclick={() => store.pickPattern(entry.saved.id)}
 						>
-							<BlockSvg
-								block={entry.block}
-								fills={flatten(entry.block).map((p) => hexOf(p.fabric))}
-							/>
+							<PatternSvg blocks={entry.blocks} fillOf={hexOf} />
 						</button>
-						<span class="custom-name">{entry.saved.name}</span>
+						<span class="custom-name">
+							{entry.saved.name}{#if entry.size}<span class="custom-size">{entry.size}</span>{/if}
+						</span>
 						<button
 							class="custom-remove"
 							aria-label={`Remove ${entry.saved.name}`}
 							title="Remove"
-							onclick={() => store.deleteCustomBlock(entry.saved.id)}
+							onclick={() => store.deletePattern(entry.saved.id)}
 						>
 							×
 						</button>
 					</div>
 				{/each}
-				<button
-					class="add-new"
-					class:active={store.capturing}
-					aria-pressed={store.capturing}
-					onclick={() => (store.capturing ? (store.capturing = false) : store.startCapture())}
-				>
-					+ Add new
-				</button>
 			</div>
-			{#if store.capturing}
-				<p class="hint">
-					{store.filled
-						? 'Click a block on the quilt to save it as a type.'
-						: 'Place something on the quilt first, then save it as a type.'}
-				</p>
-			{/if}
 		</div>
 
 		<div class="example">
 			<div class="label example-label">Center block example</div>
 			<div class="example-art">
-				<BlockSvg block={exampleBlock} fills={exampleFills} stroke="rgba(0, 0, 0, 0.12)" />
+				{#if 'blocks' in example}
+					<PatternSvg blocks={example.blocks} fillOf={hexOf} />
+				{:else}
+					<BlockSvg block={example.block} fills={exampleFills} stroke="rgba(0, 0, 0, 0.12)" />
+				{/if}
 			</div>
 		</div>
 	{:else}
@@ -306,6 +348,10 @@
 		opacity: 1;
 	}
 
+	.add-new:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
 	.add-new {
 		align-self: center;
 		justify-self: center;
@@ -320,10 +366,73 @@
 		color: var(--color-text-strong);
 		cursor: pointer;
 	}
-	.add-new:hover,
-	.add-new.active {
+	.add-new:hover:not(:disabled) {
 		color: var(--qb-accent);
 	}
+	.selection {
+		padding: 0.75rem 0 0.9rem;
+		border-bottom: 1px solid var(--qb-line);
+	}
+	.composition {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 0.4rem;
+		padding: 0 1rem;
+	}
+	.chip {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.4rem;
+		font: inherit;
+		padding: 0.5rem 0.25rem;
+		border: 1px solid var(--qb-line);
+		background: #fff;
+		color: var(--color-text-strong);
+		cursor: pointer;
+	}
+	.chip:hover {
+		border-color: var(--color-text-strong);
+	}
+	.chip.active {
+		border-color: var(--qb-accent);
+		outline: 1px solid var(--qb-accent);
+		outline-offset: -2px;
+	}
+	/* A miniature of the subdivision, so each option shows what it does. */
+	.chip-grid {
+		display: grid;
+		grid-template-columns: repeat(var(--n, 1), 1fr);
+		width: 1.5rem;
+		aspect-ratio: 1;
+		gap: 1px;
+		background: var(--qb-line);
+		border: 1px solid var(--qb-line);
+	}
+	.chip-grid span {
+		background: #cfcfcf;
+	}
+	.chip.active .chip-grid span {
+		background: var(--qb-accent);
+	}
+	.chip-size {
+		font-size: 0.7rem;
+		color: var(--color-text-secondary);
+	}
+	.link {
+		font: inherit;
+		padding: 0;
+		border: none;
+		background: none;
+		color: var(--color-text-strong);
+		text-decoration: underline;
+		cursor: pointer;
+	}
+	.custom-size {
+		margin-left: 0.3rem;
+		opacity: 0.6;
+	}
+
 	.hint {
 		margin: 1rem 0 0;
 		font-size: 0.72rem;

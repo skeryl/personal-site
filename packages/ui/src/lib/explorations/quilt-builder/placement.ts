@@ -8,6 +8,7 @@
  */
 
 import { centroidOf, pieceAt, rotatedPieces, type Point } from './geometry';
+import type { PatternBlocks } from './pattern';
 import {
 	blocksEqual,
 	cloneBlock,
@@ -28,8 +29,11 @@ export type Pending =
 	| { mode: 'paint'; cut: string; rotation: number }
 	/** Stamp a block type: role-0 pieces take the fabric, the rest keep what was under them. */
 	| { mode: 'stamp'; block: Block }
-	/** Stamp a saved block exactly as it was captured. */
-	| { mode: 'exact'; block: Block };
+	/** Stamp a saved pattern exactly as captured; may cover several blocks. */
+	| { mode: 'pattern'; blocks: PatternBlocks };
+
+/** Everything a single-block placement can be. Patterns route through the store. */
+export type BlockPending = Exclude<Pending, { mode: 'pattern' }>;
 
 /** The fabric under a point in block space. */
 export const fabricAt = (block: Block, point: Point): MaterialId | null => {
@@ -92,11 +96,9 @@ const paintPiece = (block: Block, point: Point, materialId: MaterialId): Block =
 export const buildPlacement = (
 	block: Block,
 	point: Point,
-	pending: Pending,
+	pending: BlockPending,
 	materialId: MaterialId
 ): Block => {
-	if (pending.mode === 'exact') return cloneBlock(pending.block);
-
 	/*
 	 * Stamping onto a block that is already this shape recolours the one piece
 	 * under the cursor, so a stamped block can be refined click by click.

@@ -100,10 +100,32 @@ describe('parseSavedState', () => {
 		});
 		expect(state).not.toBeNull();
 		expect(state!.name).toBe('Stars');
-		expect(state!.customBlocks).toHaveLength(1);
-		expect(divisionOf(state!.customBlocks[0].block)).toBe(2);
-		expect(fabrics(state!.customBlocks[0].block)).toEqual(Array(8).fill('blue'));
+		// A saved block becomes a one-by-one pattern.
+		expect(state!.patterns).toHaveLength(1);
+		expect(Object.keys(state!.patterns[0].blocks)).toEqual(['0,0']);
+		expect(divisionOf(state!.patterns[0].blocks['0,0'])).toBe(2);
+		expect(fabrics(state!.patterns[0].blocks['0,0'])).toEqual(Array(8).fill('blue'));
 		expect(fabrics(state!.cells[0])).toEqual(['blue']);
+	});
+
+	it('reads a multi-block pattern and normalizes its coordinates', () => {
+		const leaf = { kind: 'leaf', cut: 'square', rotation: 0, fabrics: ['blue'] };
+		const state = parseSavedState({
+			materials: [{ id: 'blue', name: 'Blue', hex: '#4f7fe8' }],
+			patterns: [{ id: 'p1', name: 'Ell', blocks: { '3,3': leaf, '3,4': leaf, '4,4': leaf } }],
+			cells: []
+		});
+		expect(Object.keys(state!.patterns[0].blocks).sort()).toEqual(['0,0', '0,1', '1,1']);
+	});
+
+	it('drops pattern coordinates that are not a coordinate', () => {
+		const leaf = { kind: 'leaf', cut: 'square', rotation: 0, fabrics: ['blue'] };
+		const state = parseSavedState({
+			materials: [{ id: 'blue', name: 'Blue', hex: '#4f7fe8' }],
+			patterns: [{ id: 'p1', name: 'Junk', blocks: { '0,0': leaf, nope: leaf } }],
+			cells: []
+		});
+		expect(Object.keys(state!.patterns[0].blocks)).toEqual(['0,0']);
 	});
 
 	it('returns null for junk', () => {
