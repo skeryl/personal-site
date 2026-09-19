@@ -40,9 +40,10 @@
 	};
 
 	const banner = $derived.by(() => {
-		if (store.tool === 'select') {
+		if (store.tool === 'mouse') {
 			return store.selection.length ? null : 'Click, shift-click, or drag a box to select blocks';
 		}
+		if (store.tool === 'grid') return 'Click or drag to paint the grid chosen on the left';
 		if (store.tool === 'erase') return null;
 		if (!store.materials.length) return 'Add a fabric in Materials to start placing';
 		if (!store.selectedMaterial) return 'Select a fabric in Materials to start placing';
@@ -134,6 +135,53 @@
 		h: content.h ? clamp01(viewH / content.h) : 1
 	});
 
+	/*
+	 * Middle-button drag pans. Listeners are attached by hand, like the wheel
+	 * one: they need preventDefault (to suppress autoscroll) and they belong on
+	 * a scroll container, not on an element with an interactive role. A drag
+	 * that starts over a block still pans, because cell handlers ignore every
+	 * button but 0 and pointer capture keeps the drag alive outside the wall.
+	 */
+	let panning = $state(false);
+
+	$effect(() => {
+		const el = viewport;
+		if (!el) return;
+
+		const down = (e: PointerEvent) => {
+			if (e.button !== 1) return;
+			e.preventDefault();
+			panning = true;
+			el.setPointerCapture(e.pointerId);
+		};
+		const move = (e: PointerEvent) => {
+			if (!panning) return;
+			el.scrollLeft -= e.movementX;
+			el.scrollTop -= e.movementY;
+			readView();
+		};
+		const up = (e: PointerEvent) => {
+			if (!panning) return;
+			panning = false;
+			if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+		};
+		// Middle click would otherwise start the browser's own autoscroll.
+		const auxclick = (e: MouseEvent) => e.button === 1 && e.preventDefault();
+
+		el.addEventListener('pointerdown', down);
+		el.addEventListener('pointermove', move);
+		el.addEventListener('pointerup', up);
+		el.addEventListener('pointercancel', up);
+		el.addEventListener('auxclick', auxclick);
+		return () => {
+			el.removeEventListener('pointerdown', down);
+			el.removeEventListener('pointermove', move);
+			el.removeEventListener('pointerup', up);
+			el.removeEventListener('pointercancel', up);
+			el.removeEventListener('auxclick', auxclick);
+		};
+	});
+
 	const panTo = (fx: number, fy: number) => {
 		const el = viewport;
 		if (!el) return;
@@ -157,18 +205,19 @@
 		</div>
 
 		<div class="stage">
-			<div class="viewport" bind:this={viewport} onscroll={readView}>
+			<div class="viewport" class:panning bind:this={viewport} onscroll={readView}>
 				<div class="canvas">
 					<div
 						class="blanket"
 						class:tool-erase={store.tool === 'erase'}
-						class:tool-select={store.tool === 'select'}
+						class:tool-mouse={store.tool === 'mouse'}
+						class:tool-grid={store.tool === 'grid'}
 						class:locked={store.tool === 'place' && !store.canPlace}
 						style="grid-template-columns: repeat({store.dims
 							.cols}, 1fr); width: {content.w}px; height: {content.h}px"
 					>
 						{#each store.cells as cell, i (i)}
-							{@const pv = store.placePreview?.get(i) ?? null}
+							{@const pv = (store.placePreview ?? store.gridPreview)?.get(i) ?? null}
 							{@const ev = store.erasePreview?.get(i) ?? null}
 							{@const display = pv ?? cell}
 							{@const pieces = flatten(display)}
@@ -249,10 +298,17 @@
 			</button>
 			<button
 				class="action"
-				class:active={store.tool === 'select'}
-				onclick={() => (store.tool = 'select')}
+				class:active={store.tool === 'mouse'}
+				onclick={() => (store.tool = 'mouse')}
 			>
-				Select <kbd>S</kbd>
+				Mouse <kbd>V</kbd>
+			</button>
+			<button
+				class="action"
+				class:active={store.tool === 'grid'}
+				onclick={() => (store.tool = 'grid')}
+			>
+				Grid <kbd>G</kbd>
 			</button>
 			<button
 				class="action"
@@ -341,6 +397,10 @@
 		 */
 		background: var(--qb-wall);
 	}
+	.viewport.panning,
+	.viewport.panning :global(.cell) {
+		cursor: grabbing;
+	}
 	/*
 	 * Grows with the blanket so the viewport scrolls once zoomed in, and stays
 	 * viewport-sized when it fits, which centres the quilt.
@@ -392,8 +452,11 @@
 		cursor: crosshair;
 	}
 
-	.tool-select .cell {
+	.tool-mouse .cell {
 		cursor: pointer;
+	}
+	.tool-grid .cell {
+		cursor: crosshair;
 	}
 	.cell.selected {
 		box-shadow: inset 0 0 0 3px var(--qb-accent);

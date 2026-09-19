@@ -58,47 +58,50 @@
 </script>
 
 <aside class="side">
-	<section class="selection" aria-label="Selection">
-		<div class="label section">Composition</div>
-		{#if selectedCount}
-			<div class="composition" role="group" aria-label="Block composition">
-				{#each DIVISIONS as division (division)}
-					{@const label = division === 1 ? 'One piece' : `${division} by ${division}`}
-					<button
-						class="chip"
-						class:active={store.selectedDivision === division}
-						aria-pressed={store.selectedDivision === division}
-						aria-label={label}
-						title={`${label}, ${fmtInches(store.blockSize / division)}” pieces`}
-						onclick={() => store.setComposition(division)}
-					>
-						<span class="chip-grid" aria-hidden="true">
-							{#each Array(division * division) as _, i (i)}
-								<span style="--n: {division}"></span>
-							{/each}
-						</span>
-						<span class="chip-size">{fmtInches(store.blockSize / division)}”</span>
-					</button>
-				{/each}
-			</div>
-			<p class="hint">
+	<section class="selection" aria-label="Grid">
+		<div class="label section">Grid <kbd>G</kbd></div>
+		<div class="composition" role="group" aria-label="Block grid">
+			{#each DIVISIONS as division (division)}
+				{@const label = division === 1 ? 'One piece' : `${division} by ${division}`}
+				<button
+					class="chip"
+					class:active={store.activeDivision === division}
+					aria-pressed={store.activeDivision === division}
+					aria-label={label}
+					title={`${label}, ${fmtInches(store.blockSize / division)}” pieces`}
+					onclick={() => store.setGrid(division)}
+				>
+					<span class="chip-grid" aria-hidden="true">
+						{#each Array(division * division) as _, i (i)}
+							<span style="--n: {division}"></span>
+						{/each}
+					</span>
+					<span class="chip-size">{fmtInches(store.blockSize / division)}”</span>
+				</button>
+			{/each}
+		</div>
+
+		<p class="hint">
+			{#if selectedCount}
 				{selectedCount === 1
 					? '1 block selected'
-					: `${selectedCount} blocks selected`}{store.selectedDivision === 0
-					? ', mixed compositions'
-					: ''}
-			</p>
+					: `${selectedCount} blocks selected`}{store.selectedDivision === 0 ? ', mixed grids' : ''}
+			{:else if store.tool === 'grid'}
+				Click or drag on the quilt to paint this grid.
+			{:else}
+				Pick a grid to paint it on, or
+				<button class="link" onclick={() => (store.tool = 'mouse')}>select</button>
+				blocks to change theirs. Shift-click to add, or drag a box.
+			{/if}
+		</p>
+
+		{#if selectedCount}
 			<button class="add-new" disabled={!capturableCount} onclick={() => store.capturePattern()}>
 				+ Save selection
 			</button>
 			{#if !capturableCount}
 				<p class="hint">Those blocks are empty; fill one to save it.</p>
 			{/if}
-		{:else}
-			<p class="hint">
-				<button class="link" onclick={() => (store.tool = 'select')}>Select</button>
-				blocks on the quilt to subdivide them. Shift-click to add, or drag a box.
-			</p>
 		{/if}
 	</section>
 
@@ -418,6 +421,12 @@
 	.chip-size {
 		font-size: 0.7rem;
 		color: var(--color-text-secondary);
+	}
+	.section kbd {
+		font: inherit;
+		font-size: 0.85em;
+		opacity: 0.55;
+		margin-left: 0.25rem;
 	}
 	.link {
 		font: inherit;

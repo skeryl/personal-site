@@ -19,6 +19,7 @@ import { BLOCK_TYPES, BLOCK_TYPE_BY_ID } from './blocks';
 import { CUTS, type Point } from './geometry';
 import {
 	applyUpdates,
+	blocksEqual,
 	boardsEqual,
 	cellIndex,
 	cloneBoard,
@@ -65,7 +66,7 @@ import {
 import { cuttingListFor, materialsListText } from './cutting';
 
 export type Tab = 'block' | 'piece';
-export type Tool = 'place' | 'erase' | 'select';
+export type Tool = 'place' | 'erase' | 'mouse' | 'grid';
 
 /** Compositions offered in the toolbar: one piece, 2x2, or 4x4. */
 export const DIVISIONS = [1, 2, 4] as const;
@@ -115,6 +116,8 @@ export class QuiltStore {
 	tool = $state<Tool>('place');
 	/** 1 fits the whole quilt in the viewport; above that the wall scrolls. */
 	zoom = $state(1);
+	/** The grid the Grid tool paints, and the one G cycles through. */
+	gridDivision = $state<number>(2);
 
 	hover = $state<Hover | null>(null);
 	gesture = $state<PaintGesture | null>(null);
@@ -333,6 +336,16 @@ export class QuiltStore {
 		this.replaceBoard(emptyBoard(this.dims));
 	}
 
+	/** The hovered block renders as the grid a click would give it. */
+	gridPreview = $derived.by(() => {
+		if (this.tool !== 'grid' || this.gesture || !this.hover) return null;
+		const { index } = this.hover;
+		const block = this.cells[index];
+		if (!block) return null;
+		const next = recompose(block, this.gridDivision);
+		return blocksEqual(next, block) ? null : new Map([[index, next]]);
+	});
+
 	// ── Zoom ─────────────────────────────────────────────────────────
 
 	setZoom(next: number) {
@@ -396,11 +409,14 @@ export class QuiltStore {
 
 	// ── Composition ──────────────────────────────────────────────────
 
+	/** What the grid chips show as active: the selection's, else the tool's. */
+	activeDivision = $derived(this.selection.length ? this.selectedDivision : this.gridDivision);
+
 	/*
 	 * Going finer replicates, so the picture does not change; only the cut list
 	 * does. Going coarser keeps each group's top-left piece.
 	 */
-	setComposition(division: number) {
+	applyGrid(division: number) {
 		if (this.gesture || !this.selection.length) return;
 		const updates = new Map<number, Block>();
 		this.selection.forEach((index) => {
@@ -408,6 +424,30 @@ export class QuiltStore {
 			if (block) updates.set(index, recompose(block, division));
 		});
 		this.commit(updates);
+	}
+
+	/*
+	 * A grid chip means "this grid". What it acts on depends on whether
+	 * anything is selected: the selection if so, otherwise it arms the Grid
+	 * tool so the next click paints it.
+	 */
+	setGrid(division: number) {
+		this.gridDivision = division;
+		if (this.selection.length) this.applyGrid(division);
+		else this.tool = 'grid';
+	}
+
+	cycleGrid() {
+		const order = DIVISIONS;
+		const at = order.indexOf(this.activeDivision as (typeof DIVISIONS)[number]);
+		this.setGrid(order[(at + 1) % order.length]);
+	}
+
+	/** Paint one block's grid, for the Grid tool. */
+	private gridAt(index: number): boolean {
+		const block = this.cells[index];
+		if (!block) return false;
+		return this.commit(new Map([[index, recompose(block, this.gridDivision)]]));
 	}
 
 	// ── Pointer handlers ─────────────────────────────────────────────
@@ -425,7 +465,7 @@ export class QuiltStore {
 
 	onCellPointerDown(e: PointerEvent, index: number) {
 		if (e.button !== 0 || this.gesture || this.marquee) return;
-		if (this.tool === 'select') {
+		if (this.tool === 'mouse') {
 			this.marquee = { pointerId: e.pointerId, anchor: index, head: index, additive: e.shiftKey };
 			return;
 		}
@@ -433,6 +473,7 @@ export class QuiltStore {
 		if (!hit) return;
 		this.beginGesture({ pointerId: e.pointerId, mode: this.tool });
 		if (this.tool === 'erase') this.eraseAt(index, hit.point);
+		else if (this.tool === 'grid') this.gridAt(index);
 		else this.placeAt(index, hit.point);
 	}
 
@@ -450,6 +491,7 @@ export class QuiltStore {
 		this.hover = hit;
 		if (!g || !hit) return;
 		if (g.mode === 'erase') this.eraseAt(hit.index, hit.point);
+		else if (g.mode === 'grid') this.gridAt(hit.index);
 		else this.placeAt(hit.index, hit.point);
 	}
 
@@ -466,8 +508,12 @@ export class QuiltStore {
 	/** Enter/Space on a focused cell: the keyboard version of a click. */
 	activateCell(index: number) {
 		if (this.gesture) return;
-		if (this.tool === 'select') {
+		if (this.tool === 'mouse') {
 			this.toggle(index);
+			return;
+		}
+		if (this.tool === 'grid') {
+			this.gridAt(index);
 			return;
 		}
 		if (this.tool === 'erase') {
@@ -507,7 +553,8 @@ export class QuiltStore {
 			this.tool = 'erase';
 		}
 		if (e.key === 'p' || e.key === 'P') this.tool = 'place';
-		if (e.key === 's' || e.key === 'S') this.tool = 'select';
+		if (e.key === 'v' || e.key === 'V') this.tool = 'mouse';
+		if (e.key === 'g' || e.key === 'G') this.cycleGrid();
 		if (e.key === '+' || e.key === '=') this.zoomBy(ZOOM_STEP);
 		if (e.key === '-' || e.key === '_') this.zoomBy(1 / ZOOM_STEP);
 		if (e.key === '0') this.resetZoom();

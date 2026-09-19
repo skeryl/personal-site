@@ -26,9 +26,9 @@ const tool = (page: Page, name: RegExp) => page.locator('.actions').getByRole('b
 const composition = (page: Page, name: RegExp) =>
 	page.locator('.composition').getByRole('button', { name });
 
-/** Select tool click: selects, or toggles when shift is held. */
+/** Mouse tool click: selects, or toggles when shift is held. */
 const selectCell = async (page: Page, index: number) => {
-	await tool(page, /^Select/).click();
+	await tool(page, /^Mouse/).click();
 	await cell(page, index).click();
 };
 
@@ -191,7 +191,7 @@ test('a multi-block selection saves as one pattern and stamps as one', async ({ 
 	await parkMouse(page);
 
 	// Drag a box across both blocks, then save the selection.
-	await tool(page, /^Select/).click();
+	await tool(page, /^Mouse/).click();
 	const a = await cell(page, 0).boundingBox();
 	const b = await cell(page, 1).boundingBox();
 	if (!a || !b) throw new Error('cells not found');
@@ -220,7 +220,7 @@ test('a pattern can be a non-rectangular shape', async ({ page }) => {
 	await parkMouse(page);
 
 	// Shift-click three blocks in an L, which no rectangle covers.
-	await tool(page, /^Select/).click();
+	await tool(page, /^Mouse/).click();
 	await cell(page, 0).click();
 	await cell(page, 14).click({ modifiers: ['Shift'] });
 	await cell(page, 15).click({ modifiers: ['Shift'] });
@@ -294,5 +294,63 @@ test('the minimap moves the visible region', async ({ page }) => {
 	// Click near the right edge of the overview to jump the viewport right.
 	await page.mouse.click(box.x + box.width * 0.9, box.y + box.height * 0.5);
 	const after = await page.locator('.viewport').evaluate((el) => el.scrollLeft);
+	expect(after).toBeGreaterThan(before);
+});
+
+test('the Grid tool paints a grid onto blocks without selecting them', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await page.getByRole('tab', { name: 'Piece' }).click();
+	await cell(page, 0).click();
+	await cell(page, 1).click();
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toEqual(['#4f7fe8']);
+
+	// Choosing a grid with nothing selected arms the Grid tool.
+	await composition(page, /^2 by 2$/).click();
+	await expect(tool(page, /^Grid/)).toHaveClass(/active/);
+
+	await cell(page, 0).click();
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toEqual(Array(4).fill('#4f7fe8'));
+	// The neighbour is untouched: painting does not need a selection.
+	expect(await cellFills(page, 1)).toEqual(['#4f7fe8']);
+});
+
+test('G cycles the grid, and applies to a selection when there is one', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await page.getByRole('tab', { name: 'Piece' }).click();
+	await cell(page, 0).click();
+	await parkMouse(page);
+
+	await selectCell(page, 0);
+	// Cycling starts from what the selected block already is, which is one piece.
+	await page.keyboard.press('g');
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toHaveLength(4);
+
+	await page.keyboard.press('g');
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toHaveLength(16);
+
+	// And it wraps back around to a single piece.
+	await page.keyboard.press('g');
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toEqual(['#4f7fe8']);
+});
+
+test('middle-button drag pans the zoomed wall', async ({ page }) => {
+	for (let i = 0; i < 6; i++) await page.keyboard.press('+');
+	const viewport = page.locator('.viewport');
+	const box = await viewport.boundingBox();
+	if (!box) throw new Error('viewport not found');
+
+	await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.6);
+	const before = await viewport.evaluate((el) => el.scrollLeft);
+	await page.mouse.down({ button: 'middle' });
+	await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.6, { steps: 8 });
+	await page.mouse.up({ button: 'middle' });
+
+	const after = await viewport.evaluate((el) => el.scrollLeft);
+	// Dragging left moves the content left, so the scroll offset grows.
 	expect(after).toBeGreaterThan(before);
 });
