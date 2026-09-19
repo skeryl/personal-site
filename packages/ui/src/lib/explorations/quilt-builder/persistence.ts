@@ -11,9 +11,12 @@
 
 import {
 	BLOCK_SIZES,
+	CUSTOM_SIZE_ID,
 	DEFAULT_BLOCK_SIZE,
 	DEFAULT_SIZE_ID,
+	LEGACY_SIZE_IDS,
 	QUILT_SIZE_BY_ID,
+	clampCustomInches,
 	normalizeHex,
 	type Material
 } from './data';
@@ -36,6 +39,9 @@ const MAX_PATTERN_BLOCKS = 256;
 export interface SavedState {
 	name: string;
 	sizeId: string;
+	/** Only meaningful when sizeId is 'custom'. */
+	customWidth: number;
+	customHeight: number;
 	blockSize: number;
 	materials: Material[];
 	selectedMaterialId: string | null;
@@ -166,29 +172,57 @@ const sanitizePatterns = (raw: unknown, known: ReadonlySet<string>): Pattern[] =
 	});
 };
 
-export const gridDims = (sizeId: string, blockSize: number): { rows: number; cols: number } => {
+/** Finished dimensions for any size id, custom included. */
+export const sizeInches = (
+	sizeId: string,
+	customWidth: number,
+	customHeight: number
+): { width: number; height: number } => {
+	if (sizeId === CUSTOM_SIZE_ID) {
+		return { width: clampCustomInches(customWidth), height: clampCustomInches(customHeight) };
+	}
 	const size = QUILT_SIZE_BY_ID[sizeId] ?? QUILT_SIZE_BY_ID[DEFAULT_SIZE_ID];
+	return { width: size.width, height: size.height };
+};
+
+export const gridDims = (
+	sizeId: string,
+	blockSize: number,
+	customWidth = 0,
+	customHeight = 0
+): { rows: number; cols: number } => {
+	const { width, height } = sizeInches(sizeId, customWidth, customHeight);
 	return {
-		rows: Math.max(1, Math.floor(size.height / blockSize)),
-		cols: Math.max(1, Math.floor(size.width / blockSize))
+		rows: Math.max(1, Math.floor(height / blockSize)),
+		cols: Math.max(1, Math.floor(width / blockSize))
 	};
 };
 
 export const parseSavedState = (raw: unknown): SavedState | null => {
 	if (typeof raw !== 'object' || raw === null) return null;
 	const s = raw as Partial<Record<keyof SavedState, unknown>> & { customBlocks?: unknown };
+	const rawSizeId = typeof s.sizeId === 'string' ? (LEGACY_SIZE_IDS[s.sizeId] ?? s.sizeId) : '';
 	const sizeId =
-		typeof s.sizeId === 'string' && s.sizeId in QUILT_SIZE_BY_ID ? s.sizeId : DEFAULT_SIZE_ID;
+		rawSizeId === CUSTOM_SIZE_ID || rawSizeId in QUILT_SIZE_BY_ID ? rawSizeId : DEFAULT_SIZE_ID;
+	const fallback = QUILT_SIZE_BY_ID[DEFAULT_SIZE_ID];
+	const customWidth = clampCustomInches(
+		typeof s.customWidth === 'number' ? s.customWidth : fallback.width
+	);
+	const customHeight = clampCustomInches(
+		typeof s.customHeight === 'number' ? s.customHeight : fallback.height
+	);
 	const blockSize =
 		typeof s.blockSize === 'number' && BLOCK_SIZES.includes(s.blockSize)
 			? s.blockSize
 			: DEFAULT_BLOCK_SIZE;
 	const materials = sanitizeMaterials(s.materials);
 	const known = new Set(materials.map((m) => m.id));
-	const { rows, cols } = gridDims(sizeId, blockSize);
+	const { rows, cols } = gridDims(sizeId, blockSize, customWidth, customHeight);
 	return {
 		name: typeof s.name === 'string' ? s.name : '',
 		sizeId,
+		customWidth,
+		customHeight,
 		blockSize,
 		materials,
 		selectedMaterialId:

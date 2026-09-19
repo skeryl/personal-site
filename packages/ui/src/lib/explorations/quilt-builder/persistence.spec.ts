@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { divisionOf, flatten, type Block } from './model';
-import { parseSavedState, sanitizeBlock } from './persistence';
+import { gridDims, parseSavedState, sanitizeBlock, sizeInches } from './persistence';
 
 const KNOWN = new Set(['blue', 'cream']);
 const fabrics = (block: Block) => flatten(block).map((p) => p.fabric);
@@ -131,5 +131,45 @@ describe('parseSavedState', () => {
 	it('returns null for junk', () => {
 		expect(parseSavedState(null)).toBeNull();
 		expect(parseSavedState('nope')).toBeNull();
+	});
+});
+
+describe('quilt size', () => {
+	const base = { materials: [], cells: [] };
+
+	it('defaults to Throw', () => {
+		const state = parseSavedState(base);
+		expect(state!.sizeId).toBe('throw');
+		expect(sizeInches(state!.sizeId, 0, 0)).toEqual({ width: 48, height: 64 });
+	});
+
+	it('maps the sizes that were split into Full/Queen', () => {
+		expect(parseSavedState({ ...base, sizeId: 'full' })!.sizeId).toBe('full-queen');
+		expect(parseSavedState({ ...base, sizeId: 'queen' })!.sizeId).toBe('full-queen');
+	});
+
+	it('falls back for a size that never existed', () => {
+		expect(parseSavedState({ ...base, sizeId: 'emperor' })!.sizeId).toBe('throw');
+	});
+
+	it('keeps a custom size and clamps it into range', () => {
+		const state = parseSavedState({
+			...base,
+			sizeId: 'custom',
+			customWidth: 9,
+			customHeight: 5000
+		});
+		expect(state!.sizeId).toBe('custom');
+		expect(state!.customWidth).toBe(12);
+		expect(state!.customHeight).toBe(200);
+	});
+
+	it('counts whole blocks only, so a custom size can leave a remainder', () => {
+		// 50 inches of 8" blocks is six blocks and two inches left over.
+		expect(gridDims('custom', 8, 50, 64)).toEqual({ cols: 6, rows: 8 });
+	});
+
+	it('always leaves at least one block', () => {
+		expect(gridDims('custom', 12, 12, 12)).toEqual({ cols: 1, rows: 1 });
 	});
 });

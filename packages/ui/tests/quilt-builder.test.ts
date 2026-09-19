@@ -32,6 +32,20 @@ const selectCell = async (page: Page, index: number) => {
 	await cell(page, index).click();
 };
 
+/*
+ * Board indices depend on the quilt size, which is a product decision that
+ * moves. Read the grid width off the caption and address cells by row and
+ * column so these tests survive the next size change.
+ */
+const gridCols = async (page: Page) => {
+	const caption = await page.locator('.caption').innerText();
+	const match = caption.match(/(\d+)\s*×\s*(\d+)/);
+	if (!match) throw new Error(`could not read grid size from caption: ${caption}`);
+	return Number(match[1]);
+};
+
+const at = (cols: number, row: number, col: number) => row * cols + col;
+
 /** Hover previews pollute fill reads; park the pointer off the quilt. */
 const parkMouse = (page: Page) => page.mouse.move(10, 10);
 
@@ -183,6 +197,7 @@ const answerPrompt = (page: Page, name: string) =>
 	page.once('dialog', (dialog) => dialog.accept(name));
 
 test('a multi-block selection saves as one pattern and stamps as one', async ({ page }) => {
+	const cols = await gridCols(page);
 	await addFabric(page, 'Blue', '4f7fe8');
 	await page.getByRole('tab', { name: 'Piece' }).click();
 	await cell(page, 0).click();
@@ -207,37 +222,43 @@ test('a multi-block selection saves as one pattern and stamps as one', async ({ 
 
 	// Stamping it lays both blocks down at once, in order.
 	await tool(page, /^Place/).click();
-	await cell(page, 30).click();
+	const anchor = at(cols, 3, 0);
+	await cell(page, anchor).click();
 	await parkMouse(page);
-	expect(await cellFills(page, 30)).toEqual(['#4f7fe8']);
-	expect(await cellFills(page, 31)).toEqual(['#38511f']);
+	expect(await cellFills(page, anchor)).toEqual(['#4f7fe8']);
+	expect(await cellFills(page, anchor + 1)).toEqual(['#38511f']);
 });
 
 test('a pattern can be a non-rectangular shape', async ({ page }) => {
+	const cols = await gridCols(page);
+	// An L: top-left, the cell below it, and the cell right of that.
+	const ell = [at(cols, 0, 0), at(cols, 1, 0), at(cols, 1, 1)];
+
 	await addFabric(page, 'Blue', '4f7fe8');
 	await page.getByRole('tab', { name: 'Piece' }).click();
-	for (const i of [0, 14, 15]) await cell(page, i).click();
+	for (const i of ell) await cell(page, i).click();
 	await parkMouse(page);
 
 	// Shift-click three blocks in an L, which no rectangle covers.
 	await tool(page, /^Mouse/).click();
-	await cell(page, 0).click();
-	await cell(page, 14).click({ modifiers: ['Shift'] });
-	await cell(page, 15).click({ modifiers: ['Shift'] });
+	await cell(page, ell[0]).click();
+	await cell(page, ell[1]).click({ modifiers: ['Shift'] });
+	await cell(page, ell[2]).click({ modifiers: ['Shift'] });
 	await expect(page.locator('.selection .hint')).toContainText('3 blocks selected');
 
 	answerPrompt(page, 'Ell');
 	await page.getByRole('button', { name: '+ Save selection' }).click();
 
 	await tool(page, /^Place/).click();
-	await cell(page, 60).click();
+	const anchor = at(cols, 4, 1);
+	await cell(page, anchor).click();
 	await parkMouse(page);
 	// The L lands as an L: two down the left, one to the right of the bottom.
-	expect(await cellFills(page, 60)).toEqual(['#4f7fe8']);
-	expect(await cellFills(page, 74)).toEqual(['#4f7fe8']);
-	expect(await cellFills(page, 75)).toEqual(['#4f7fe8']);
+	expect(await cellFills(page, anchor)).toEqual(['#4f7fe8']);
+	expect(await cellFills(page, anchor + cols)).toEqual(['#4f7fe8']);
+	expect(await cellFills(page, anchor + cols + 1)).toEqual(['#4f7fe8']);
 	// The cell right of the top is NOT part of the pattern.
-	expect(await cellFills(page, 61)).toEqual(['#ffffff']);
+	expect(await cellFills(page, anchor + 1)).toEqual(['#ffffff']);
 });
 
 const zoomLevel = (page: Page) => page.locator('.zoom-level');

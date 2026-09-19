@@ -7,10 +7,12 @@
 
 import { browser } from '$app/environment';
 import {
+	CUSTOM_SIZE_ID,
 	DEFAULT_BLOCK_SIZE,
 	DEFAULT_SIZE_ID,
 	QUILT_SIZE_BY_ID,
 	STARTER_HEXES,
+	clampCustomInches,
 	isNamed,
 	normalizeHex,
 	type Material
@@ -59,6 +61,7 @@ import {
 	STATE_KEY,
 	gridDims,
 	parseSavedState,
+	sizeInches,
 	readJson,
 	writeJson,
 	type SavedState
@@ -99,6 +102,8 @@ interface Marquee {
 export class QuiltStore {
 	name = $state('');
 	sizeId = $state(DEFAULT_SIZE_ID);
+	customWidth = $state(QUILT_SIZE_BY_ID[DEFAULT_SIZE_ID].width);
+	customHeight = $state(QUILT_SIZE_BY_ID[DEFAULT_SIZE_ID].height);
 	blockSize = $state(DEFAULT_BLOCK_SIZE);
 	materials = $state<Material[]>([]);
 	selectedMaterialId = $state<string | null>(null);
@@ -137,6 +142,8 @@ export class QuiltStore {
 	private restore(saved: SavedState) {
 		this.name = saved.name;
 		this.sizeId = saved.sizeId;
+		this.customWidth = saved.customWidth;
+		this.customHeight = saved.customHeight;
 		this.blockSize = saved.blockSize;
 		this.materials = saved.materials;
 		this.selectedMaterialId = saved.selectedMaterialId;
@@ -146,8 +153,12 @@ export class QuiltStore {
 
 	// ── Derived state ────────────────────────────────────────────────
 
-	dims = $derived(gridDims(this.sizeId, this.blockSize));
-	size = $derived(QUILT_SIZE_BY_ID[this.sizeId]);
+	dims = $derived(gridDims(this.sizeId, this.blockSize, this.customWidth, this.customHeight));
+	isCustomSize = $derived(this.sizeId === CUSTOM_SIZE_ID);
+	sizeInches = $derived(sizeInches(this.sizeId, this.customWidth, this.customHeight));
+	sizeName = $derived(
+		this.isCustomSize ? 'Custom' : (QUILT_SIZE_BY_ID[this.sizeId]?.name ?? 'Custom')
+	);
 	materialById = $derived(new Map(this.materials.map((m) => [m.id, m])));
 	selectedMaterial = $derived(
 		this.selectedMaterialId ? (this.materialById.get(this.selectedMaterialId) ?? null) : null
@@ -232,6 +243,8 @@ export class QuiltStore {
 	savedState = $derived<SavedState>({
 		name: this.name,
 		sizeId: this.sizeId,
+		customWidth: this.customWidth,
+		customHeight: this.customHeight,
 		blockSize: this.blockSize,
 		materials: this.materials,
 		selectedMaterialId: this.selectedMaterialId,
@@ -673,8 +686,17 @@ export class QuiltStore {
 	// ── Quilt settings ───────────────────────────────────────────────
 
 	setSize(sizeId: string) {
-		if (!(sizeId in QUILT_SIZE_BY_ID)) return;
+		if (sizeId !== CUSTOM_SIZE_ID && !(sizeId in QUILT_SIZE_BY_ID)) return;
 		this.regrid(() => (this.sizeId = sizeId));
+	}
+
+	/** Switching to Custom starts from whatever preset was showing. */
+	setCustomSize(width: number, height: number) {
+		this.regrid(() => {
+			this.customWidth = clampCustomInches(width);
+			this.customHeight = clampCustomInches(height);
+			this.sizeId = CUSTOM_SIZE_ID;
+		});
 	}
 
 	setBlockSize(blockSize: number) {
@@ -684,7 +706,7 @@ export class QuiltStore {
 	private regrid(apply: () => void) {
 		const from = this.dims;
 		apply();
-		const to = gridDims(this.sizeId, this.blockSize);
+		const to = gridDims(this.sizeId, this.blockSize, this.customWidth, this.customHeight);
 		if (from.rows === to.rows && from.cols === to.cols) return;
 		this.clearSelection();
 		this.replaceBoard(resizeBoard(this.cells, from, to));
@@ -696,7 +718,7 @@ export class QuiltStore {
 		return materialsListText(
 			{
 				name: this.name,
-				sizeName: this.size.name,
+				sizeName: this.sizeName,
 				widthIn: this.dims.cols * this.blockSize,
 				heightIn: this.dims.rows * this.blockSize,
 				blockSize: this.blockSize,

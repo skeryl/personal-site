@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { QUILT_SIZES } from './data';
+	import { CUSTOM_SIZE_ID, MAX_CUSTOM_INCHES, MIN_CUSTOM_INCHES, QUILT_SIZES } from './data';
 	import { QuiltStore } from './state.svelte';
 	import SidePanel from './SidePanel.svelte';
 	import Wall from './Wall.svelte';
@@ -42,16 +42,50 @@
 				if (e.key === 'Enter') e.currentTarget.blur();
 			}}
 		/>
-		<label class="size">
-			<span class="sr-only">Quilt size</span>
-			<select value={store.sizeId} onchange={(e) => store.setSize(e.currentTarget.value)}>
-				{#each QUILT_SIZES as size (size.id)}
-					<option value={size.id}>
-						{size.name.toUpperCase()} ({size.width}”x{size.height}”)
+		<div class="size">
+			<label>
+				<span class="sr-only">Quilt size</span>
+				<select value={store.sizeId} onchange={(e) => store.setSize(e.currentTarget.value)}>
+					{#each QUILT_SIZES as size (size.id)}
+						<option value={size.id}>
+							{size.name.toUpperCase()} ({size.width}”x{size.height}”)
+						</option>
+					{/each}
+					<option value={CUSTOM_SIZE_ID}>
+						CUSTOM ({store.customWidth}”x{store.customHeight}”)
 					</option>
-				{/each}
-			</select>
-		</label>
+				</select>
+			</label>
+			{#if store.isCustomSize}
+				<span class="custom-size">
+					<label>
+						<span class="sr-only">Custom width in inches</span>
+						<input
+							class="inches"
+							type="number"
+							min={MIN_CUSTOM_INCHES}
+							max={MAX_CUSTOM_INCHES}
+							value={store.customWidth}
+							onchange={(e) =>
+								store.setCustomSize(Number(e.currentTarget.value), store.customHeight)}
+						/>
+					</label>
+					<span aria-hidden="true">×</span>
+					<label>
+						<span class="sr-only">Custom height in inches</span>
+						<input
+							class="inches"
+							type="number"
+							min={MIN_CUSTOM_INCHES}
+							max={MAX_CUSTOM_INCHES}
+							value={store.customHeight}
+							onchange={(e) =>
+								store.setCustomSize(store.customWidth, Number(e.currentTarget.value))}
+						/>
+					</label>
+				</span>
+			{/if}
+		</div>
 	</div>
 
 	<section class="body">
@@ -121,6 +155,27 @@
 	.quilt-name:focus {
 		outline: none;
 		border-bottom-color: var(--color-text-strong);
+	}
+	.size {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+	.custom-size {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+	}
+	.inches {
+		font: inherit;
+		font-size: 0.85rem;
+		width: 3.5rem;
+		padding: 0.1rem 0.2rem;
+		color: var(--color-text-strong);
+		background: transparent;
+		border: 1px solid var(--qb-line);
 	}
 	.size select {
 		font: inherit;

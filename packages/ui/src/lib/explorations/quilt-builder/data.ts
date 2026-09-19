@@ -13,11 +13,12 @@ export interface QuiltSize {
 
 /** Finished quilt dimensions in inches; the grid is however many whole blocks fit. */
 export const QUILT_SIZES: QuiltSize[] = [
-	{ id: 'baby', name: 'Baby', width: 36, height: 48 },
-	{ id: 'throw', name: 'Throw', width: 56, height: 72 },
-	{ id: 'twin', name: 'Twin', width: 72, height: 96 },
-	{ id: 'full', name: 'Full', width: 84, height: 96 },
-	{ id: 'queen', name: 'Queen', width: 96, height: 104 },
+	{ id: 'baby', name: 'Baby', width: 32, height: 48 },
+	{ id: 'crib', name: 'Crib', width: 40, height: 48 },
+	{ id: 'throw', name: 'Throw', width: 48, height: 64 },
+	{ id: 'sq-throw', name: 'Sq. Throw', width: 64, height: 64 },
+	{ id: 'twin', name: 'Twin', width: 80, height: 96 },
+	{ id: 'full-queen', name: 'Full/Queen', width: 96, height: 112 },
 	{ id: 'king', name: 'King', width: 112, height: 112 }
 ];
 
@@ -25,7 +26,26 @@ export const QUILT_SIZE_BY_ID: Record<string, QuiltSize> = Object.fromEntries(
 	QUILT_SIZES.map((size) => [size.id, size])
 );
 
-export const DEFAULT_SIZE_ID = 'king';
+export const DEFAULT_SIZE_ID = 'throw';
+
+/** Not a preset: the width and height live on the design itself. */
+export const CUSTOM_SIZE_ID = 'custom';
+
+/** Bounds for a custom quilt, in inches. */
+export const MIN_CUSTOM_INCHES = 12;
+export const MAX_CUSTOM_INCHES = 200;
+
+export const clampCustomInches = (value: number): number =>
+	Math.min(MAX_CUSTOM_INCHES, Math.max(MIN_CUSTOM_INCHES, Math.round(value)));
+
+/*
+ * Sizes that existed before the list was reworked, so a saved design keeps a
+ * sensible shape instead of snapping back to the default.
+ */
+export const LEGACY_SIZE_IDS: Record<string, string> = {
+	full: 'full-queen',
+	queen: 'full-queen'
+};
 
 /** Finished block sizes offered, in inches. */
 export const BLOCK_SIZES = [4, 6, 8, 10, 12];
