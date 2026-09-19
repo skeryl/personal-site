@@ -5,6 +5,7 @@
 	import {
 		colOf,
 		columnLabel,
+		pieceKey,
 		divisionOf,
 		dominantFabric,
 		flatten,
@@ -200,6 +201,17 @@
 	const minimapFills = $derived(store.cells.map((block) => hexOf(dominantFabric(block))));
 
 	const zoomPercent = $derived(Math.round(store.zoom * 100));
+
+	/** Which piece of a given square is selected, and which is alt-hovered. */
+	const marksFor = (index: number) => {
+		const selected = store.selectedPiece;
+		const hovered = store.hoverPiece;
+		return {
+			selected:
+				selected && selected.cell === index ? pieceKey(selected.path, selected.piece) : null,
+			hovered: hovered && hovered.cell === index ? pieceKey(hovered.path, hovered.piece) : null
+		};
+	};
 </script>
 
 <section class="wall">
@@ -265,6 +277,7 @@
 								{@const display = pv ?? cell}
 								{@const pieces = flatten(display)}
 								{@const before = pv ? new Map(flatten(cell).map((p) => [p.key, p.fabric])) : null}
+								{@const pieceMarks = marksFor(i)}
 								{@const after = ev ? new Map(flatten(ev).map((p) => [p.key, p.fabric])) : null}
 								<button
 									class="cell"
@@ -297,6 +310,16 @@
 												stroke-width="1"
 												vector-effect="non-scaling-stroke"
 											/>
+										{/each}
+										<!-- Drawn after the fills so the outline is not painted over. -->
+										{#each pieces as piece (piece.key)}
+											{#if pieceMarks.selected === piece.key || pieceMarks.hovered === piece.key}
+												<polygon
+													class="piece-outline"
+													class:preview={pieceMarks.selected !== piece.key}
+													points={toPolygonPoints(piece.points, VB)}
+												/>
+											{/if}
 										{/each}
 										{#each leafRects(display) as seam, s (s)}
 											<rect
@@ -602,6 +625,22 @@
 	polygon.erasing {
 		opacity: 0.25;
 	}
+	/*
+	 * The piece rung of the selection ladder. Drawn as its own polygon after
+	 * the fills, since a stroke on the filled polygon would be painted over by
+	 * whichever piece is drawn next.
+	 */
+	polygon.piece-outline {
+		fill: none;
+		stroke: var(--qb-accent);
+		stroke-width: 3;
+		vector-effect: non-scaling-stroke;
+	}
+	polygon.piece-outline.preview {
+		stroke-width: 2;
+		stroke-dasharray: 4 3;
+	}
+
 	/* Seams between composed children read heavier than seams inside one. */
 	rect.seam {
 		fill: none;

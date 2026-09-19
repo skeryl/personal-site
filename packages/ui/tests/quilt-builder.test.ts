@@ -14,8 +14,9 @@ test.use({ viewport: { width: 1440, height: 1400 } });
 
 const cell = (page: Page, index: number) => page.locator(`[data-cell-index="${index}"]`);
 
+/* Selection outlines are polygons too; they are decoration, not fabric. */
 const cellFills = (page: Page, index: number) =>
-	page.$$eval(`[data-cell-index="${index}"] polygon`, (nodes) =>
+	page.$$eval(`[data-cell-index="${index}"] polygon:not(.piece-outline)`, (nodes) =>
 		nodes.map((node) => node.getAttribute('fill'))
 	);
 
@@ -678,4 +679,85 @@ test('alt-drag refuses rather than clipping at the quilt edge', async ({ page })
 	// Dropping the pair on the last column would put its partner off the edge.
 	await altDrag(page, at(cols, 0, 0), at(cols, 2, cols - 1));
 	expect(await cellFills(page, at(cols, 2, cols - 1))).toEqual(['#ffffff']);
+});
+
+/** Alt-click without moving, which drills to the piece under the cursor. */
+const altClick = async (page: Page, index: number, fx: number, fy: number) => {
+	const box = await cell(page, index).boundingBox();
+	if (!box) throw new Error('cell not found');
+	await page.keyboard.down('Alt');
+	await page.mouse.move(box.x + box.width * fx, box.y + box.height * fy);
+	await page.mouse.down();
+	await page.mouse.up();
+	await page.keyboard.up('Alt');
+	await parkMouse(page);
+};
+
+test('alt-click drills past the square to a single piece', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	const cols = await gridCols(page);
+	const target = at(cols, 1, 2);
+
+	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	await cell(page, target).click();
+	await parkMouse(page);
+	const before = await cellFills(page, target);
+	expect(before).toHaveLength(8);
+
+	await tool(page, /^Mouse/).click();
+	await altClick(page, target, 0.25, 0.12);
+
+	await expect(page.locator('.readout')).toHaveText('C2 piece selected');
+	// Exactly one piece is outlined, and only in that square.
+	await expect(page.locator('polygon.piece-outline')).toHaveCount(1);
+	// Attributes drops to a single colour, the piece's own.
+	await expect(page.locator('.colors .color')).toHaveCount(1);
+
+	// Recolouring touches exactly one piece of the eight.
+	await addFabric(page, 'Green', '38511f');
+	await page.locator('.colors .color').first().locator('.swatch').click();
+	await page.locator('.picker').getByRole('button', { name: 'Green' }).click();
+	await parkMouse(page);
+	const after = await cellFills(page, target);
+	expect(after.filter((f) => f === '#38511f')).toHaveLength(1);
+	expect(after.filter((f, i) => f !== before[i])).toHaveLength(1);
+});
+
+test('a selected piece links up to the square that contains it', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	const cols = await gridCols(page);
+	const target = at(cols, 1, 2);
+	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	await cell(page, target).click();
+	await parkMouse(page);
+
+	await tool(page, /^Mouse/).click();
+	await altClick(page, target, 0.25, 0.12);
+	await expect(page.locator('.readout')).toHaveText('C2 piece selected');
+
+	await page.getByRole('button', { name: 'the square' }).click();
+	await expect(page.locator('.readout')).toHaveText('C2 square selected');
+	await expect(page.locator('polygon.piece-outline')).toHaveCount(0);
+
+	// Escape climbs the same ladder.
+	await altClick(page, target, 0.25, 0.12);
+	await expect(page.locator('.readout')).toHaveText('C2 piece selected');
+	await page.keyboard.press('Escape');
+	await expect(page.locator('.readout')).toHaveText('C2 square selected');
+});
+
+test('alt still duplicates when the pointer moves', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	const cols = await gridCols(page);
+	const from = at(cols, 1, 1);
+	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	await cell(page, from).click();
+	await parkMouse(page);
+
+	await tool(page, /^Mouse/).click();
+	await altDrag(page, from, at(cols, 3, 3));
+
+	// A drag duplicates; it must not have drilled into a piece instead.
+	expect(await cellFills(page, at(cols, 3, 3))).toHaveLength(8);
+	await expect(page.locator('.readout')).toHaveText('D4 square selected');
 });

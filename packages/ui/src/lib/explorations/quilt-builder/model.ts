@@ -215,6 +215,10 @@ export const mapLeaves = (block: Block, fn: (leaf: LeafBlock) => LeafBlock): Blo
 
 // ── Flattened pieces ───────────────────────────────────────────────
 
+/** Stable identity for one piece within a block: "<leaf path>:<piece index>". */
+export const pieceKey = (path: readonly number[], piece: number): string =>
+	`${path.join('.')}:${piece}`;
+
 /** One piece of fabric, resolved into block space. Drives drawing and cutting. */
 export interface FlatPiece {
 	/** Stable identity across re-renders: "<leaf path>:<piece index>". */
@@ -234,7 +238,7 @@ export interface FlatPiece {
 const flattenUncached = (block: Block): FlatPiece[] =>
 	walkLeaves(block).flatMap(({ leaf, rect, path }) =>
 		rotatedPieces(leaf.cut, leaf.rotation).map((shape, i) => ({
-			key: `${path.join('.')}:${i}`,
+			key: pieceKey(path, i),
 			kind: shape.kind,
 			frac: shape.frac * rect.w,
 			role: shape.role + (leaf.roleOffset ?? 0),

@@ -17,7 +17,7 @@ import {
 	type Material
 } from './data';
 import { BLOCK_TYPES, BLOCK_TYPE_BY_ID } from './blocks';
-import { CUTS, type Point } from './geometry';
+import { CUTS, pieceAt, type Point } from './geometry';
 import {
 	applyUpdates,
 	blocksEqual,
@@ -30,12 +30,16 @@ import {
 	emptyBoard,
 	flatten,
 	isEmpty,
+	leafAt,
+	localPoint,
 	mapLeaves,
 	materialsInUse,
 	recompose,
 	resizeBoard,
 	rotateBlock,
 	rowOf,
+	setAt,
+	subtreeAt,
 	squareLabel,
 	withoutMaterial,
 	type Block,
@@ -85,6 +89,15 @@ export const ZOOM_STEP = 1.25;
 export interface Hover {
 	index: number;
 	point: Point;
+	/** Alt drills into the piece under the cursor rather than the square. */
+	alt: boolean;
+}
+
+/** One piece of fabric, addressed within the board. */
+export interface PieceRef {
+	cell: number;
+	path: number[];
+	piece: number;
 }
 
 interface PaintGesture {
@@ -106,6 +119,8 @@ interface Marquee {
 interface CopyDrag {
 	pointerId: number;
 	origin: number;
+	/** Where in the origin square the press landed, for an alt-click. */
+	point: Point;
 	sources: number[];
 	over: number;
 }
@@ -124,6 +139,8 @@ export class QuiltStore {
 	selection = $state<number[]>([]);
 	marquee = $state<Marquee | null>(null);
 	copyDrag = $state<CopyDrag | null>(null);
+	/** Set by alt-clicking: a single piece, one rung below a square. */
+	selectedPiece = $state<PieceRef | null>(null);
 
 	tab = $state<Tab>('block');
 	pieceId = $state('square');
@@ -394,14 +411,53 @@ export class QuiltStore {
 	clearSelection() {
 		this.selection = [];
 		this.marquee = null;
+		this.selectedPiece = null;
 	}
 
 	select(index: number) {
 		this.selection = [index];
+		this.selectedPiece = null;
+	}
+
+	/** Address the piece under a point, for alt-click and alt-hover. */
+	private pieceRefAt(index: number, point: Point): PieceRef | null {
+		const block = this.cells[index];
+		if (!block) return null;
+		const { leaf, rect, path } = leafAt(block, point);
+		return { cell: index, path, piece: pieceAt(leaf.cut, leaf.rotation, localPoint(rect, point)) };
+	}
+
+	/** Alt-click: drill past the square to the single piece under the cursor. */
+	selectPieceAt(index: number, point: Point) {
+		const ref = this.pieceRefAt(index, point);
+		if (!ref) return;
+		this.selection = [];
+		this.selectedPiece = ref;
+	}
+
+	/** The hyperlink out of a piece: select the square that contains it. */
+	selectParent() {
+		const ref = this.selectedPiece;
+		if (!ref) return;
+		this.selectedPiece = null;
+		this.selection = [ref.cell];
+	}
+
+	/** Recolour just the selected piece. */
+	setPieceFabric(materialId: MaterialId | null) {
+		const ref = this.selectedPiece;
+		if (!ref) return;
+		const block = this.cells[ref.cell];
+		if (!block) return;
+		const leaf = subtreeAt(block, ref.path);
+		if (leaf.kind !== 'leaf') return;
+		const fabrics = leaf.fabrics.map((f, i) => (i === ref.piece ? materialId : f));
+		this.commit(new Map([[ref.cell, setAt(block, ref.path, { ...leaf, fabrics })]]));
 	}
 
 	/** Shift-click: add or remove one block, so a selection can be any shape. */
 	toggle(index: number) {
+		this.selectedPiece = null;
 		this.selection = this.selectionSet.has(index)
 			? this.selection.filter((i) => i !== index)
 			: [...this.selection, index];
@@ -455,11 +511,20 @@ export class QuiltStore {
 		return out;
 	}
 
-	/** Drop the copies, and select them, so the duplicate can be edited at once. */
+	/*
+	 * Alt does double duty, split by whether the pointer moved: a drag
+	 * duplicates, a click drills down to the piece under the cursor.
+	 */
 	private endCopyDrag() {
+		const drag = this.copyDrag;
 		const updates = this.copyPreview;
 		this.copyDrag = null;
-		if (updates && this.commit(updates)) this.selection = [...updates.keys()];
+		if (updates && this.commit(updates)) {
+			this.selectedPiece = null;
+			this.selection = [...updates.keys()];
+			return;
+		}
+		if (drag && drag.over === drag.origin) this.selectPieceAt(drag.origin, drag.point);
 	}
 
 	private endMarquee() {
@@ -477,11 +542,31 @@ export class QuiltStore {
 
 	// ── Composition ──────────────────────────────────────────────────
 
+	/** The piece alt-hovering would select, previewed before you commit. */
+	hoverPiece = $derived.by((): PieceRef | null => {
+		const hover = this.hover;
+		if (this.tool !== 'mouse' || !hover?.alt || this.copyDrag || this.marquee) return null;
+		return this.pieceRefAt(hover.index, hover.point);
+	});
+
+	/** The fabric of the selected piece, or null when no piece is selected. */
+	selectedPieceFabric = $derived.by((): MaterialId | null => {
+		const ref = this.selectedPiece;
+		if (!ref) return null;
+		const block = this.cells[ref.cell];
+		if (!block) return null;
+		const leaf = subtreeAt(block, ref.path);
+		return leaf.kind === 'leaf' ? (leaf.fabrics[ref.piece] ?? null) : null;
+	});
+
 	/*
 	 * How the wall reports the selection. Long selections collapse to a count:
 	 * naming forty squares helps nobody.
 	 */
 	selectionLabel = $derived.by(() => {
+		if (this.selectedPiece) {
+			return `${squareLabel(this.selectedPiece.cell, this.dims.cols)} piece selected`;
+		}
 		const count = this.selection.length;
 		if (!count) return 'no squares selected';
 		const names = [...this.selection]
@@ -573,7 +658,7 @@ export class QuiltStore {
 	// ── Pointer handlers ─────────────────────────────────────────────
 
 	/** Resolve a screen point to a cell and its local 0..1 coordinates. */
-	private resolve(x: number, y: number): Hover | null {
+	private resolve(x: number, y: number): { index: number; point: Point } | null {
 		const el = document.elementFromPoint(x, y)?.closest('[data-cell-index]');
 		if (!el) return null;
 		const rect = el.getBoundingClientRect();
@@ -592,9 +677,11 @@ export class QuiltStore {
 			 */
 			if (e.altKey && !isEmpty(this.cells[index])) {
 				const grouped = this.selection.length > 1 && this.selectionSet.has(index);
+				const hit = this.resolve(e.clientX, e.clientY);
 				this.copyDrag = {
 					pointerId: e.pointerId,
 					origin: index,
+					point: hit?.point ?? [0.5, 0.5],
 					sources: grouped ? [...this.selection] : [index],
 					over: index
 				};
@@ -629,7 +716,7 @@ export class QuiltStore {
 		const g = this.gesture;
 		if (g && g.pointerId !== e.pointerId) return;
 		const hit = this.resolve(e.clientX, e.clientY);
-		this.hover = hit;
+		this.hover = hit ? { ...hit, alt: e.altKey } : null;
 		if (!g || !hit) return;
 		if (g.mode === 'erase') this.eraseAt(hit.index, hit.point);
 		else if (g.mode === 'grid') this.gridAt(hit.index);
@@ -682,6 +769,8 @@ export class QuiltStore {
 			if (this.gesture) this.cancelGesture();
 			else if (this.copyDrag) this.copyDrag = null;
 			else if (this.marquee) this.marquee = null;
+			// Escape climbs the ladder: piece, then square, then back to placing.
+			else if (this.selectedPiece) this.selectParent();
 			else if (this.selection.length) this.clearSelection();
 			else this.tool = 'place';
 			return;

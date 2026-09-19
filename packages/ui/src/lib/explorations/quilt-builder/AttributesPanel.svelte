@@ -27,6 +27,8 @@
 
 	/** Which COLOR n row has its palette open, by fabric id. */
 	let editing = $state<string | null>(null);
+	/** Sentinel for the single row shown when one piece is selected. */
+	const PIECE = '\u0000piece';
 
 	const hexOf = (id: string | null): string =>
 		id ? (store.materialById.get(id)?.hex ?? '#ffffff') : '#ffffff';
@@ -57,7 +59,59 @@
 <section class="attributes" aria-label="Attributes">
 	<div class="label section">Attributes</div>
 
-	{#if !store.selection.length}
+	{#if store.selectedPiece}
+		<ul class="colors">
+			<li class="color">
+				<span class="label">Color 1</span>
+				<button
+					class="swatch"
+					style="background: {hexOf(store.selectedPieceFabric)}"
+					aria-label={`Piece colour: ${store.selectedPieceFabric ? nameOf(store.selectedPieceFabric) : 'empty'}. Change it.`}
+					aria-expanded={editing === PIECE}
+					onclick={() => (editing = editing === PIECE ? null : PIECE)}
+				></button>
+				<span class="color-name">
+					{store.selectedPieceFabric ? nameOf(store.selectedPieceFabric) : 'Empty'}
+				</span>
+
+				{#if editing === PIECE}
+					<div class="picker">
+						<div class="label">Palette</div>
+						<div class="swatches">
+							{#each store.materials as material (material.id)}
+								<button
+									class="swatch small"
+									class:current={material.id === store.selectedPieceFabric}
+									style="background: {material.hex}"
+									title={material.name.trim() || material.hex.toUpperCase()}
+									aria-label={material.name.trim() || material.hex.toUpperCase()}
+									onclick={() => {
+										store.setPieceFabric(material.id);
+										editing = null;
+									}}
+								></button>
+							{/each}
+						</div>
+						<label class="new">
+							<span class="label">New color</span>
+							<input
+								type="color"
+								value={hexOf(store.selectedPieceFabric)}
+								onchange={(e) => {
+									store.setPieceFabric(store.addMaterial(e.currentTarget.value).id);
+									editing = null;
+								}}
+							/>
+						</label>
+					</div>
+				{/if}
+			</li>
+		</ul>
+		<p class="hint">
+			Inside
+			<button class="link" onclick={() => store.selectParent()}>the square</button>
+		</p>
+	{:else if !store.selection.length}
 		<p class="hint muted">No blocks selected</p>
 	{:else if !store.selectionFabrics.length}
 		<p class="hint muted">The selected blocks are empty</p>
@@ -310,6 +364,15 @@
 		cursor: pointer;
 	}
 
+	.link {
+		font: inherit;
+		padding: 0;
+		border: none;
+		background: none;
+		color: var(--color-text-strong);
+		text-decoration: underline;
+		cursor: pointer;
+	}
 	.active {
 		display: flex;
 		flex-direction: column;
