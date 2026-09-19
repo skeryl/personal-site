@@ -162,7 +162,12 @@ export class QuiltStore {
 	/** The middle rung: one block inside a composed square. */
 	selectedNode = $state<BlockRef | null>(null);
 
-	tab = $state<Tab>('block');
+	/*
+	 * A plain square is what is armed on load. The palette's first block type
+	 * happens to be a pinwheel, and defaulting to it meant the first thing you
+	 * placed was a pinwheel you never asked for.
+	 */
+	tab = $state<Tab>('piece');
 	pieceId = $state('square');
 	/** A built-in block type id, or `pattern:<id>` for a saved pattern. */
 	blockId = $state(BLOCK_TYPES[0].id);

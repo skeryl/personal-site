@@ -1002,3 +1002,17 @@ test('double-clicking a palette colour repaints every piece cut from it', async 
 	await expect(page.locator('.active .name')).toHaveValue('Blue');
 	await expect(page.locator('.active .hex')).toHaveValue('FF0000');
 });
+
+test('a plain square is what is armed on load', async ({ page }) => {
+	await expect(page.getByRole('button', { name: 'Square', exact: true })).toHaveClass(/active/);
+	await expect(page.getByRole('button', { name: 'Pinwheel', exact: true })).not.toHaveClass(
+		/active/
+	);
+
+	await addFabric(page, 'Blue', '4f7fe8');
+	await tool(page, /^Place/).click();
+	await cell(page, 0).click();
+	await parkMouse(page);
+	// One piece, not the eight a pinwheel would leave behind.
+	expect(await cellFills(page, 0)).toEqual(['#4f7fe8']);
+});
