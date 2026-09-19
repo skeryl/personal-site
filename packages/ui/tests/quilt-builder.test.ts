@@ -1016,3 +1016,37 @@ test('a plain square is what is armed on load', async ({ page }) => {
 	// One piece, not the eight a pinwheel would leave behind.
 	expect(await cellFills(page, 0)).toEqual(['#4f7fe8']);
 });
+
+test('seam detail follows how much room a sub-cell has on screen', async ({ page }) => {
+	await page.selectOption('.size select', 'king');
+	const cols = await gridCols(page);
+	const target = at(cols, 2, 2);
+
+	// A 4x4 grid: sixteen sub-cells inside one square.
+	await cell(page, target).click();
+	await page.getByRole('button', { name: '4 by 4', exact: true }).click();
+	await parkMouse(page);
+
+	const seams = (index: number) =>
+		page.evaluate((i) => {
+			const found = document.querySelectorAll(`[data-cell-index="${i}"] rect.seam`);
+			const first = found[0];
+			return {
+				count: found.length,
+				width: first ? parseFloat(first.getAttribute('stroke-width') ?? '0') : 0
+			};
+		}, index);
+
+	const out = await seams(target);
+	for (let i = 0; i < 6; i++) await page.keyboard.press('+');
+	const zoomedIn = await seams(target);
+
+	// Zoomed in there is room for the seams; zoomed out they thin or vanish
+	// rather than swamping the pieces they divide.
+	expect(zoomedIn.count).toBeGreaterThan(0);
+	expect(zoomedIn.width).toBeGreaterThan(out.width);
+
+	// A plain square keeps its outline at every zoom: it has room either way.
+	const plain = at(cols, 2, 4);
+	await expect(page.locator(`[data-cell-index="${plain}"] polygon`)).toHaveCount(1);
+});

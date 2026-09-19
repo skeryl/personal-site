@@ -214,6 +214,21 @@
 
 	const zoomPercent = $derived(Math.round(store.zoom * 100));
 
+	/*
+	 * Seams and piece outlines are non-scaling strokes, a fixed weight in
+	 * device pixels. Against a 4x4 block zoomed out that weight swamps the
+	 * pieces themselves, and neighbouring leaves each draw their own seam, so
+	 * shared edges come out doubled. Fade both with how big a sub-cell
+	 * actually is on screen: full detail when there is room, nothing at all
+	 * once the pieces are only a few pixels across.
+	 */
+	const blockPx = $derived(store.dims.cols ? content.w / store.dims.cols : 0);
+
+	const ramp = (value: number, lo: number, hi: number) =>
+		Math.min(1, Math.max(0, (value - lo) / (hi - lo)));
+
+	const detailAt = (division: number) => ramp(blockPx / Math.max(1, division), 8, 26);
+
 	/** Which piece of a given square is selected, and which is alt-hovered. */
 	const marksFor = (index: number) => {
 		const selected = store.selectedPiece;
@@ -292,6 +307,7 @@
 							{@const pieces = flatten(display)}
 							{@const before = pv ? new Map(flatten(cell).map((p) => [p.key, p.fabric])) : null}
 							{@const pieceMarks = marksFor(i)}
+							{@const detail = detailAt(divisionOf(display))}
 							{@const after = ev ? new Map(flatten(ev).map((p) => [p.key, p.fabric])) : null}
 							<button
 								class="cell"
@@ -321,7 +337,9 @@
 											class:erasing={after !== null &&
 												piece.fabric !== null &&
 												(after.get(piece.key) ?? null) !== piece.fabric}
-											stroke={pieces.length > 1 ? 'rgba(0, 0, 0, 0.18)' : 'none'}
+											stroke={pieces.length > 1 && detail > 0
+												? `rgba(0, 0, 0, ${0.18 * detail})`
+												: 'none'}
 											stroke-width="1"
 											vector-effect="non-scaling-stroke"
 										/>
@@ -346,15 +364,19 @@
 											/>
 										{/if}
 									{/each}
-									{#each leafRects(display) as seam, s (s)}
-										<rect
-											class="seam"
-											x={seam.x * VB}
-											y={seam.y * VB}
-											width={seam.w * VB}
-											height={seam.h * VB}
-										/>
-									{/each}
+									{#if detail > 0}
+										{#each leafRects(display) as seam, s (s)}
+											<rect
+												class="seam"
+												x={seam.x * VB}
+												y={seam.y * VB}
+												width={seam.w * VB}
+												height={seam.h * VB}
+												stroke={`rgba(0, 0, 0, ${0.32 * detail})`}
+												stroke-width={0.75 + detail}
+											/>
+										{/each}
+									{/if}
 								</svg>
 							</button>
 						{/each}
@@ -710,8 +732,6 @@
 	/* Seams between composed children read heavier than seams inside one. */
 	rect.seam {
 		fill: none;
-		stroke: rgba(0, 0, 0, 0.32);
-		stroke-width: 1.75;
 		vector-effect: non-scaling-stroke;
 	}
 
