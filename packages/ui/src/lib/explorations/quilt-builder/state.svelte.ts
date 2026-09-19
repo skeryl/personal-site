@@ -100,6 +100,12 @@ export interface PieceRef {
 	piece: number;
 }
 
+/** A block, at any depth: an empty path is the whole square. */
+export interface BlockRef {
+	cell: number;
+	path: number[];
+}
+
 interface PaintGesture {
 	pointerId: number;
 	mode: Tool;
@@ -139,8 +145,10 @@ export class QuiltStore {
 	selection = $state<number[]>([]);
 	marquee = $state<Marquee | null>(null);
 	copyDrag = $state<CopyDrag | null>(null);
-	/** Set by alt-clicking: a single piece, one rung below a square. */
+	/** Set by alt-clicking: a single piece, the bottom rung. */
 	selectedPiece = $state<PieceRef | null>(null);
+	/** The middle rung: one block inside a composed square. */
+	selectedNode = $state<BlockRef | null>(null);
 
 	tab = $state<Tab>('block');
 	pieceId = $state('square');
@@ -220,8 +228,8 @@ export class QuiltStore {
 	});
 	/** The shared composition of the selection, or 0 when they disagree. */
 	selectedDivision = $derived.by(() => {
-		if (!this.selectedBlocks.length) return 0;
-		const divisions = new Set(this.selectedBlocks.map(divisionOf));
+		if (!this.scopeBlocks.length) return 0;
+		const divisions = new Set(this.scopeBlocks.map(divisionOf));
 		return divisions.size === 1 ? [...divisions][0] : 0;
 	});
 
@@ -364,7 +372,28 @@ export class QuiltStore {
 		return next ? this.commit(new Map([[index, next]])) : false;
 	}
 
+	/*
+	 * R turns what is selected, at whatever rung: a piece turns the block that
+	 * holds it, since a single polygon has no orientation of its own. With
+	 * nothing selected it turns the block type waiting to be placed instead.
+	 */
 	rotate() {
+		if (this.gesture) return;
+		const piece = this.selectedPiece;
+		if (piece) {
+			const block = this.cells[piece.cell];
+			if (!block) return;
+			this.commit(
+				new Map([
+					[piece.cell, setAt(block, piece.path, rotateBlock(subtreeAt(block, piece.path), 1))]
+				])
+			);
+			return;
+		}
+		if (this.activeScope.length) {
+			this.editScope((block) => rotateBlock(block, 1));
+			return;
+		}
 		this.rotation = (this.rotation + 1) % 4;
 	}
 
@@ -412,11 +441,13 @@ export class QuiltStore {
 		this.selection = [];
 		this.marquee = null;
 		this.selectedPiece = null;
+		this.selectedNode = null;
 	}
 
 	select(index: number) {
 		this.selection = [index];
 		this.selectedPiece = null;
+		this.selectedNode = null;
 	}
 
 	/** Address the piece under a point, for alt-click and alt-hover. */
@@ -432,15 +463,31 @@ export class QuiltStore {
 		const ref = this.pieceRefAt(index, point);
 		if (!ref) return;
 		this.selection = [];
+		this.selectedNode = null;
 		this.selectedPiece = ref;
 	}
 
-	/** The hyperlink out of a piece: select the square that contains it. */
+	/*
+	 * The hyperlink out of a selection, one rung at a time: a piece climbs to
+	 * the block that holds it, a nested block to its parent block, and a block
+	 * at the top to the square itself.
+	 */
 	selectParent() {
-		const ref = this.selectedPiece;
-		if (!ref) return;
-		this.selectedPiece = null;
-		this.selection = [ref.cell];
+		const piece = this.selectedPiece;
+		if (piece) {
+			this.selectedPiece = null;
+			if (piece.path.length) this.selectedNode = { cell: piece.cell, path: piece.path };
+			else this.selection = [piece.cell];
+			return;
+		}
+		const node = this.selectedNode;
+		if (!node) return;
+		this.selectedNode = null;
+		if (node.path.length > 1) {
+			this.selectedNode = { cell: node.cell, path: node.path.slice(0, -1) };
+		} else {
+			this.selection = [node.cell];
+		}
 	}
 
 	/** Recolour just the selected piece. */
@@ -458,6 +505,7 @@ export class QuiltStore {
 	/** Shift-click: add or remove one block, so a selection can be any shape. */
 	toggle(index: number) {
 		this.selectedPiece = null;
+		this.selectedNode = null;
 		this.selection = this.selectionSet.has(index)
 			? this.selection.filter((i) => i !== index)
 			: [...this.selection, index];
@@ -549,6 +597,35 @@ export class QuiltStore {
 		return this.pieceRefAt(hover.index, hover.point);
 	});
 
+	/*
+	 * What editing actions apply to. Exactly one rung of the ladder is live at
+	 * a time: a piece, a block inside a square, or any number of whole squares.
+	 * A piece has no scope of its own; only its colour can change.
+	 */
+	activeScope = $derived.by((): BlockRef[] => {
+		if (this.selectedPiece) return [];
+		if (this.selectedNode) return [this.selectedNode];
+		return this.selection.map((cell) => ({ cell, path: [] }));
+	});
+
+	/** The subtree each scope entry points at. */
+	private scopeBlocks = $derived(
+		this.activeScope.flatMap(({ cell, path }) => {
+			const block = this.cells[cell];
+			return block ? [subtreeAt(block, path)] : [];
+		})
+	);
+
+	/** Which square holds the drilled-in selection, for a context outline. */
+	contextCell = $derived(this.selectedPiece?.cell ?? this.selectedNode?.cell ?? null);
+
+	/** What the parent link climbs to from wherever the selection sits. */
+	parentLabel = $derived.by(() => {
+		if (this.selectedPiece) return this.selectedPiece.path.length ? 'the block' : 'the square';
+		if (this.selectedNode) return this.selectedNode.path.length > 1 ? 'the block' : 'the square';
+		return null;
+	});
+
 	/** The fabric of the selected piece, or null when no piece is selected. */
 	selectedPieceFabric = $derived.by((): MaterialId | null => {
 		const ref = this.selectedPiece;
@@ -567,6 +644,9 @@ export class QuiltStore {
 		if (this.selectedPiece) {
 			return `${squareLabel(this.selectedPiece.cell, this.dims.cols)} piece selected`;
 		}
+		if (this.selectedNode) {
+			return `${squareLabel(this.selectedNode.cell, this.dims.cols)} block selected`;
+		}
 		const count = this.selection.length;
 		if (!count) return 'no squares selected';
 		const names = [...this.selection]
@@ -583,35 +663,35 @@ export class QuiltStore {
 	 */
 	selectionFabrics = $derived.by(() => {
 		const seen: MaterialId[] = [];
-		[...this.selection]
-			.sort((a, b) => a - b)
-			.forEach((index) => {
-				const block = this.cells[index];
-				if (!block) return;
-				flatten(block).forEach(({ fabric }) => {
-					if (fabric && !seen.includes(fabric)) seen.push(fabric);
-				});
+		this.scopeBlocks.forEach((block) => {
+			flatten(block).forEach(({ fabric }) => {
+				if (fabric && !seen.includes(fabric)) seen.push(fabric);
 			});
+		});
 		return seen;
 	});
 
+	/** Rewrite each scoped subtree, leaving everything outside it alone. */
+	private editScope(fn: (block: Block) => Block): boolean {
+		const updates = new Map<number, Block>();
+		for (const { cell, path } of this.activeScope) {
+			const block = updates.get(cell) ?? this.cells[cell];
+			if (!block) continue;
+			updates.set(cell, setAt(block, path, fn(subtreeAt(block, path))));
+		}
+		return updates.size ? this.commit(updates) : false;
+	}
+
 	/** Swap one fabric for another, within the selection only. */
 	remapFabric(from: MaterialId, to: MaterialId) {
-		if (!this.selection.length || from === to) return;
-		const updates = new Map<number, Block>();
-		this.selection.forEach((index) => {
-			const block = this.cells[index];
-			if (!block) return;
-			updates.set(
-				index,
-				mapLeaves(block, (leaf) =>
-					leaf.fabrics.includes(from)
-						? { ...leaf, fabrics: leaf.fabrics.map((f) => (f === from ? to : f)) }
-						: leaf
-				)
-			);
-		});
-		this.commit(updates);
+		if (from === to) return;
+		this.editScope((block) =>
+			mapLeaves(block, (leaf) =>
+				leaf.fabrics.includes(from)
+					? { ...leaf, fabrics: leaf.fabrics.map((f) => (f === from ? to : f)) }
+					: leaf
+			)
+		);
 	}
 
 	/** What the grid chips show as active: the selection's, else the tool's. */
@@ -622,13 +702,8 @@ export class QuiltStore {
 	 * does. Going coarser keeps each group's top-left piece.
 	 */
 	applyGrid(division: number) {
-		if (this.gesture || !this.selection.length) return;
-		const updates = new Map<number, Block>();
-		this.selection.forEach((index) => {
-			const block = this.cells[index];
-			if (block) updates.set(index, recompose(block, division));
-		});
-		this.commit(updates);
+		if (this.gesture) return;
+		this.editScope((block) => recompose(block, division));
 	}
 
 	/*
@@ -638,7 +713,7 @@ export class QuiltStore {
 	 */
 	setGrid(division: number) {
 		this.gridDivision = division;
-		if (this.selection.length) this.applyGrid(division);
+		if (this.activeScope.length) this.applyGrid(division);
 		else this.tool = 'grid';
 	}
 
@@ -769,8 +844,8 @@ export class QuiltStore {
 			if (this.gesture) this.cancelGesture();
 			else if (this.copyDrag) this.copyDrag = null;
 			else if (this.marquee) this.marquee = null;
-			// Escape climbs the ladder: piece, then square, then back to placing.
-			else if (this.selectedPiece) this.selectParent();
+			// Escape climbs the ladder: piece, block, square, then back to placing.
+			else if (this.selectedPiece || this.selectedNode) this.selectParent();
 			else if (this.selection.length) this.clearSelection();
 			else this.tool = 'place';
 			return;

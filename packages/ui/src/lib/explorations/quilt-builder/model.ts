@@ -186,6 +186,13 @@ export const setAt = (block: Block, path: readonly number[], next: Block): Block
 	};
 };
 
+/** The rect of the subtree at `path`, in block space. */
+export const rectAt = (block: Block, path: readonly number[], rect: Rect = UNIT_RECT): Rect => {
+	if (!path.length || block.kind === 'leaf') return rect;
+	const [index, ...rest] = path;
+	return rectAt(block.children[index], rest, childRect(rect, block, index));
+};
+
 /** The subtree at `path`, stopping early if the path runs past a leaf. */
 export const subtreeAt = (block: Block, path: readonly number[]): Block =>
 	path.length === 0 || block.kind === 'leaf'

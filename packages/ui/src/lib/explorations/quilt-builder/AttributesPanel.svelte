@@ -109,9 +109,9 @@
 		</ul>
 		<p class="hint">
 			Inside
-			<button class="link" onclick={() => store.selectParent()}>the square</button>
+			<button class="link" onclick={() => store.selectParent()}>{store.parentLabel}</button>
 		</p>
-	{:else if !store.selection.length}
+	{:else if !store.activeScope.length}
 		<p class="hint muted">No blocks selected</p>
 	{:else if !store.selectionFabrics.length}
 		<p class="hint muted">The selected blocks are empty</p>
@@ -157,6 +157,12 @@
 				</li>
 			{/each}
 		</ul>
+		{#if store.parentLabel}
+			<p class="hint">
+				Inside
+				<button class="link" onclick={() => store.selectParent()}>{store.parentLabel}</button>
+			</p>
+		{/if}
 	{/if}
 
 	<div class="label section">Palette</div>

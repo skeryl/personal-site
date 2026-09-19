@@ -14,6 +14,12 @@ test.use({ viewport: { width: 1440, height: 1400 } });
 
 const cell = (page: Page, index: number) => page.locator(`[data-cell-index="${index}"]`);
 
+/* Rotation moves geometry, not fill order, so it shows up in the points. */
+const cellPoints = (page: Page, index: number) =>
+	page.$$eval(`[data-cell-index="${index}"] polygon:not(.piece-outline)`, (nodes) =>
+		nodes.map((node) => node.getAttribute('points'))
+	);
+
 /* Selection outlines are polygons too; they are decoration, not fabric. */
 const cellFills = (page: Page, index: number) =>
 	page.$$eval(`[data-cell-index="${index}"] polygon:not(.piece-outline)`, (nodes) =>
@@ -735,13 +741,22 @@ test('a selected piece links up to the square that contains it', async ({ page }
 	await altClick(page, target, 0.25, 0.12);
 	await expect(page.locator('.readout')).toHaveText('C2 piece selected');
 
+	// A pinwheel is a 2x2 of triangles, so the ladder has three rungs:
+	// piece, the block holding it, then the square.
+	await page.getByRole('button', { name: 'the block' }).click();
+	await expect(page.locator('.readout')).toHaveText('C2 block selected');
+	await expect(page.locator('polygon.piece-outline')).toHaveCount(0);
+	await expect(page.locator('rect.node-outline')).toHaveCount(1);
+
 	await page.getByRole('button', { name: 'the square' }).click();
 	await expect(page.locator('.readout')).toHaveText('C2 square selected');
-	await expect(page.locator('polygon.piece-outline')).toHaveCount(0);
+	await expect(page.locator('rect.node-outline')).toHaveCount(0);
 
-	// Escape climbs the same ladder.
+	// Escape climbs the same ladder, one rung per press.
 	await altClick(page, target, 0.25, 0.12);
 	await expect(page.locator('.readout')).toHaveText('C2 piece selected');
+	await page.keyboard.press('Escape');
+	await expect(page.locator('.readout')).toHaveText('C2 block selected');
 	await page.keyboard.press('Escape');
 	await expect(page.locator('.readout')).toHaveText('C2 square selected');
 });
@@ -760,4 +775,60 @@ test('alt still duplicates when the pointer moves', async ({ page }) => {
 	// A drag duplicates; it must not have drilled into a piece instead.
 	expect(await cellFills(page, at(cols, 3, 3))).toHaveLength(8);
 	await expect(page.locator('.readout')).toHaveText('D4 square selected');
+});
+
+test('the grid applies to a selected block, not the whole square', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	const cols = await gridCols(page);
+	const target = at(cols, 1, 2);
+
+	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	await cell(page, target).click();
+	await parkMouse(page);
+	expect(await cellFills(page, target)).toHaveLength(8);
+
+	// Climb to one quarter of the pinwheel and subdivide just that quarter.
+	await tool(page, /^Mouse/).click();
+	await altClick(page, target, 0.25, 0.12);
+	await page.getByRole('button', { name: 'the block' }).click();
+	await page.getByRole('button', { name: '2 by 2', exact: true }).click();
+	await parkMouse(page);
+
+	/*
+	 * Going finer replicates, so that quarter became four copies of its own
+	 * triangle: eight pieces where there were two. The other three quarters
+	 * are untouched, at two pieces each.
+	 */
+	expect(await cellFills(page, target)).toHaveLength(8 + 6);
+});
+
+test('rotate turns the selected squares, not just the palette', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	const cols = await gridCols(page);
+	const target = at(cols, 1, 1);
+
+	await pickShape(page, 'Half square triangle');
+	await cell(page, target).click();
+	await parkMouse(page);
+	const before = await cellPoints(page, target);
+
+	// With nothing selected, R turns the pending block type only.
+	await tool(page, /^Mouse/).click();
+	await page.keyboard.press('r');
+	await parkMouse(page);
+	expect(await cellPoints(page, target)).toEqual(before);
+
+	// With the square selected, R turns the square.
+	await cell(page, target).click();
+	await page.keyboard.press('r');
+	await parkMouse(page);
+	expect(await cellPoints(page, target)).not.toEqual(before);
+
+	// Four turns come back to where it started.
+	for (let i = 0; i < 3; i++) await page.keyboard.press('r');
+	await parkMouse(page);
+	expect(await cellPoints(page, target)).toEqual(before);
+
+	// Each turn is its own undo step, not a lost edit.
+	await expect(tool(page, /^Undo/)).toBeEnabled();
 });

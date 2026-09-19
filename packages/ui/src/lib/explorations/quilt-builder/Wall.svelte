@@ -6,6 +6,7 @@
 		colOf,
 		columnLabel,
 		pieceKey,
+		rectAt,
 		divisionOf,
 		dominantFabric,
 		flatten,
@@ -283,6 +284,7 @@
 									class="cell"
 									class:hovered={store.hover?.index === i}
 									class:selected={store.highlighted.has(i)}
+									class:context={store.contextCell === i}
 									data-cell-index={i}
 									aria-label={cellLabel(i, cell)}
 									onpointerdown={(e) => store.onCellPointerDown(e, i)}
@@ -311,6 +313,16 @@
 												vector-effect="non-scaling-stroke"
 											/>
 										{/each}
+										{#if store.selectedNode?.cell === i}
+											{@const node = rectAt(display, store.selectedNode.path)}
+											<rect
+												class="node-outline"
+												x={node.x * VB}
+												y={node.y * VB}
+												width={node.w * VB}
+												height={node.h * VB}
+											/>
+										{/if}
 										<!-- Drawn after the fills so the outline is not painted over. -->
 										{#each pieces as piece (piece.key)}
 											{#if pieceMarks.selected === piece.key || pieceMarks.hovered === piece.key}
@@ -597,6 +609,12 @@
 		outline-offset: -3px;
 		z-index: 2;
 	}
+	/* The square holding a drilled-in selection, so you keep your bearings. */
+	.cell.context {
+		outline: 1.5px dashed rgba(199, 102, 228, 0.4);
+		outline-offset: -1px;
+		z-index: 1;
+	}
 	/*
 	 * Absolute, so it does not take part in auto-placement: as a grid ITEM it
 	 * occupied tracks and shoved every cell along while a drag was in flight.
@@ -639,6 +657,13 @@
 	polygon.piece-outline.preview {
 		stroke-width: 2;
 		stroke-dasharray: 4 3;
+	}
+	/* The middle rung: one block inside a composed square. */
+	rect.node-outline {
+		fill: none;
+		stroke: var(--qb-accent);
+		stroke-width: 3;
+		vector-effect: non-scaling-stroke;
 	}
 
 	/* Seams between composed children read heavier than seams inside one. */
