@@ -243,6 +243,7 @@
 							class="blanket"
 							class:tool-erase={store.tool === 'erase'}
 							class:tool-mouse={store.tool === 'mouse'}
+							class:copying={store.copyDrag !== null}
 							class:tool-grid={store.tool === 'grid'}
 							class:locked={store.tool === 'place' && !store.canPlace}
 							style="grid-template-columns: repeat({store.dims
@@ -258,7 +259,8 @@
 								></div>
 							{/if}
 							{#each store.cells as cell, i (i)}
-								{@const pv = (store.placePreview ?? store.gridPreview)?.get(i) ?? null}
+								{@const pv =
+									(store.placePreview ?? store.gridPreview ?? store.copyPreview)?.get(i) ?? null}
 								{@const ev = store.erasePreview?.get(i) ?? null}
 								{@const display = pv ?? cell}
 								{@const pieces = flatten(display)}
@@ -544,6 +546,9 @@
 	}
 	.tool-grid .cell {
 		cursor: crosshair;
+	}
+	.copying .cell {
+		cursor: copy;
 	}
 	/*
 	 * Outlines, not inset box-shadows. Each cell's svg covers it exactly, and

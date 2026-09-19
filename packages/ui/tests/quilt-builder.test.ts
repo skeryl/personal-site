@@ -603,3 +603,79 @@ test('a block type lands in the sub-block under the cursor, like a cut does', as
 	await expect(page.locator('.cut-group').first()).toContainText('4½” squares');
 	await expect(page.locator('.cut-group').first()).toContainText('2½” squares');
 });
+
+/** Alt-drag from one cell to another, which duplicates rather than moves. */
+const altDrag = async (page: Page, from: number, to: number) => {
+	const a = await cell(page, from).boundingBox();
+	const b = await cell(page, to).boundingBox();
+	if (!a || !b) throw new Error('cells not found');
+	await page.keyboard.down('Alt');
+	await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 8 });
+	await page.mouse.up();
+	await page.keyboard.up('Alt');
+	await parkMouse(page);
+};
+
+test('alt-drag duplicates a block, leaving the original in place', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	const cols = await gridCols(page);
+	const from = at(cols, 1, 1);
+	const to = at(cols, 3, 3);
+
+	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	await cell(page, from).click();
+	await parkMouse(page);
+	const original = await cellFills(page, from);
+	expect(original).toHaveLength(8);
+
+	await tool(page, /^Mouse/).click();
+	await altDrag(page, from, to);
+
+	// A whole pieced square duplicates complete, and the source survives.
+	expect(await cellFills(page, to)).toEqual(original);
+	expect(await cellFills(page, from)).toEqual(original);
+	// The copy is selected, so it can be recoloured straight away.
+	await expect(page.locator('.readout')).toHaveText('D4 square selected');
+
+	// One undo takes the whole duplication back.
+	await page.keyboard.press('ControlOrMeta+z');
+	await parkMouse(page);
+	expect(await cellFills(page, to)).toEqual(['#ffffff']);
+});
+
+test('alt-drag carries a whole multi-selection', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	const cols = await gridCols(page);
+	await pickShape(page, 'Square');
+	await cell(page, at(cols, 0, 0)).click();
+	await cell(page, at(cols, 0, 1)).click();
+	await parkMouse(page);
+
+	await tool(page, /^Mouse/).click();
+	await cell(page, at(cols, 0, 0)).click();
+	await cell(page, at(cols, 0, 1)).click({ modifiers: ['Shift'] });
+	await expect(page.locator('.readout')).toHaveText('A1, B1 squares selected');
+
+	await altDrag(page, at(cols, 0, 0), at(cols, 4, 0));
+	expect(await cellFills(page, at(cols, 4, 0))).toEqual(['#4f7fe8']);
+	expect(await cellFills(page, at(cols, 4, 1))).toEqual(['#4f7fe8']);
+});
+
+test('alt-drag refuses rather than clipping at the quilt edge', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	const cols = await gridCols(page);
+	await pickShape(page, 'Square');
+	await cell(page, at(cols, 0, 0)).click();
+	await cell(page, at(cols, 0, 1)).click();
+	await parkMouse(page);
+
+	await tool(page, /^Mouse/).click();
+	await cell(page, at(cols, 0, 0)).click();
+	await cell(page, at(cols, 0, 1)).click({ modifiers: ['Shift'] });
+
+	// Dropping the pair on the last column would put its partner off the edge.
+	await altDrag(page, at(cols, 0, 0), at(cols, 2, cols - 1));
+	expect(await cellFills(page, at(cols, 2, cols - 1))).toEqual(['#ffffff']);
+});

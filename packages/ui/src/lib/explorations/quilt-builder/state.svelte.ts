@@ -23,6 +23,7 @@ import {
 	blocksEqual,
 	boardsEqual,
 	cellIndex,
+	cloneBlock,
 	cloneBoard,
 	colOf,
 	divisionOf,
@@ -101,6 +102,14 @@ interface Marquee {
 	additive: boolean;
 }
 
+/** An alt-drag: whole blocks being duplicated to wherever they are dropped. */
+interface CopyDrag {
+	pointerId: number;
+	origin: number;
+	sources: number[];
+	over: number;
+}
+
 export class QuiltStore {
 	name = $state('');
 	sizeId = $state(DEFAULT_SIZE_ID);
@@ -114,6 +123,7 @@ export class QuiltStore {
 	/** Board indices the composition control and pattern capture act on. */
 	selection = $state<number[]>([]);
 	marquee = $state<Marquee | null>(null);
+	copyDrag = $state<CopyDrag | null>(null);
 
 	tab = $state<Tab>('block');
 	pieceId = $state('square');
@@ -401,6 +411,28 @@ export class QuiltStore {
 		this.selection = this.cells.flatMap((block, i) => (isEmpty(block) ? [] : [i]));
 	}
 
+	/*
+	 * Where an alt-drag would drop. Whole blocks, so a pieced square duplicates
+	 * complete rather than smearing one piece. All-or-nothing: if any part of
+	 * the group would land off the quilt, nothing does.
+	 */
+	copyPreview = $derived.by(() => {
+		const drag = this.copyDrag;
+		if (!drag) return null;
+		const { cols, rows } = this.dims;
+		const dCol = colOf(drag.over, cols) - colOf(drag.origin, cols);
+		const dRow = rowOf(drag.over, cols) - rowOf(drag.origin, cols);
+		if (!dCol && !dRow) return null;
+		const updates = new Map<number, Block>();
+		for (const source of drag.sources) {
+			const col = colOf(source, cols) + dCol;
+			const row = rowOf(source, cols) + dRow;
+			if (col < 0 || row < 0 || col >= cols || row >= rows) return null;
+			updates.set(cellIndex(row, col, cols), cloneBlock(this.cells[source]));
+		}
+		return updates;
+	});
+
 	/** The rectangle a marquee drag currently covers, in grid coordinates. */
 	marqueeRect = $derived.by(() => {
 		const marquee = this.marquee;
@@ -421,6 +453,13 @@ export class QuiltStore {
 			for (let c = c0; c <= c1; c++) out.push(cellIndex(r, c, cols));
 		}
 		return out;
+	}
+
+	/** Drop the copies, and select them, so the duplicate can be edited at once. */
+	private endCopyDrag() {
+		const updates = this.copyPreview;
+		this.copyDrag = null;
+		if (updates && this.commit(updates)) this.selection = [...updates.keys()];
 	}
 
 	private endMarquee() {
@@ -547,6 +586,20 @@ export class QuiltStore {
 	onCellPointerDown(e: PointerEvent, index: number) {
 		if (e.button !== 0 || this.gesture || this.marquee) return;
 		if (this.tool === 'mouse') {
+			/*
+			 * Alt-drag duplicates. Dragging any member of a multi-selection
+			 * carries the whole group; anything else carries just that block.
+			 */
+			if (e.altKey && !isEmpty(this.cells[index])) {
+				const grouped = this.selection.length > 1 && this.selectionSet.has(index);
+				this.copyDrag = {
+					pointerId: e.pointerId,
+					origin: index,
+					sources: grouped ? [...this.selection] : [index],
+					over: index
+				};
+				return;
+			}
 			this.marquee = { pointerId: e.pointerId, anchor: index, head: index, additive: e.shiftKey };
 			return;
 		}
@@ -559,6 +612,13 @@ export class QuiltStore {
 	}
 
 	onPointerMove(e: PointerEvent) {
+		const copy = this.copyDrag;
+		if (copy) {
+			if (copy.pointerId !== e.pointerId) return;
+			const hit = this.resolve(e.clientX, e.clientY);
+			if (hit) this.copyDrag = { ...copy, over: hit.index };
+			return;
+		}
 		const m = this.marquee;
 		if (m) {
 			if (m.pointerId !== e.pointerId) return;
@@ -577,6 +637,10 @@ export class QuiltStore {
 	}
 
 	onPointerUp(e: PointerEvent) {
+		if (this.copyDrag?.pointerId === e.pointerId) {
+			this.endCopyDrag();
+			return;
+		}
 		if (this.marquee?.pointerId === e.pointerId) {
 			this.endMarquee();
 			return;
@@ -616,6 +680,7 @@ export class QuiltStore {
 		}
 		if (e.key === 'Escape') {
 			if (this.gesture) this.cancelGesture();
+			else if (this.copyDrag) this.copyDrag = null;
 			else if (this.marquee) this.marquee = null;
 			else if (this.selection.length) this.clearSelection();
 			else this.tool = 'place';
