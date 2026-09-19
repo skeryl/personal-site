@@ -1,35 +1,45 @@
 /*
- * Cell geometry.
+ * Cuts: how one block is divided into pieces.
  *
- * Every cell of the quilt is one block. A cell is subdivided by a "layout": a
- * list of polygons over the unit square. Pieces and blocks are both layouts;
- * blocks just have more polygons. Adding a new piece or block means adding
- * one entry to LAYOUTS.
+ * A "cut" is a list of polygons over the unit square. A piece is one of those
+ * polygons: a single shape of fabric. Simple cuts (square, half square
+ * triangle) and compound ones (sawtooth star) are the same kind of thing;
+ * compound ones just have more pieces. Adding a new one means adding one
+ * entry to CUTS.
  *
- * Each slot records which cut piece it is (kind), the size of the cut blank
+ * Each piece records which cut shape it is (kind), the size of the cut blank
  * it comes from as a fraction of the block (frac), and a role used for icons
- * and for stamping blocks: role 0 takes the selected fabric, other roles keep
+ * and for stamping: role 0 takes the selected fabric, other roles keep
  * whatever was underneath.
+ *
+ * Blocks that are really a grid of smaller blocks (a pinwheel is four half
+ * square triangles) are not cuts. They live in `blocks.ts` as compositions.
  */
 
 export type Point = [number, number];
 
 export type ShapeKind = 'square' | 'rect' | 'hst' | 'qst';
 
-export interface Slot {
+/** One polygon of a cut: the shape of a single piece of fabric. */
+export interface PieceShape {
 	kind: ShapeKind;
 	frac: number;
 	role: number;
 	points: Point[];
 }
 
-export type LayoutGroup = 'piece' | 'block';
+/**
+ * 'legacy' cuts are not offered in the palette. They exist only so saved
+ * designs that predate block composition can be read and converted; delete
+ * them once no stored state references them.
+ */
+export type CutGroup = 'piece' | 'block' | 'legacy';
 
-export interface Layout {
+export interface Cut {
 	id: string;
 	name: string;
-	group: LayoutGroup;
-	slots: Slot[];
+	group: CutGroup;
+	pieces: PieceShape[];
 }
 
 const TL: Point = [0, 0];
@@ -44,15 +54,18 @@ export const normalizeTurns = (turns: number): number => ((turns % 4) + 4) % 4;
 export const rotatePoint = (point: Point, turns: number): Point =>
 	Array.from({ length: normalizeTurns(turns) }).reduce<Point>(([x, y]) => [1 - y, x], point);
 
-const slot = (kind: ShapeKind, frac: number, role: number, points: Point[]): Slot => ({
+const piece = (kind: ShapeKind, frac: number, role: number, points: Point[]): PieceShape => ({
 	kind,
 	frac,
 	role,
 	points
 });
 
-/** Repeat a top-left quadrant's slots around all four quadrants. */
-const spin = (quadrant: Slot[], roleOf: (turn: number, base: number) => number = (_, r) => r) =>
+/** Repeat a top-left quadrant's pieces around all four quadrants. */
+const spin = (
+	quadrant: PieceShape[],
+	roleOf: (turn: number, base: number) => number = (_, r) => r
+) =>
 	[0, 1, 2, 3].flatMap((turn) =>
 		quadrant.map((s) => ({
 			...s,
@@ -62,101 +75,87 @@ const spin = (quadrant: Slot[], roleOf: (turn: number, base: number) => number =
 	);
 
 /** One flying-geese unit filling the left half of the cell, goose pointing right. */
-const geeseUnit = (x0: number, gooseRole: number, skyRole: number): Slot[] => [
-	slot('qst', 1, gooseRole, [
+const geeseUnit = (x0: number, gooseRole: number, skyRole: number): PieceShape[] => [
+	piece('qst', 1, gooseRole, [
 		[x0, 0],
 		[x0 + 0.5, 0.5],
 		[x0, 1]
 	]),
-	slot('hst', 0.5, skyRole, [
+	piece('hst', 0.5, skyRole, [
 		[x0, 0],
 		[x0 + 0.5, 0],
 		[x0 + 0.5, 0.5]
 	]),
-	slot('hst', 0.5, skyRole, [
+	piece('hst', 0.5, skyRole, [
 		[x0, 1],
 		[x0 + 0.5, 1],
 		[x0 + 0.5, 0.5]
 	])
 ];
 
-const PIECES: Layout[] = [
-	{ id: 'square', name: 'Square', group: 'piece', slots: [slot('square', 1, 0, [TL, TR, BR, BL])] },
+const PIECES: Cut[] = [
+	{
+		id: 'square',
+		name: 'Square',
+		group: 'piece',
+		pieces: [piece('square', 1, 0, [TL, TR, BR, BL])]
+	},
 	{
 		id: 'rectangle',
 		name: 'Rectangle',
 		group: 'piece',
-		slots: [
-			slot('rect', 1, 0, [TL, [0.5, 0], [0.5, 1], BL]),
-			slot('rect', 1, 1, [[0.5, 0], TR, BR, [0.5, 1]])
+		pieces: [
+			piece('rect', 1, 0, [TL, [0.5, 0], [0.5, 1], BL]),
+			piece('rect', 1, 1, [[0.5, 0], TR, BR, [0.5, 1]])
 		]
 	},
 	{
 		id: 'hst',
 		name: 'Half square triangle',
 		group: 'piece',
-		slots: [slot('hst', 1, 0, [TL, BR, BL]), slot('hst', 1, 1, [TL, TR, BR])]
+		pieces: [piece('hst', 1, 0, [TL, BR, BL]), piece('hst', 1, 1, [TL, TR, BR])]
 	},
 	{
 		id: 'flying-geese',
 		name: 'Flying geese',
 		group: 'piece',
-		slots: [...geeseUnit(0, 1, 0), ...geeseUnit(0.5, 2, 2)]
+		pieces: [...geeseUnit(0, 1, 0), ...geeseUnit(0.5, 2, 2)]
 	}
 ];
 
-const BLOCKS: Layout[] = [
-	{
-		id: 'pinwheel',
-		name: 'Pinwheel',
-		group: 'block',
-		slots: spin([
-			slot('hst', 0.5, 0, [TL, [0.5, 0], MID]),
-			slot('hst', 0.5, 1, [TL, MID, [0, 0.5]])
-		])
-	},
-	{
-		id: 'broken-dishes',
-		name: 'Broken dishes',
-		group: 'block',
-		slots: spin([
-			slot('hst', 0.5, 0, [TL, [0.5, 0], [0, 0.5]]),
-			slot('hst', 0.5, 1, [[0.5, 0], MID, [0, 0.5]])
-		])
-	},
+/*
+ * Cuts that subdivide the block in ways a uniform grid cannot express:
+ * triangles meeting at the centre, a square on point, or the 1:2:1 column
+ * proportions of a sawtooth star.
+ */
+const BLOCKS: Cut[] = [
 	{
 		id: 'hourglass',
 		name: 'Hourglass',
 		group: 'block',
-		slots: spin([slot('qst', 1, 0, [TL, TR, MID])], (turn) => turn % 2)
+		pieces: spin([piece('qst', 1, 0, [TL, TR, MID])], (turn) => turn % 2)
 	},
 	{
 		id: 'square-in-square',
 		name: 'Square in a square',
 		group: 'block',
-		slots: [
-			slot('square', Math.SQRT1_2, 0, [
+		pieces: [
+			piece('square', Math.SQRT1_2, 0, [
 				[0.5, 0],
 				[1, 0.5],
 				[0.5, 1],
 				[0, 0.5]
 			]),
-			...spin([slot('hst', 0.5, 1, [TL, [0.5, 0], [0, 0.5]])])
+			...spin([piece('hst', 0.5, 1, [TL, [0.5, 0], [0, 0.5]])])
 		]
-	},
-	{
-		id: 'four-patch',
-		name: 'Four patch',
-		group: 'block',
-		slots: spin([slot('square', 0.5, 0, [TL, [0.5, 0], MID, [0, 0.5]])], (turn) => turn % 2)
 	},
 	{
 		id: 'nine-patch',
 		name: 'Nine patch',
 		group: 'block',
-		slots: [0, 1, 2].flatMap((row) =>
+		pieces: [0, 1, 2].flatMap((row) =>
 			[0, 1, 2].map((col) =>
-				slot('square', 1 / 3, (row + col) % 2, [
+				piece('square', 1 / 3, (row + col) % 2, [
 					[col / 3, row / 3],
 					[(col + 1) / 3, row / 3],
 					[(col + 1) / 3, (row + 1) / 3],
@@ -169,26 +168,26 @@ const BLOCKS: Layout[] = [
 		id: 'sawtooth-star',
 		name: 'Sawtooth star',
 		group: 'block',
-		slots: [
-			slot('square', 0.5, 1, [
+		pieces: [
+			piece('square', 0.5, 1, [
 				[0.25, 0.25],
 				[0.75, 0.25],
 				[0.75, 0.75],
 				[0.25, 0.75]
 			]),
 			...spin([
-				slot('square', 0.25, 1, [TL, [0.25, 0], [0.25, 0.25], [0, 0.25]]),
-				slot('qst', 0.5, 0, [
+				piece('square', 0.25, 1, [TL, [0.25, 0], [0.25, 0.25], [0, 0.25]]),
+				piece('qst', 0.5, 0, [
 					[0.25, 0.25],
 					[0.5, 0],
 					[0.75, 0.25]
 				]),
-				slot('hst', 0.25, 1, [
+				piece('hst', 0.25, 1, [
 					[0.25, 0],
 					[0.5, 0],
 					[0.25, 0.25]
 				]),
-				slot('hst', 0.25, 1, [
+				piece('hst', 0.25, 1, [
 					[0.5, 0],
 					[0.75, 0],
 					[0.75, 0.25]
@@ -198,34 +197,65 @@ const BLOCKS: Layout[] = [
 	}
 ];
 
-export const LAYOUTS: Record<string, Layout> = Object.fromEntries(
-	[...PIECES, ...BLOCKS].map((layout) => [layout.id, layout])
+/*
+ * Superseded by grid compositions in `blocks.ts`. Kept only to migrate saved
+ * designs: a stored pinwheel is resampled into four half square triangles.
+ */
+const LEGACY: Cut[] = [
+	{
+		id: 'pinwheel',
+		name: 'Pinwheel',
+		group: 'legacy',
+		pieces: spin([
+			piece('hst', 0.5, 0, [TL, [0.5, 0], MID]),
+			piece('hst', 0.5, 1, [TL, MID, [0, 0.5]])
+		])
+	},
+	{
+		id: 'broken-dishes',
+		name: 'Broken dishes',
+		group: 'legacy',
+		pieces: spin([
+			piece('hst', 0.5, 0, [TL, [0.5, 0], [0, 0.5]]),
+			piece('hst', 0.5, 1, [[0.5, 0], MID, [0, 0.5]])
+		])
+	},
+	{
+		id: 'four-patch',
+		name: 'Four patch',
+		group: 'legacy',
+		pieces: spin([piece('square', 0.5, 0, [TL, [0.5, 0], MID, [0, 0.5]])], (turn) => turn % 2)
+	}
+];
+
+export const CUTS: Record<string, Cut> = Object.fromEntries(
+	[...PIECES, ...BLOCKS, ...LEGACY].map((cut) => [cut.id, cut])
 );
 
-export const PIECE_LAYOUTS: readonly Layout[] = PIECES;
-export const BLOCK_LAYOUTS: readonly Layout[] = BLOCKS;
+export const PIECE_CUTS: readonly Cut[] = PIECES;
+export const BLOCK_CUTS: readonly Cut[] = BLOCKS;
 
-export const isLayoutId = (value: unknown): value is string =>
-	typeof value === 'string' && value in LAYOUTS;
+export const isCutId = (value: unknown): value is string =>
+	typeof value === 'string' && value in CUTS;
 
 /*
- * There are only |layouts| x 4 possible slot lists; memoize them so hot
- * paths (previews recompute per pointer move) reuse frozen instances.
+ * There are only |cuts| x 4 possible piece lists; memoize them so hot paths
+ * (previews recompute per pointer move) reuse frozen instances.
  */
-const rotationCache = new Map<string, Slot[]>();
+const rotationCache = new Map<string, PieceShape[]>();
 
-export const rotatedSlots = (layoutId: string, rotation: number): Slot[] => {
+export const rotatedPieces = (cutId: string, rotation: number): PieceShape[] => {
 	const turns = normalizeTurns(rotation);
-	const key = `${layoutId}:${turns}`;
+	const key = `${cutId}:${turns}`;
 	const cached = rotationCache.get(key);
 	if (cached) return cached;
-	const layout = LAYOUTS[layoutId];
-	const slots =
+	const cut = CUTS[cutId];
+	const pieces =
 		turns === 0
-			? layout.slots
-			: layout.slots.map((s) => ({ ...s, points: s.points.map((p) => rotatePoint(p, turns)) }));
-	rotationCache.set(key, slots);
-	return slots;
+			? cut.pieces
+			: cut.pieces.map((s) => ({ ...s, points: s.points.map((p) => rotatePoint(p, turns)) }));
+	rotationCache.set(key, pieces);
+	return pieces;
 };
 
 export const toPolygonPoints = (points: readonly Point[], size: number): string =>
@@ -236,7 +266,7 @@ export const centroidOf = (points: readonly Point[]): Point => [
 	points.reduce((sum, [, y]) => sum + y, 0) / points.length
 ];
 
-/** Ray casting, so a click can be resolved to the slot it landed in. */
+/** Ray casting, so a click can be resolved to the piece it landed in. */
 export const pointInPolygon = ([px, py]: Point, points: readonly Point[]): boolean =>
 	points.reduce((inside, [xi, yi], i) => {
 		const [xj, yj] = points[(i + points.length - 1) % points.length];
@@ -247,13 +277,15 @@ export const pointInPolygon = ([px, py]: Point, points: readonly Point[]): boole
 /*
  * Points exactly on the far edges (x or y of 1) fall outside every polygon's
  * strict inequalities; clamp just inside so edge clicks resolve to the edge
- * slot instead of falling through to slot 0.
+ * piece instead of falling through to piece 0.
  */
 const clamp01 = (v: number): number => Math.min(Math.max(v, 0), 1 - 1e-6);
 
-/** Which slot of `layoutId` contains the unit-square point, or 0 as a fallback. */
-export const slotAt = (layoutId: string, rotation: number, [x, y]: Point): number => {
+/** Which piece of `cutId` contains the unit-square point, or 0 as a fallback. */
+export const pieceAt = (cutId: string, rotation: number, [x, y]: Point): number => {
 	const point: Point = [clamp01(x), clamp01(y)];
-	const hit = rotatedSlots(layoutId, rotation).findIndex((s) => pointInPolygon(point, s.points));
+	const hit = rotatedPieces(cutId, rotation).findIndex((s) => pointInPolygon(point, s.points));
 	return hit === -1 ? 0 : hit;
 };
+
+export const pieceCountOf = (cutId: string): number => CUTS[cutId].pieces.length;

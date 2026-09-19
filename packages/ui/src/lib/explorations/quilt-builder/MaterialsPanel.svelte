@@ -1,12 +1,19 @@
 <script lang="ts">
 	import { isNamed } from './data';
-	import { KIND_ICON_LAYOUT, KIND_NOUN } from './cutting';
-	import LayoutSvg from './LayoutSvg.svelte';
+	import { KIND_ICON_CUT, KIND_NOUN } from './cutting';
+	import BlockSvg from './BlockSvg.svelte';
+	import { leafBlock, type Block } from './model';
+	import type { ShapeKind } from './geometry';
 	import type { QuiltStore } from './state.svelte';
 
 	let { store }: { store: QuiltStore } = $props();
 
 	const LIGHT = '#e4e4e4';
+
+	/** Built once so the flatten cache keeps hitting across renders. */
+	const KIND_ICON: Record<ShapeKind, Block> = Object.fromEntries(
+		Object.entries(KIND_ICON_CUT).map(([kind, cut]) => [kind, leafBlock(cut)])
+	) as Record<ShapeKind, Block>;
 
 	const onHexChange = (e: Event & { currentTarget: HTMLInputElement }, id: string) => {
 		if (!store.recolorMaterial(id, e.currentTarget.value)) {
@@ -99,8 +106,8 @@
 											title={`${k.pieces} ${KIND_NOUN[k.kind]}${k.pieces === 1 ? '' : 's'}`}
 										>
 											<span class="kind-icon">
-												<LayoutSvg
-													layout={KIND_ICON_LAYOUT[k.kind]}
+												<BlockSvg
+													block={KIND_ICON[k.kind]}
 													fills={[material.hex, LIGHT, material.hex, LIGHT]}
 												/>
 											</span>

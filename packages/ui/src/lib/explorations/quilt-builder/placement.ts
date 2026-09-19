@@ -1,70 +1,147 @@
 /*
- * Placement: what one click does to a cell. Shared by the editing path and
+ * Placement: what one click does to a block. Shared by the editing path and
  * the ghost preview so what you see is what you get.
+ *
+ * Painting works on the LEAF under the cursor, so a click inside a 4x4
+ * composition recuts one sixteenth of the block. Stamping replaces the whole
+ * block, because a block type carries its own composition.
  */
 
-import { centroidOf, rotatedSlots, slotAt, type Point } from './geometry';
-import { cellsEqual, emptyCell, type Cell } from './model';
+import { centroidOf, pieceAt, rotatedPieces, type Point } from './geometry';
+import {
+	blocksEqual,
+	cloneBlock,
+	emptyBlock,
+	leafAt,
+	localPoint,
+	mapLeavesWithRect,
+	sameStructure,
+	setLeaf,
+	walkLeaves,
+	type Block,
+	type LeafBlock,
+	type MaterialId
+} from './model';
 
 export type Pending =
-	/** Paint the clicked slot only. */
-	| { mode: 'paint'; layout: string; rotation: number }
-	/** Stamp a block: role-0 slots take the fabric, the rest keep what was under them. */
-	| { mode: 'stamp'; layout: string; rotation: number }
+	/** Paint the clicked piece only, recutting its leaf if the cut differs. */
+	| { mode: 'paint'; cut: string; rotation: number }
+	/** Stamp a block type: role-0 pieces take the fabric, the rest keep what was under them. */
+	| { mode: 'stamp'; block: Block }
 	/** Stamp a saved block exactly as it was captured. */
-	| { mode: 'exact'; layout: string; rotation: number; slots: (string | null)[] };
+	| { mode: 'exact'; block: Block };
+
+/** The fabric under a point in block space. */
+export const fabricAt = (block: Block, point: Point): MaterialId | null => {
+	const { leaf, rect } = leafAt(block, point);
+	return leaf.fabrics[pieceAt(leaf.cut, leaf.rotation, localPoint(rect, point))] ?? null;
+};
+
+/** Block-space centroid of a piece belonging to a leaf at `rect`. */
+const centroidIn = (
+	rect: { x: number; y: number; w: number; h: number },
+	points: Point[]
+): Point => {
+	const [cx, cy] = centroidOf(points);
+	return [rect.x + cx * rect.w, rect.y + cy * rect.h];
+};
 
 /*
- * Re-cut a cell's current fabric into a new layout: each new slot takes the
- * color under its centroid. Placing a triangle over a solid square keeps the
- * square's color everywhere the triangle doesn't cover.
+ * Re-cut a block's current fabric into a new shape: each new piece takes the
+ * colour under its centroid. Placing a triangle over a solid square keeps the
+ * square's colour everywhere the triangle doesn't cover.
  */
-export const inheritedSlots = (cell: Cell, layout: string, rotation: number): (string | null)[] =>
-	rotatedSlots(layout, rotation).map(
-		(s) => cell.slots[slotAt(cell.layout, cell.rotation, centroidOf(s.points))]
-	);
+export const resample = (target: Block, source: Block): Block =>
+	mapLeavesWithRect(target, (leaf, rect) => ({
+		...leaf,
+		fabrics: rotatedPieces(leaf.cut, leaf.rotation).map((shape) =>
+			fabricAt(source, centroidIn(rect, shape.points))
+		)
+	}));
 
-export interface Placement {
-	cell: Cell;
-	slot: number;
-}
+/** Resample, except role-0 pieces take the selected fabric. */
+const stampInto = (target: Block, source: Block, materialId: MaterialId): Block =>
+	mapLeavesWithRect(target, (leaf, rect) => {
+		const offset = leaf.roleOffset ?? 0;
+		return {
+			...leaf,
+			fabrics: rotatedPieces(leaf.cut, leaf.rotation).map((shape) =>
+				shape.role + offset === 0 ? materialId : fabricAt(source, centroidIn(rect, shape.points))
+			)
+		};
+	});
+
+/** One leaf recut to a new shape, inheriting colour by centroid. */
+export const recutLeaf = (leaf: LeafBlock, cut: string, rotation: number): LeafBlock => ({
+	kind: 'leaf',
+	cut,
+	rotation,
+	fabrics: rotatedPieces(cut, rotation).map(
+		(shape) => leaf.fabrics[pieceAt(leaf.cut, leaf.rotation, centroidOf(shape.points))] ?? null
+	)
+});
+
+/** Set the fabric of just the piece under `point`, leaving the shape alone. */
+const paintPiece = (block: Block, point: Point, materialId: MaterialId): Block => {
+	const { leaf, rect, path } = leafAt(block, point);
+	const fabrics = [...leaf.fabrics];
+	fabrics[pieceAt(leaf.cut, leaf.rotation, localPoint(rect, point))] = materialId;
+	return setLeaf(block, path, { ...leaf, fabrics });
+};
 
 export const buildPlacement = (
-	cell: Cell,
+	block: Block,
 	point: Point,
 	pending: Pending,
-	materialId: string
-): Placement => {
-	const matches = cell.layout === pending.layout && cell.rotation === pending.rotation;
-	const slot = slotAt(pending.layout, pending.rotation, point);
+	materialId: MaterialId
+): Block => {
+	if (pending.mode === 'exact') return cloneBlock(pending.block);
 
-	if (pending.mode === 'exact') {
-		return {
-			cell: { layout: pending.layout, rotation: pending.rotation, slots: [...pending.slots] },
-			slot
-		};
+	/*
+	 * Stamping onto a block that is already this shape recolours the one piece
+	 * under the cursor, so a stamped block can be refined click by click.
+	 */
+	if (pending.mode === 'stamp') {
+		return sameStructure(block, pending.block)
+			? paintPiece(block, point, materialId)
+			: stampInto(cloneBlock(pending.block), block, materialId);
 	}
 
-	const slots = matches ? [...cell.slots] : inheritedSlots(cell, pending.layout, pending.rotation);
-	if (pending.mode === 'paint' || matches) {
-		slots[slot] = materialId;
-	} else {
-		rotatedSlots(pending.layout, pending.rotation).forEach((s, i) => {
-			if (s.role === 0) slots[i] = materialId;
-		});
+	const { leaf, rect, path } = leafAt(block, point);
+	if (leaf.cut === pending.cut && leaf.rotation === pending.rotation) {
+		return paintPiece(block, point, materialId);
 	}
-	return { cell: { layout: pending.layout, rotation: pending.rotation, slots }, slot };
+	const next: LeafBlock = recutLeaf(leaf, pending.cut, pending.rotation);
+	next.fabrics[pieceAt(next.cut, next.rotation, localPoint(rect, point))] = materialId;
+	return setLeaf(block, path, next);
 };
 
-/** The cell after erasing the slot under `point`. */
-export const buildErase = (cell: Cell, point: Point): Cell | null => {
-	const slot = slotAt(cell.layout, cell.rotation, point);
-	if (cell.slots[slot] === null) return null;
-	const slots = cell.slots.map((s, i) => (i === slot ? null : s));
-	const next = slots.every((s) => s === null) ? emptyCell() : { ...cell, slots };
-	return cellsEqual(next, cell) ? null : next;
+/** The block after erasing the piece under `point`. */
+export const buildErase = (block: Block, point: Point): Block | null => {
+	const { leaf, rect, path } = leafAt(block, point);
+	const index = pieceAt(leaf.cut, leaf.rotation, localPoint(rect, point));
+	if (leaf.fabrics[index] === null) return null;
+	const fabrics = leaf.fabrics.map((f, i) => (i === index ? null : f));
+	const next = fabrics.every((f) => f === null)
+		? (emptyBlock() as LeafBlock)
+		: { ...leaf, fabrics };
+	const result = setLeaf(block, path, next);
+	return blocksEqual(result, block) ? null : result;
 };
 
-/** The point keyboard activation should target: the first slot's centroid. */
-export const keyboardPoint = (layout: string, rotation: number): Point =>
-	centroidOf(rotatedSlots(layout, rotation)[0].points);
+/** The point keyboard activation should target. */
+export const keyboardPoint = (pending: Pending): Point =>
+	pending.mode === 'paint'
+		? centroidOf(rotatedPieces(pending.cut, pending.rotation)[0].points)
+		: [0.5, 0.5];
+
+/** The first piece holding fabric, in reading order, as a block-space point. */
+export const firstFilledPoint = (block: Block): Point | null => {
+	for (const { leaf, rect } of walkLeaves(block)) {
+		const index = leaf.fabrics.findIndex((f) => f !== null);
+		if (index !== -1) {
+			return centroidIn(rect, rotatedPieces(leaf.cut, leaf.rotation)[index].points);
+		}
+	}
+	return null;
+};

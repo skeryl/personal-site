@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { HISTORY_CAP, emptyHistory, record, redo, undo } from './history';
-import { emptyBoard, type Board, type Cell } from './model';
+import { emptyBoard, leafBlock, type Block, type Board, type LeafBlock } from './model';
 
 const DIMS = { rows: 3, cols: 3 };
 
-const square = (fabric: string): Cell => ({ layout: 'square', rotation: 0, slots: [fabric] });
+const square = (fabric: string): Block => leafBlock('square', 0, [fabric]);
 
 const boardWith = (fabric: string): Board => {
 	const board = emptyBoard(DIMS);
@@ -32,7 +32,7 @@ describe('record', () => {
 		const snapshot = boardWith('tan');
 		const history = record(emptyHistory(), snapshot);
 		snapshot[0] = square('cream');
-		expect(history.past[0][0].slots).toEqual(['tan']);
+		expect((history.past[0][0] as LeafBlock).fabrics).toEqual(['tan']);
 	});
 });
 
@@ -44,11 +44,11 @@ describe('undo/redo', () => {
 
 		const undone = undo(history, after);
 		expect(undone).not.toBeNull();
-		expect(undone!.board[0].slots).toEqual(['tan']);
+		expect((undone!.board[0] as LeafBlock).fabrics).toEqual(['tan']);
 
 		const redone = redo(undone!.history, undone!.board);
 		expect(redone).not.toBeNull();
-		expect(redone!.board[0].slots).toEqual(['cream']);
+		expect((redone!.board[0] as LeafBlock).fabrics).toEqual(['cream']);
 	});
 
 	it('returns null with nothing to restore', () => {
@@ -65,7 +65,7 @@ describe('undo/redo', () => {
 			future: []
 		};
 		const undone = undo(history, current);
-		expect(undone!.board[0].slots).toEqual(['cream']);
+		expect((undone!.board[0] as LeafBlock).fabrics).toEqual(['cream']);
 		// The junk entry was discarded, not left to eat a second undo.
 		expect(undone!.history.past).toHaveLength(0);
 	});
@@ -74,6 +74,6 @@ describe('undo/redo', () => {
 		const history = record(emptyHistory(), boardWith('tan'));
 		const undone = undo(history, boardWith('cream'));
 		expect(undone!.history.future).toHaveLength(1);
-		expect(undone!.history.future[0][0].slots).toEqual(['cream']);
+		expect((undone!.history.future[0][0] as LeafBlock).fabrics).toEqual(['cream']);
 	});
 });

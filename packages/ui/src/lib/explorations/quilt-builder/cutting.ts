@@ -8,8 +8,8 @@
  */
 
 import { SEAM_INCHES, fmtInches, type Material } from './data';
-import { LAYOUTS, type ShapeKind } from './geometry';
-import { type Cell } from './model';
+import { type ShapeKind } from './geometry';
+import { flatten, type Block } from './model';
 
 /** Pieces cut from one blank, per kind. */
 export const CUT_YIELD: Record<ShapeKind, number> = { square: 1, rect: 2, hst: 2, qst: 4 };
@@ -30,8 +30,8 @@ export const KIND_CUT: Record<ShapeKind, string> = {
 	qst: 'cut on both diagonals'
 };
 
-/** The piece layout whose first slot draws this kind, for icons. */
-export const KIND_ICON_LAYOUT: Record<ShapeKind, string> = {
+/** The cut whose first piece draws this kind, for icons. */
+export const KIND_ICON_CUT: Record<ShapeKind, string> = {
 	square: 'square',
 	rect: 'rectangle',
 	hst: 'hst',
@@ -65,21 +65,22 @@ export interface CutGroup {
 const plural = (n: number, noun: string): string => (n === 1 ? noun : `${noun}s`);
 
 export const cuttingListFor = (
-	cells: readonly Cell[],
+	blocks: readonly Block[],
 	materials: readonly Material[],
 	blockSize: number
 ): CutGroup[] => {
 	// material -> frac -> kind -> piece count
 	const tally = new Map<string, Map<number, Map<ShapeKind, number>>>();
-	cells.forEach((cell) => {
-		const defs = LAYOUTS[cell.layout].slots;
-		cell.slots.forEach((id, i) => {
-			if (!id) return;
-			const byFrac = tally.get(id) ?? new Map<number, Map<ShapeKind, number>>();
-			const byKind = byFrac.get(defs[i].frac) ?? new Map<ShapeKind, number>();
-			byKind.set(defs[i].kind, (byKind.get(defs[i].kind) ?? 0) + 1);
-			byFrac.set(defs[i].frac, byKind);
-			tally.set(id, byFrac);
+	blocks.forEach((block) => {
+		// `frac` arrives already scaled by the composition, so a pinwheel inside
+		// a 2x2 grid tallies at half the blank size of a plain one.
+		flatten(block).forEach(({ fabric, frac, kind }) => {
+			if (!fabric) return;
+			const byFrac = tally.get(fabric) ?? new Map<number, Map<ShapeKind, number>>();
+			const byKind = byFrac.get(frac) ?? new Map<ShapeKind, number>();
+			byKind.set(kind, (byKind.get(kind) ?? 0) + 1);
+			byFrac.set(frac, byKind);
+			tally.set(fabric, byFrac);
 		});
 	});
 

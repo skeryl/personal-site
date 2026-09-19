@@ -15,23 +15,35 @@ import {
 	normalizeHex,
 	type Material
 } from './data';
-import { BLOCK_LAYOUTS, LAYOUTS, type Point } from './geometry';
+import { BLOCK_TYPES, BLOCK_TYPE_BY_ID } from './blocks';
+import { CUTS, type Point } from './geometry';
 import {
 	applyUpdates,
 	boardsEqual,
+	cloneBlock,
 	cloneBoard,
+	divisionOf,
 	emptyBoard,
-	emptyCell,
 	isEmpty,
+	mapLeaves,
 	materialsInUse,
+	recompose,
 	resizeBoard,
+	rotateBlock,
 	withoutMaterial,
-	type Board,
-	type Cell
+	type Block,
+	type Board
 } from './model';
-import { buildErase, buildPlacement, keyboardPoint, type Pending } from './placement';
+import {
+	buildErase,
+	buildPlacement,
+	firstFilledPoint,
+	keyboardPoint,
+	type Pending
+} from './placement';
 import { emptyHistory, record, redo as redoHistory, undo as undoHistory } from './history';
 import {
+	LEGACY_STATE_KEY,
 	STATE_KEY,
 	gridDims,
 	parseSavedState,
@@ -43,7 +55,10 @@ import {
 import { cuttingListFor, materialsListText } from './cutting';
 
 export type Tab = 'block' | 'piece';
-export type Tool = 'place' | 'erase';
+export type Tool = 'place' | 'erase' | 'select';
+
+/** Compositions offered in the toolbar: one piece, 2x2, or 4x4. */
+export const DIVISIONS = [1, 2, 4] as const;
 
 export interface Hover {
 	index: number;
@@ -65,11 +80,13 @@ export class QuiltStore {
 	selectedMaterialId = $state<string | null>(null);
 	customBlocks = $state<CustomBlock[]>([]);
 	cells = $state<Board>(emptyBoard(gridDims(DEFAULT_SIZE_ID, DEFAULT_BLOCK_SIZE)));
+	/** The block the composition control acts on. */
+	selectedIndex = $state<number | null>(null);
 
 	tab = $state<Tab>('block');
 	pieceId = $state('square');
 	/** A built-in layout id, or `custom:<id>` for a saved block. */
-	blockId = $state(BLOCK_LAYOUTS[0].id);
+	blockId = $state(BLOCK_TYPES[0].id);
 	rotation = $state(0);
 	tool = $state<Tool>('place');
 	/** "+ Add new" is waiting for a cell to be picked. */
@@ -85,7 +102,8 @@ export class QuiltStore {
 
 	constructor() {
 		if (!browser) return;
-		const saved = parseSavedState(readJson(localStorage, STATE_KEY));
+		const raw = readJson(localStorage, STATE_KEY) ?? readJson(localStorage, LEGACY_STATE_KEY);
+		const saved = parseSavedState(raw);
 		if (saved) this.restore(saved);
 	}
 
@@ -109,7 +127,7 @@ export class QuiltStore {
 	);
 	/** Placement is allowed only with a named fabric selected. */
 	canPlace = $derived(this.selectedMaterial !== null && isNamed(this.selectedMaterial));
-	filled = $derived(this.cells.filter((cell) => !isEmpty(cell)).length);
+	filled = $derived(this.cells.filter((block) => !isEmpty(block)).length);
 	inUse = $derived(materialsInUse(this.cells));
 	canUndo = $derived(this.history.past.length > 0);
 	canRedo = $derived(this.history.future.length > 0);
@@ -121,22 +139,34 @@ export class QuiltStore {
 			: null
 	);
 
+	/** The block under the composition control, if one is selected. */
+	selectedBlock = $derived(
+		this.selectedIndex === null ? null : (this.cells[this.selectedIndex] ?? null)
+	);
+	selectedDivision = $derived(this.selectedBlock ? divisionOf(this.selectedBlock) : 0);
+
+	/** Drop references to fabrics that have since been deleted. */
+	private withKnownFabrics = (block: Block): Block =>
+		mapLeaves(block, (leaf) => ({
+			...leaf,
+			fabrics: leaf.fabrics.map((f) => (f && this.materialById.has(f) ? f : null))
+		}));
+
 	/** What a click would place, given the active tab and selection. */
 	pending = $derived.by<Pending>(() => {
 		if (this.tab === 'piece') {
-			return { mode: 'paint', layout: this.pieceId, rotation: this.rotation };
+			const cut = this.pieceId in CUTS ? this.pieceId : 'square';
+			return { mode: 'paint', cut, rotation: this.rotation };
 		}
 		const custom = this.selectedCustom;
 		if (custom) {
 			return {
 				mode: 'exact',
-				layout: custom.layout,
-				rotation: (custom.rotation + this.rotation) % 4,
-				slots: custom.slots.map((s) => (s && this.materialById.has(s) ? s : null))
+				block: rotateBlock(this.withKnownFabrics(custom.block), this.rotation)
 			};
 		}
-		const layout = this.blockId in LAYOUTS ? this.blockId : BLOCK_LAYOUTS[0].id;
-		return { mode: 'stamp', layout, rotation: this.rotation };
+		const type = BLOCK_TYPE_BY_ID[this.blockId] ?? BLOCK_TYPES[0];
+		return { mode: 'stamp', block: rotateBlock(type.block, this.rotation) };
 	});
 
 	/** The hovered cell renders as the exact state a click would produce. */
@@ -144,14 +174,14 @@ export class QuiltStore {
 		if (this.tool !== 'place' || this.gesture || this.capturing || !this.hover) return null;
 		if (!this.canPlace || !this.selectedMaterialId) return null;
 		const { index, point } = this.hover;
-		const built = buildPlacement(this.cells[index], point, this.pending, this.selectedMaterialId);
-		return { index, ...built };
+		const block = buildPlacement(this.cells[index], point, this.pending, this.selectedMaterialId);
+		return { index, block };
 	});
 
 	erasePreview = $derived.by(() => {
 		if (this.tool !== 'erase' || this.gesture || !this.hover) return null;
-		const cell = buildErase(this.cells[this.hover.index], this.hover.point);
-		return cell ? { index: this.hover.index, cell } : null;
+		const block = buildErase(this.cells[this.hover.index], this.hover.point);
+		return block ? { index: this.hover.index, block } : null;
 	});
 
 	savedState = $derived<SavedState>({
@@ -166,7 +196,7 @@ export class QuiltStore {
 
 	// ── Mutation gate ────────────────────────────────────────────────
 
-	private commit(updates: ReadonlyMap<number, Cell>): boolean {
+	private commit(updates: ReadonlyMap<number, Block>): boolean {
 		const next = applyUpdates(this.cells, updates);
 		if (!next) return false;
 		if (this.gesture) {
@@ -229,8 +259,8 @@ export class QuiltStore {
 
 	private placeAt(index: number, point: Point): boolean {
 		if (!this.canPlace || !this.selectedMaterialId) return false;
-		const built = buildPlacement(this.cells[index], point, this.pending, this.selectedMaterialId);
-		return this.commit(new Map([[index, built.cell]]));
+		const block = buildPlacement(this.cells[index], point, this.pending, this.selectedMaterialId);
+		return this.commit(new Map([[index, block]]));
 	}
 
 	private eraseAt(index: number, point: Point): boolean {
@@ -242,16 +272,36 @@ export class QuiltStore {
 		this.rotation = (this.rotation + 1) % 4;
 	}
 
+	/** Turning a composed block turns every child and permutes their positions. */
 	rotateCell(index: number) {
 		if (this.gesture) return;
-		const cell = this.cells[index];
-		if (isEmpty(cell)) return;
-		this.commit(new Map([[index, { ...cell, rotation: (cell.rotation + 1) % 4 }]]));
+		const block = this.cells[index];
+		if (isEmpty(block)) return;
+		this.commit(new Map([[index, rotateBlock(block, 1)]]));
 	}
 
 	clearAll() {
 		if (this.filled === 0 || !confirm('Clear every block on the quilt?')) return;
+		this.selectedIndex = null;
 		this.replaceBoard(emptyBoard(this.dims));
+	}
+
+	// ── Composition ──────────────────────────────────────────────────
+
+	select(index: number | null) {
+		this.selectedIndex = index;
+	}
+
+	/*
+	 * Going finer replicates, so the picture does not change; only the cut list
+	 * does. Going coarser keeps each group's top-left piece.
+	 */
+	setComposition(division: number) {
+		const index = this.selectedIndex;
+		if (index === null || this.gesture) return;
+		const block = this.cells[index];
+		if (!block) return;
+		this.commit(new Map([[index, recompose(block, division)]]));
 	}
 
 	// ── Pointer handlers ─────────────────────────────────────────────
@@ -271,6 +321,10 @@ export class QuiltStore {
 		if (e.button !== 0 || this.gesture) return;
 		if (this.capturing) {
 			this.captureCell(index);
+			return;
+		}
+		if (this.tool === 'select') {
+			this.select(index);
 			return;
 		}
 		const hit = this.resolve(e.clientX, e.clientY);
@@ -303,17 +357,16 @@ export class QuiltStore {
 			this.captureCell(index);
 			return;
 		}
-		if (this.tool === 'erase') {
-			const cell = this.cells[index];
-			const filledSlot = cell.slots.findIndex((s) => s !== null);
-			if (filledSlot === -1) return;
-			const slots = cell.slots.map((s, i) => (i === filledSlot ? null : s));
-			this.commit(
-				new Map([[index, slots.every((s) => s === null) ? emptyCell() : { ...cell, slots }]])
-			);
+		if (this.tool === 'select') {
+			this.select(index);
 			return;
 		}
-		this.placeAt(index, keyboardPoint(this.pending.layout, this.pending.rotation));
+		if (this.tool === 'erase') {
+			const point = firstFilledPoint(this.cells[index]);
+			if (point) this.eraseAt(index, point);
+			return;
+		}
+		this.placeAt(index, keyboardPoint(this.pending));
 	}
 
 	onKeyDown(e: KeyboardEvent) {
@@ -328,6 +381,7 @@ export class QuiltStore {
 		if (e.key === 'Escape') {
 			if (this.gesture) this.cancelGesture();
 			else if (this.capturing) this.capturing = false;
+			else if (this.selectedIndex !== null) this.selectedIndex = null;
 			else this.tool = 'place';
 			return;
 		}
@@ -344,6 +398,7 @@ export class QuiltStore {
 			this.tool = 'erase';
 		}
 		if (e.key === 'p' || e.key === 'P') this.tool = 'place';
+		if (e.key === 's' || e.key === 'S') this.tool = 'select';
 	}
 
 	// ── Palette ──────────────────────────────────────────────────────
@@ -381,9 +436,7 @@ export class QuiltStore {
 		const block: CustomBlock = {
 			id: crypto.randomUUID(),
 			name,
-			layout: cell.layout,
-			rotation: cell.rotation,
-			slots: [...cell.slots]
+			block: cloneBlock(cell)
 		};
 		this.customBlocks = [...this.customBlocks, block];
 		this.rotation = 0;
@@ -394,7 +447,7 @@ export class QuiltStore {
 		const block = this.customBlocks.find((b) => b.id === id);
 		if (!block || !confirm(`Remove the "${block.name}" block type?`)) return;
 		this.customBlocks = this.customBlocks.filter((b) => b.id !== id);
-		if (this.blockId === `${CUSTOM_PREFIX}${id}`) this.blockId = BLOCK_LAYOUTS[0].id;
+		if (this.blockId === `${CUSTOM_PREFIX}${id}`) this.blockId = BLOCK_TYPES[0].id;
 	}
 
 	// ── Materials ────────────────────────────────────────────────────
@@ -441,7 +494,7 @@ export class QuiltStore {
 		if (this.selectedMaterialId === id) this.selectedMaterialId = this.materials[0]?.id ?? null;
 		this.customBlocks = this.customBlocks.map((b) => ({
 			...b,
-			slots: b.slots.map((s) => (s === id ? null : s))
+			block: this.withKnownFabrics(b.block)
 		}));
 		this.replaceBoard(withoutMaterial(this.cells, id));
 	}
@@ -462,6 +515,7 @@ export class QuiltStore {
 		apply();
 		const to = gridDims(this.sizeId, this.blockSize);
 		if (from.rows === to.rows && from.cols === to.cols) return;
+		this.selectedIndex = null;
 		this.replaceBoard(resizeBoard(this.cells, from, to));
 	}
 

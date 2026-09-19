@@ -2,6 +2,11 @@
  * Persistence: the autosaved working state, sanitized on the way in so stale
  * or malformed saves degrade gracefully instead of breaking the page.
  * Storage is injected so tests can use a fake, and writes never throw.
+ *
+ * v2 stored one flat cell per grid position: { layout, rotation, slots }. v3
+ * stores a Block tree. A v2 cell reads as a leaf, and the three layouts that
+ * became compositions (pinwheel, broken dishes, four patch) are resampled
+ * into their grid form so saved designs keep their colours.
  */
 
 import {
@@ -12,17 +17,22 @@ import {
 	normalizeHex,
 	type Material
 } from './data';
-import { LAYOUTS, isLayoutId } from './geometry';
-import { emptyCell, type Board, type Cell } from './model';
+import { REPLACED_BY } from './blocks';
+import { CUTS, isCutId, normalizeTurns } from './geometry';
+import { cloneBlock, emptyBlock, leafBlock, rotateBlock, type Block, type Board } from './model';
+import { resample } from './placement';
 
-export const STATE_KEY = 'quilt-builder:v2';
+export const STATE_KEY = 'quilt-builder:v3';
+/** Read once when v3 is absent, so existing designs survive the upgrade. */
+export const LEGACY_STATE_KEY = 'quilt-builder:v2';
+
+/** Compositions the palette offers. Anything else in a save is rejected. */
+const DIVISIONS = [1, 2, 4];
 
 export interface CustomBlock {
 	id: string;
 	name: string;
-	layout: string;
-	rotation: number;
-	slots: (string | null)[];
+	block: Block;
 }
 
 export interface SavedState {
@@ -55,20 +65,63 @@ export const writeJson = (storage: StorageLike, key: string, value: unknown): bo
 	}
 };
 
-const sanitizeCell = (raw: unknown, known: ReadonlySet<string>): Cell => {
-	const cell = raw as Partial<Cell> | undefined;
-	if (!cell || !isLayoutId(cell.layout) || !Array.isArray(cell.slots)) return emptyCell();
-	if (cell.slots.length !== LAYOUTS[cell.layout].slots.length) return emptyCell();
-	return {
-		layout: cell.layout,
-		rotation: typeof cell.rotation === 'number' ? ((cell.rotation % 4) + 4) % 4 : 0,
-		slots: cell.slots.map((s) => (typeof s === 'string' && known.has(s) ? s : null))
-	};
+const fabricList = (raw: unknown, count: number, known: ReadonlySet<string>): (string | null)[] =>
+	Array.from({ length: count }, (_, i) => {
+		const value = Array.isArray(raw) ? raw[i] : null;
+		return typeof value === 'string' && known.has(value) ? value : null;
+	});
+
+type Loose = Record<string, unknown>;
+
+const sanitizeLeaf = (raw: Loose, known: ReadonlySet<string>): Block => {
+	if (!isCutId(raw.cut)) return emptyBlock();
+	const count = CUTS[raw.cut].pieces.length;
+	if (!Array.isArray(raw.fabrics) || raw.fabrics.length !== count) return emptyBlock();
+	const roleOffset = typeof raw.roleOffset === 'number' ? raw.roleOffset : 0;
+	return leafBlock(
+		raw.cut,
+		normalizeTurns(typeof raw.rotation === 'number' ? raw.rotation : 0),
+		fabricList(raw.fabrics, count, known),
+		roleOffset || undefined
+	);
+};
+
+/** A v2 cell, converted to a leaf and then to its replacement composition. */
+const migrateCell = (raw: Loose, known: ReadonlySet<string>): Block => {
+	if (!isCutId(raw.layout)) return emptyBlock();
+	const count = CUTS[raw.layout].pieces.length;
+	if (!Array.isArray(raw.slots) || raw.slots.length !== count) return emptyBlock();
+	const rotation = normalizeTurns(typeof raw.rotation === 'number' ? raw.rotation : 0);
+	const old = leafBlock(raw.layout, rotation, fabricList(raw.slots, count, known));
+	const replacement = REPLACED_BY[raw.layout];
+	// Resampling by centroid, so the index order of the old layout never matters.
+	return replacement ? resample(rotateBlock(cloneBlock(replacement), rotation), old) : old;
+};
+
+export const sanitizeBlock = (raw: unknown, known: ReadonlySet<string>): Block => {
+	if (typeof raw !== 'object' || raw === null) return emptyBlock();
+	const value = raw as Loose;
+	if (value.kind === 'grid') {
+		const { cols, rows, children } = value;
+		if (
+			typeof cols !== 'number' ||
+			typeof rows !== 'number' ||
+			!DIVISIONS.includes(cols) ||
+			!DIVISIONS.includes(rows) ||
+			!Array.isArray(children) ||
+			children.length !== cols * rows
+		) {
+			return emptyBlock();
+		}
+		return { kind: 'grid', cols, rows, children: children.map((c) => sanitizeBlock(c, known)) };
+	}
+	if (value.kind === 'leaf') return sanitizeLeaf(value, known);
+	return migrateCell(value, known);
 };
 
 export const sanitizeCells = (raw: unknown, count: number, known: ReadonlySet<string>): Board => {
 	const list = Array.isArray(raw) ? raw : [];
-	return Array.from({ length: count }, (_, i) => sanitizeCell(list[i], known));
+	return Array.from({ length: count }, (_, i) => sanitizeBlock(list[i], known));
 };
 
 export const sanitizeMaterials = (raw: unknown): Material[] => {
@@ -87,12 +140,12 @@ export const sanitizeMaterials = (raw: unknown): Material[] => {
 const sanitizeCustomBlocks = (raw: unknown, known: ReadonlySet<string>): CustomBlock[] => {
 	if (!Array.isArray(raw)) return [];
 	return raw.flatMap((item) => {
-		const b = item as Partial<CustomBlock>;
-		if (typeof b?.id !== 'string' || typeof b.name !== 'string') return [];
-		const cell = sanitizeCell(b, known);
-		return [
-			{ id: b.id, name: b.name, layout: cell.layout, rotation: cell.rotation, slots: cell.slots }
-		];
+		if (typeof item !== 'object' || item === null) return [];
+		const b = item as Loose;
+		if (typeof b.id !== 'string' || typeof b.name !== 'string') return [];
+		// v2 saved the layout inline; v3 saves a block tree.
+		const block = sanitizeBlock('block' in b ? b.block : b, known);
+		return [{ id: b.id, name: b.name, block }];
 	});
 };
 

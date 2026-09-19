@@ -19,6 +19,12 @@ const cellFills = (page: Page, index: number) =>
 		nodes.map((node) => node.getAttribute('fill'))
 	);
 
+/** Toolbar buttons, scoped so "Select" cannot match a fabric's "Selected". */
+const tool = (page: Page, name: RegExp) => page.locator('.actions').getByRole('button', { name });
+
+const composition = (page: Page, name: RegExp) =>
+	page.locator('.composition').getByRole('button', { name });
+
 /** Hover previews pollute fill reads; park the pointer off the quilt. */
 const parkMouse = (page: Page) => page.mouse.move(10, 10);
 
@@ -33,7 +39,10 @@ const addFabric = async (page: Page, name: string, hex: string) => {
 
 test.beforeEach(async ({ page }) => {
 	await page.goto(ROUTE);
-	await page.evaluate(() => localStorage.removeItem('quilt-builder:v2'));
+	await page.evaluate(() => {
+		localStorage.removeItem('quilt-builder:v3');
+		localStorage.removeItem('quilt-builder:v2');
+	});
 	await page.reload();
 	await page.waitForSelector('[data-cell-index="0"]');
 });
@@ -109,4 +118,57 @@ test('the design, fabrics, and size survive a reload', async ({ page }) => {
 	await expect(page.getByLabel('Quilt size')).toHaveValue('throw');
 	await expect(page.locator('.material')).toHaveCount(1);
 	expect(await cellFills(page, 3)).toEqual(['#4f7fe8']);
+});
+
+test('composition subdivides a block without changing how it looks', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await page.getByRole('tab', { name: 'Piece' }).click();
+	await cell(page, 0).click();
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toEqual(['#4f7fe8']);
+	await expect(page.locator('.material').first()).toContainText('8½” squares: (1)');
+
+	await tool(page, /^Select/).click();
+	await cell(page, 0).click();
+
+	// Going finer replicates: four quarters of the same blue, so the picture
+	// is unchanged but the cut list now wants four smaller squares.
+	await composition(page, /^2×2/).click();
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toEqual(Array(4).fill('#4f7fe8'));
+	await expect(page.locator('.material').first()).toContainText('4½” squares: (4)');
+
+	await composition(page, /^4×4/).click();
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toEqual(Array(16).fill('#4f7fe8'));
+	await expect(page.locator('.material').first()).toContainText('2½” squares: (16)');
+
+	// Coarsening keeps each group's top-left piece, and undo restores the 4x4.
+	await composition(page, /^1\s/).click();
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toEqual(['#4f7fe8']);
+	await page.keyboard.press('ControlOrMeta+z');
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toHaveLength(16);
+});
+
+test('a composed block can be painted one child at a time', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await page.getByRole('tab', { name: 'Piece' }).click();
+	await cell(page, 0).click();
+
+	await tool(page, /^Select/).click();
+	await cell(page, 0).click();
+	await composition(page, /^2×2/).click();
+
+	await addFabric(page, 'Green', '38511f');
+	await tool(page, /^Place/).click();
+	await page.getByRole('tab', { name: 'Piece' }).click();
+
+	// Click inside the top-left quarter only.
+	const box = await cell(page, 0).boundingBox();
+	if (!box) throw new Error('cell not found');
+	await page.mouse.click(box.x + box.width * 0.25, box.y + box.height * 0.25);
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toEqual(['#38511f', '#4f7fe8', '#4f7fe8', '#4f7fe8']);
 });

@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
-	BLOCK_LAYOUTS,
-	LAYOUTS,
-	PIECE_LAYOUTS,
+	BLOCK_CUTS,
+	CUTS,
+	PIECE_CUTS,
 	centroidOf,
 	normalizeTurns,
 	pointInPolygon,
 	rotatePoint,
-	rotatedSlots,
-	slotAt,
+	rotatedPieces,
+	pieceAt,
 	toPolygonPoints,
 	type Point
 } from './geometry';
@@ -34,66 +34,71 @@ describe('rotatePoint', () => {
 	});
 });
 
-describe('LAYOUTS', () => {
-	it('registers every piece and block by id', () => {
-		[...PIECE_LAYOUTS, ...BLOCK_LAYOUTS].forEach((layout) => {
-			expect(LAYOUTS[layout.id]).toBe(layout);
+describe('CUTS', () => {
+	it('registers every piece and block cut by id', () => {
+		[...PIECE_CUTS, ...BLOCK_CUTS].forEach((cut) => {
+			expect(CUTS[cut.id]).toBe(cut);
 		});
 	});
 
-	it('gives every block at least one slot that takes the selected fabric', () => {
-		BLOCK_LAYOUTS.forEach((layout) => {
-			expect(layout.slots.some((s) => s.role === 0)).toBe(true);
+	it('gives every block cut at least one piece that takes the selected fabric', () => {
+		BLOCK_CUTS.forEach((cut) => {
+			expect(cut.pieces.some((s) => s.role === 0)).toBe(true);
 		});
+	});
+
+	it('keeps legacy cuts out of the palette but resolvable for migration', () => {
+		expect(CUTS.pinwheel.group).toBe('legacy');
+		expect([...PIECE_CUTS, ...BLOCK_CUTS].map((c) => c.id)).not.toContain('pinwheel');
 	});
 });
 
-describe('rotatedSlots', () => {
+describe('rotatedPieces', () => {
 	it('memoizes: repeated calls return the same instance', () => {
-		expect(rotatedSlots('hst', 1)).toBe(rotatedSlots('hst', 1));
+		expect(rotatedPieces('hst', 1)).toBe(rotatedPieces('hst', 1));
 	});
 
 	it('normalizes rotation, so 4 turns equals 0', () => {
-		expect(rotatedSlots('hourglass', 4)).toBe(rotatedSlots('hourglass', 0));
+		expect(rotatedPieces('hourglass', 4)).toBe(rotatedPieces('hourglass', 0));
 	});
 
-	it('returns the raw layout slots for rotation 0', () => {
-		expect(rotatedSlots('rectangle', 0)).toBe(LAYOUTS.rectangle.slots);
+	it('returns the raw cut pieces for rotation 0', () => {
+		expect(rotatedPieces('rectangle', 0)).toBe(CUTS.rectangle.pieces);
 	});
 });
 
-describe('slotAt', () => {
-	it('always hits slot 0 in the square layout', () => {
-		expect(slotAt('square', 0, [0.5, 0.5])).toBe(0);
+describe('pieceAt', () => {
+	it('always hits piece 0 in the square cut', () => {
+		expect(pieceAt('square', 0, [0.5, 0.5])).toBe(0);
 	});
 
-	it('splits the rectangle layout at the vertical middle', () => {
-		expect(slotAt('rectangle', 0, [0.25, 0.5])).toBe(0);
-		expect(slotAt('rectangle', 0, [0.75, 0.5])).toBe(1);
+	it('splits the rectangle cut at the vertical middle', () => {
+		expect(pieceAt('rectangle', 0, [0.25, 0.5])).toBe(0);
+		expect(pieceAt('rectangle', 0, [0.75, 0.5])).toBe(1);
 	});
 
-	it('resolves clicks exactly on the far edge to the edge slot, not slot 0', () => {
+	it('resolves clicks exactly on the far edge to the edge piece, not piece 0', () => {
 		// x=1 lies outside every polygon's strict inequalities without clamping.
-		expect(slotAt('rectangle', 0, [1, 0.5])).toBe(1);
-		expect(slotAt('rectangle', 0, [1, 1])).toBe(1);
+		expect(pieceAt('rectangle', 0, [1, 0.5])).toBe(1);
+		expect(pieceAt('rectangle', 0, [1, 1])).toBe(1);
 	});
 
 	it('distinguishes the half square triangle halves', () => {
-		expect(slotAt('hst', 0, [0.2, 0.7])).toBe(0);
-		expect(slotAt('hst', 0, [0.7, 0.2])).toBe(1);
+		expect(pieceAt('hst', 0, [0.2, 0.7])).toBe(0);
+		expect(pieceAt('hst', 0, [0.7, 0.2])).toBe(1);
 	});
 
 	it('finds all four hourglass quarters', () => {
-		expect(slotAt('hourglass', 0, [0.5, 0.1])).toBe(0);
-		expect(slotAt('hourglass', 0, [0.9, 0.5])).toBe(1);
-		expect(slotAt('hourglass', 0, [0.5, 0.9])).toBe(2);
-		expect(slotAt('hourglass', 0, [0.1, 0.5])).toBe(3);
+		expect(pieceAt('hourglass', 0, [0.5, 0.1])).toBe(0);
+		expect(pieceAt('hourglass', 0, [0.9, 0.5])).toBe(1);
+		expect(pieceAt('hourglass', 0, [0.5, 0.9])).toBe(2);
+		expect(pieceAt('hourglass', 0, [0.1, 0.5])).toBe(3);
 	});
 
 	it('finds the goose and its sky corners in a flying geese unit', () => {
-		expect(slotAt('flying-geese', 0, [0.15, 0.5])).toBe(0);
-		expect(slotAt('flying-geese', 0, [0.4, 0.08])).toBe(1);
-		expect(slotAt('flying-geese', 0, [0.4, 0.92])).toBe(2);
+		expect(pieceAt('flying-geese', 0, [0.15, 0.5])).toBe(0);
+		expect(pieceAt('flying-geese', 0, [0.4, 0.08])).toBe(1);
+		expect(pieceAt('flying-geese', 0, [0.4, 0.92])).toBe(2);
 	});
 });
 

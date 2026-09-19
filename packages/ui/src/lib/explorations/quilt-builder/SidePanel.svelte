@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { BLOCK_SIZES } from './data';
-	import { BLOCK_LAYOUTS, PIECE_LAYOUTS, rotatedSlots } from './geometry';
-	import LayoutSvg from './LayoutSvg.svelte';
+	import { BLOCK_TYPES } from './blocks';
+	import { PIECE_CUTS } from './geometry';
+	import { flatten, leafBlock, rotateBlock, type Block } from './model';
+	import BlockSvg from './BlockSvg.svelte';
 	import type { QuiltStore } from './state.svelte';
 
 	let { store }: { store: QuiltStore } = $props();
@@ -10,16 +12,38 @@
 	const LIGHT = '#d9d9d9';
 
 	/** Icon fills: dark for the fabric role, light for background, white for empty. */
-	const roleFills = (layout: string, dark = DARK): string[] =>
-		rotatedSlots(layout, 0).map((s) => (s.role === 0 ? dark : s.role === 1 ? LIGHT : '#ffffff'));
+	const roleFills = (block: Block, dark = DARK): string[] =>
+		flatten(block).map((p) => (p.role === 0 ? dark : p.role === 1 ? LIGHT : '#ffffff'));
 
 	const hexOf = (id: string | null): string =>
 		id ? (store.materialById.get(id)?.hex ?? '#fff') : '#fff';
 
+	/** Rotated once per rotation change, so the flatten cache keeps hitting. */
+	const pieceEntries = $derived(
+		PIECE_CUTS.map((cut) => ({ cut, block: leafBlock(cut.id, store.rotation) }))
+	);
+	const blockEntries = $derived(
+		BLOCK_TYPES.map((type) => ({ type, block: rotateBlock(type.block, store.rotation) }))
+	);
+	const customEntries = $derived(
+		store.customBlocks.map((saved) => ({
+			saved,
+			block: rotateBlock(saved.block, store.rotation)
+		}))
+	);
+
+	const exampleBlock = $derived(
+		store.pending.mode === 'paint'
+			? leafBlock(store.pending.cut, store.pending.rotation)
+			: store.pending.block
+	);
+
 	const exampleFills = $derived.by(() => {
-		const custom = store.selectedCustom;
-		if (custom) return custom.slots.map(hexOf);
-		return roleFills(store.pending.layout, store.selectedMaterial?.hex ?? DARK);
+		const dark = store.selectedMaterial?.hex ?? DARK;
+		const custom = store.selectedCustom !== null;
+		return flatten(exampleBlock).map((p) =>
+			custom ? hexOf(p.fabric) : p.role === 0 ? dark : p.role === 1 ? LIGHT : '#ffffff'
+		);
 	});
 </script>
 
@@ -62,40 +86,39 @@
 
 			<div class="label section">Type</div>
 			<div class="types">
-				{#each BLOCK_LAYOUTS as layout (layout.id)}
+				{#each blockEntries as entry (entry.type.id)}
 					<button
 						class="type"
-						class:active={!store.capturing && store.blockId === layout.id}
-						aria-pressed={store.blockId === layout.id}
-						aria-label={layout.name}
-						title={layout.name}
-						onclick={() => store.pickBlock(layout.id)}
+						class:active={!store.capturing && store.blockId === entry.type.id}
+						aria-pressed={store.blockId === entry.type.id}
+						aria-label={entry.type.name}
+						title={entry.type.name}
+						onclick={() => store.pickBlock(entry.type.id)}
 					>
-						<LayoutSvg layout={layout.id} rotation={store.rotation} fills={roleFills(layout.id)} />
+						<BlockSvg block={entry.block} fills={roleFills(entry.block)} />
 					</button>
 				{/each}
-				{#each store.customBlocks as block (block.id)}
+				{#each customEntries as entry (entry.saved.id)}
 					<div class="custom">
 						<button
 							class="type"
-							class:active={!store.capturing && store.selectedCustom?.id === block.id}
-							aria-pressed={store.selectedCustom?.id === block.id}
-							aria-label={block.name}
-							title={block.name}
-							onclick={() => store.pickCustomBlock(block.id)}
+							class:active={!store.capturing && store.selectedCustom?.id === entry.saved.id}
+							aria-pressed={store.selectedCustom?.id === entry.saved.id}
+							aria-label={entry.saved.name}
+							title={entry.saved.name}
+							onclick={() => store.pickCustomBlock(entry.saved.id)}
 						>
-							<LayoutSvg
-								layout={block.layout}
-								rotation={block.rotation + store.rotation}
-								fills={block.slots.map(hexOf)}
+							<BlockSvg
+								block={entry.block}
+								fills={flatten(entry.block).map((p) => hexOf(p.fabric))}
 							/>
 						</button>
-						<span class="custom-name">{block.name}</span>
+						<span class="custom-name">{entry.saved.name}</span>
 						<button
 							class="custom-remove"
-							aria-label={`Remove ${block.name}`}
+							aria-label={`Remove ${entry.saved.name}`}
 							title="Remove"
-							onclick={() => store.deleteCustomBlock(block.id)}
+							onclick={() => store.deleteCustomBlock(entry.saved.id)}
 						>
 							×
 						</button>
@@ -122,27 +145,22 @@
 		<div class="example">
 			<div class="label example-label">Center block example</div>
 			<div class="example-art">
-				<LayoutSvg
-					layout={store.pending.layout}
-					rotation={store.pending.rotation}
-					fills={exampleFills}
-					stroke="rgba(0, 0, 0, 0.12)"
-				/>
+				<BlockSvg block={exampleBlock} fills={exampleFills} stroke="rgba(0, 0, 0, 0.12)" />
 			</div>
 		</div>
 	{:else}
 		<div class="panel-body">
 			<div class="label section">Type</div>
 			<div class="types labeled">
-				{#each PIECE_LAYOUTS as layout (layout.id)}
+				{#each pieceEntries as entry (entry.cut.id)}
 					<button
 						class="type"
-						class:active={store.pieceId === layout.id}
-						aria-pressed={store.pieceId === layout.id}
-						onclick={() => store.pickPiece(layout.id)}
+						class:active={store.pieceId === entry.cut.id}
+						aria-pressed={store.pieceId === entry.cut.id}
+						onclick={() => store.pickPiece(entry.cut.id)}
 					>
-						<LayoutSvg layout={layout.id} rotation={store.rotation} fills={roleFills(layout.id)} />
-						<span class="type-name">{layout.name}</span>
+						<BlockSvg block={entry.block} fills={roleFills(entry.block)} />
+						<span class="type-name">{entry.cut.name}</span>
 					</button>
 				{/each}
 			</div>
