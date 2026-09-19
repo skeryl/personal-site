@@ -17,11 +17,14 @@ import {
 	localPoint,
 	mapLeavesWithRect,
 	sameStructure,
-	setLeaf,
+	setAt,
+	subtreeAt,
 	walkLeaves,
+	UNIT_RECT,
 	type Block,
 	type LeafBlock,
-	type MaterialId
+	type MaterialId,
+	type Rect
 } from './model';
 
 export type Pending =
@@ -63,17 +66,30 @@ export const resample = (target: Block, source: Block): Block =>
 		)
 	}));
 
-/** Resample, except role-0 pieces take the selected fabric. */
-const stampInto = (target: Block, source: Block, materialId: MaterialId): Block =>
-	mapLeavesWithRect(target, (leaf, rect) => {
-		const offset = leaf.roleOffset ?? 0;
-		return {
-			...leaf,
-			fabrics: rotatedPieces(leaf.cut, leaf.rotation).map((shape) =>
-				shape.role + offset === 0 ? materialId : fabricAt(source, centroidIn(rect, shape.points))
-			)
-		};
-	});
+/*
+ * Resample, except role-0 pieces take the selected fabric. `into` is where in
+ * the source's block space the target is landing, so a block stamped into one
+ * quarter inherits the colour that was under THAT quarter.
+ */
+const stampInto = (
+	target: Block,
+	source: Block,
+	materialId: MaterialId,
+	into: Rect = UNIT_RECT
+): Block =>
+	mapLeavesWithRect(
+		target,
+		(leaf, rect) => {
+			const offset = leaf.roleOffset ?? 0;
+			return {
+				...leaf,
+				fabrics: rotatedPieces(leaf.cut, leaf.rotation).map((shape) =>
+					shape.role + offset === 0 ? materialId : fabricAt(source, centroidIn(rect, shape.points))
+				)
+			};
+		},
+		into
+	);
 
 /** One leaf recut to a new shape, inheriting colour by centroid. */
 export const recutLeaf = (leaf: LeafBlock, cut: string, rotation: number): LeafBlock => ({
@@ -90,7 +106,7 @@ const paintPiece = (block: Block, point: Point, materialId: MaterialId): Block =
 	const { leaf, rect, path } = leafAt(block, point);
 	const fabrics = [...leaf.fabrics];
 	fabrics[pieceAt(leaf.cut, leaf.rotation, localPoint(rect, point))] = materialId;
-	return setLeaf(block, path, { ...leaf, fabrics });
+	return setAt(block, path, { ...leaf, fabrics });
 };
 
 export const buildPlacement = (
@@ -99,23 +115,33 @@ export const buildPlacement = (
 	pending: BlockPending,
 	materialId: MaterialId
 ): Block => {
+	const { leaf, rect, path } = leafAt(block, point);
+
 	/*
-	 * Stamping onto a block that is already this shape recolours the one piece
-	 * under the cursor, so a stamped block can be refined click by click.
+	 * A block type lands in the sub-block under the cursor, the same way a cut
+	 * does: stamping a pinwheel into one quarter of a 2x2 block fills that
+	 * quarter, not the whole 8" block.
 	 */
 	if (pending.mode === 'stamp') {
-		return sameStructure(block, pending.block)
-			? paintPiece(block, point, materialId)
-			: stampInto(cloneBlock(pending.block), block, materialId);
+		/*
+		 * If this spot already holds the pending shape, at whatever depth,
+		 * recolour the piece under the cursor instead of nesting another copy
+		 * inside it.
+		 */
+		for (let depth = path.length; depth >= 0; depth--) {
+			if (sameStructure(subtreeAt(block, path.slice(0, depth)), pending.block)) {
+				return paintPiece(block, point, materialId);
+			}
+		}
+		return setAt(block, path, stampInto(cloneBlock(pending.block), block, materialId, rect));
 	}
 
-	const { leaf, rect, path } = leafAt(block, point);
 	if (leaf.cut === pending.cut && leaf.rotation === pending.rotation) {
 		return paintPiece(block, point, materialId);
 	}
 	const next: LeafBlock = recutLeaf(leaf, pending.cut, pending.rotation);
 	next.fabrics[pieceAt(next.cut, next.rotation, localPoint(rect, point))] = materialId;
-	return setLeaf(block, path, next);
+	return setAt(block, path, next);
 };
 
 /** The block after erasing the piece under `point`. */
@@ -127,7 +153,7 @@ export const buildErase = (block: Block, point: Point): Block | null => {
 	const next = fabrics.every((f) => f === null)
 		? (emptyBlock() as LeafBlock)
 		: { ...leaf, fabrics };
-	const result = setLeaf(block, path, next);
+	const result = setAt(block, path, next);
 	return blocksEqual(result, block) ? null : result;
 };
 

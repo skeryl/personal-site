@@ -573,3 +573,33 @@ test('selected blocks are outlined, not just labelled', async ({ page }) => {
 	const other = await outlineOf(page, at(cols, 2, 3));
 	expect(parseFloat(other.width) || 0).toBe(0);
 });
+
+test('a block type lands in the sub-block under the cursor, like a cut does', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	const cols = await gridCols(page);
+	const plain = at(cols, 1, 1);
+	const quartered = at(cols, 1, 2);
+
+	// Give the second block a 2x2 grid.
+	await cell(page, quartered).click();
+	await page.getByRole('button', { name: '2 by 2', exact: true }).click();
+
+	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	const box = await cell(page, plain).boundingBox();
+	const other = await cell(page, quartered).boundingBox();
+	if (!box || !other) throw new Error('cells not found');
+
+	await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+	await page.mouse.click(other.x + other.width * 0.15, other.y + other.height * 0.15);
+	await parkMouse(page);
+
+	// Whole block: four half square triangles, two pieces each.
+	expect(await cellFills(page, plain)).toHaveLength(8);
+	// One quarter: the same pinwheel plus the three squares left around it.
+	expect(await cellFills(page, quartered)).toHaveLength(11);
+
+	// And it is cut smaller, because it finished at a quarter of the block.
+	await page.locator('.cut-list summary').click();
+	await expect(page.locator('.cut-group').first()).toContainText('4½” squares');
+	await expect(page.locator('.cut-group').first()).toContainText('2½” squares');
+});

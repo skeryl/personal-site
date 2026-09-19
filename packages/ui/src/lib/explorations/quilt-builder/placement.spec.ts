@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BLOCK_TYPE_BY_ID } from './blocks';
-import { emptyBlock, flatten, leafBlock, type Block } from './model';
+import { divisionOf, emptyBlock, flatten, leafBlock, recompose, type Block } from './model';
 import { buildErase, buildPlacement, fabricAt, resample } from './placement';
 
 const solid = (id: string): Block => leafBlock('square', 0, [id]);
@@ -130,5 +130,58 @@ describe('buildErase', () => {
 
 	it('is a no-op on an empty piece', () => {
 		expect(buildErase(emptyBlock(), [0.5, 0.5])).toBeNull();
+	});
+});
+
+describe('a block type lands in the sub-block under the cursor', () => {
+	const pinwheel = BLOCK_TYPE_BY_ID.pinwheel.block;
+	const stamp = (block: Block, point: [number, number]) =>
+		buildPlacement(block, point, { mode: 'stamp', block: pinwheel }, 'navy');
+
+	it('fills the whole block when the block is one piece', () => {
+		const block = stamp(emptyBlock(), [0.5, 0.5]);
+		// Four half square triangles, two pieces each.
+		expect(flatten(block)).toHaveLength(8);
+		expect(divisionOf(block)).toBe(2);
+	});
+
+	it('fills one quarter of a 2x2 block, leaving the others alone', () => {
+		const grid = recompose(emptyBlock(), 2);
+		const block = stamp(grid, [0.1, 0.1]);
+		// One quarter became a pinwheel (8 pieces); the other three stay square.
+		expect(flatten(block)).toHaveLength(8 + 3);
+		expect(fabricAt(block, [0.6, 0.6])).toBeNull();
+	});
+
+	it('fills one sixteenth of a 4x4 block', () => {
+		const block = stamp(recompose(emptyBlock(), 4), [0.05, 0.05]);
+		expect(flatten(block)).toHaveLength(8 + 15);
+	});
+
+	it('scales the blank size by where it landed', () => {
+		// A pinwheel's triangles are half a block; inside a 2x2 that is a quarter.
+		const plain = stamp(emptyBlock(), [0.5, 0.5]);
+		expect(new Set(flatten(plain).map((p) => p.frac))).toEqual(new Set([0.5]));
+
+		const nested = stamp(recompose(emptyBlock(), 2), [0.1, 0.1]);
+		const fracs = new Set(flatten(nested).map((p) => p.frac));
+		expect(fracs.has(0.25)).toBe(true);
+	});
+
+	it('recolours rather than nesting when that spot already holds it', () => {
+		const once = stamp(recompose(emptyBlock(), 2), [0.1, 0.1]);
+		const twice = buildPlacement(once, [0.1, 0.1], { mode: 'stamp', block: pinwheel }, 'cream');
+		// Still one pinwheel in that quarter, not a pinwheel inside a pinwheel.
+		expect(flatten(twice)).toHaveLength(flatten(once).length);
+		expect(fabricAt(twice, [0.1, 0.1])).toBe('cream');
+	});
+
+	it('inherits the colour that was under that quarter, not the whole block', () => {
+		const grid = recompose(solid('blue'), 2);
+		const block = stamp(grid, [0.1, 0.1]);
+		// Background pieces of the stamped quarter keep the blue beneath them.
+		const quarter = flatten(block).filter((p) => p.points.every(([x, y]) => x <= 0.5 && y <= 0.5));
+		expect(quarter.some((p) => p.fabric === 'blue')).toBe(true);
+		expect(quarter.some((p) => p.fabric === 'navy')).toBe(true);
 	});
 });

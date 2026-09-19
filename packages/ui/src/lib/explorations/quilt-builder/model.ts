@@ -172,15 +172,25 @@ export const localPoint = (rect: Rect, [x, y]: Point): Point => [
 	(y - rect.y) / rect.h
 ];
 
-/** Replace the leaf at `path`, returning a new tree. */
-export const setLeaf = (block: Block, path: readonly number[], next: LeafBlock): Block => {
+/*
+ * Replace whatever sits at `path` with `next`, returning a new tree. `next`
+ * may be a grid, not just a leaf: stamping a pinwheel into one quarter of a
+ * 2x2 block is exactly that, a grid replacing a leaf.
+ */
+export const setAt = (block: Block, path: readonly number[], next: Block): Block => {
 	if (!path.length || block.kind === 'leaf') return next;
 	const [index, ...rest] = path;
 	return {
 		...block,
-		children: block.children.map((child, i) => (i === index ? setLeaf(child, rest, next) : child))
+		children: block.children.map((child, i) => (i === index ? setAt(child, rest, next) : child))
 	};
 };
+
+/** The subtree at `path`, stopping early if the path runs past a leaf. */
+export const subtreeAt = (block: Block, path: readonly number[]): Block =>
+	path.length === 0 || block.kind === 'leaf'
+		? block
+		: subtreeAt(block.children[path[0]], path.slice(1));
 
 /** Rewrite every leaf in place, with its rect, keeping the grid structure. */
 export const mapLeavesWithRect = (
