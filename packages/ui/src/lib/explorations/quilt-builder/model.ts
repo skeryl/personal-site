@@ -313,6 +313,22 @@ const rotateGridOnce = (grid: GridBlock): GridBlock => {
 export const isEmpty = (block: Block): boolean =>
 	walkLeaves(block).every(({ leaf }) => leaf.fabrics.every((f) => f === null));
 
+/*
+ * Squares are named like spreadsheet cells, which is how the design refers to
+ * them: column letter plus 1-based row. Past Z it carries, so a custom quilt
+ * wider than 26 blocks still reads sensibly.
+ */
+export const columnLabel = (col: number): string => {
+	let label = '';
+	for (let n = col; n >= 0; n = Math.floor(n / 26) - 1) {
+		label = String.fromCharCode(65 + (n % 26)) + label;
+	}
+	return label;
+};
+
+export const squareLabel = (index: number, cols: number): string =>
+	`${columnLabel(index % cols)}${Math.floor(index / cols) + 1}`;
+
 export const rowOf = (index: number, cols: number): number => Math.floor(index / cols);
 export const colOf = (index: number, cols: number): number => index % cols;
 export const cellIndex = (row: number, col: number, cols: number): number => row * cols + col;

@@ -5,6 +5,7 @@
 	import { toPolygonPoints } from './geometry';
 	import {
 		colOf,
+		columnLabel,
 		divisionOf,
 		dominantFabric,
 		flatten,
@@ -207,66 +208,91 @@
 		<div class="stage">
 			<div class="viewport" class:panning bind:this={viewport} onscroll={readView}>
 				<div class="canvas">
-					<div
-						class="blanket"
-						class:tool-erase={store.tool === 'erase'}
-						class:tool-mouse={store.tool === 'mouse'}
-						class:tool-grid={store.tool === 'grid'}
-						class:locked={store.tool === 'place' && !store.canPlace}
-						style="grid-template-columns: repeat({store.dims
-							.cols}, 1fr); width: {content.w}px; height: {content.h}px"
-					>
-						{#each store.cells as cell, i (i)}
-							{@const pv = (store.placePreview ?? store.gridPreview)?.get(i) ?? null}
-							{@const ev = store.erasePreview?.get(i) ?? null}
-							{@const display = pv ?? cell}
-							{@const pieces = flatten(display)}
-							{@const before = pv ? new Map(flatten(cell).map((p) => [p.key, p.fabric])) : null}
-							{@const after = ev ? new Map(flatten(ev).map((p) => [p.key, p.fabric])) : null}
-							<button
-								class="cell"
-								class:hovered={store.hover?.index === i}
-								class:selected={store.highlighted.has(i)}
-								data-cell-index={i}
-								aria-label={cellLabel(i, cell)}
-								onpointerdown={(e) => store.onCellPointerDown(e, i)}
-								onclick={(e) => {
-									// detail 0 = keyboard activation; pointer clicks are
-									// handled by the pointer gesture machinery.
-									if (e.detail === 0) store.activateCell(i);
-								}}
-								oncontextmenu={(e) => {
-									e.preventDefault();
-									store.rotateCell(i);
-								}}
-							>
-								<svg viewBox="0 0 {VB} {VB}" preserveAspectRatio="none" aria-hidden="true">
-									{#each pieces as piece (piece.key)}
-										<polygon
-											points={toPolygonPoints(piece.points, VB)}
-											fill={hexOf(piece.fabric)}
-											class:ghost={before !== null &&
-												(before.get(piece.key) ?? null) !== piece.fabric}
-											class:erasing={after !== null &&
-												piece.fabric !== null &&
-												(after.get(piece.key) ?? null) !== piece.fabric}
-											stroke={pieces.length > 1 ? 'rgba(0, 0, 0, 0.18)' : 'none'}
-											stroke-width="1"
-											vector-effect="non-scaling-stroke"
-										/>
-									{/each}
-									{#each leafRects(display) as seam, s (s)}
-										<rect
-											class="seam"
-											x={seam.x * VB}
-											y={seam.y * VB}
-											width={seam.w * VB}
-											height={seam.h * VB}
-										/>
-									{/each}
-								</svg>
-							</button>
-						{/each}
+					<!--
+						Headers scroll with the quilt rather than sticking, which is how the
+						design shows the zoomed-in state: the letters and numbers go with it.
+					-->
+					<div class="sheet">
+						<div class="corner" aria-hidden="true"></div>
+						<div
+							class="col-headers"
+							aria-hidden="true"
+							style="grid-template-columns: repeat({store.dims.cols}, 1fr); width: {content.w}px"
+						>
+							{#each { length: store.dims.cols } as _, c (c)}
+								<span class="head">{columnLabel(c)}</span>
+							{/each}
+						</div>
+						<div
+							class="row-headers"
+							aria-hidden="true"
+							style="grid-template-rows: repeat({store.dims.rows}, 1fr); height: {content.h}px"
+						>
+							{#each { length: store.dims.rows } as _, r (r)}
+								<span class="head">{r + 1}</span>
+							{/each}
+						</div>
+						<div
+							class="blanket"
+							class:tool-erase={store.tool === 'erase'}
+							class:tool-mouse={store.tool === 'mouse'}
+							class:tool-grid={store.tool === 'grid'}
+							class:locked={store.tool === 'place' && !store.canPlace}
+							style="grid-template-columns: repeat({store.dims
+								.cols}, 1fr); width: {content.w}px; height: {content.h}px"
+						>
+							{#each store.cells as cell, i (i)}
+								{@const pv = (store.placePreview ?? store.gridPreview)?.get(i) ?? null}
+								{@const ev = store.erasePreview?.get(i) ?? null}
+								{@const display = pv ?? cell}
+								{@const pieces = flatten(display)}
+								{@const before = pv ? new Map(flatten(cell).map((p) => [p.key, p.fabric])) : null}
+								{@const after = ev ? new Map(flatten(ev).map((p) => [p.key, p.fabric])) : null}
+								<button
+									class="cell"
+									class:hovered={store.hover?.index === i}
+									class:selected={store.highlighted.has(i)}
+									data-cell-index={i}
+									aria-label={cellLabel(i, cell)}
+									onpointerdown={(e) => store.onCellPointerDown(e, i)}
+									onclick={(e) => {
+										// detail 0 = keyboard activation; pointer clicks are
+										// handled by the pointer gesture machinery.
+										if (e.detail === 0) store.activateCell(i);
+									}}
+									oncontextmenu={(e) => {
+										e.preventDefault();
+										store.rotateCell(i);
+									}}
+								>
+									<svg viewBox="0 0 {VB} {VB}" preserveAspectRatio="none" aria-hidden="true">
+										{#each pieces as piece (piece.key)}
+											<polygon
+												points={toPolygonPoints(piece.points, VB)}
+												fill={hexOf(piece.fabric)}
+												class:ghost={before !== null &&
+													(before.get(piece.key) ?? null) !== piece.fabric}
+												class:erasing={after !== null &&
+													piece.fabric !== null &&
+													(after.get(piece.key) ?? null) !== piece.fabric}
+												stroke={pieces.length > 1 ? 'rgba(0, 0, 0, 0.18)' : 'none'}
+												stroke-width="1"
+												vector-effect="non-scaling-stroke"
+											/>
+										{/each}
+										{#each leafRects(display) as seam, s (s)}
+											<rect
+												class="seam"
+												x={seam.x * VB}
+												y={seam.y * VB}
+												width={seam.w * VB}
+												height={seam.h * VB}
+											/>
+										{/each}
+									</svg>
+								</button>
+							{/each}
+						</div>
 					</div>
 				</div>
 			</div>
@@ -282,6 +308,8 @@
 				</div>
 			{/if}
 		</div>
+
+		<p class="readout" aria-live="polite">{store.selectionLabel}</p>
 
 		<p class="caption">
 			{store.dims.cols} × {store.dims.rows} blocks at {store.blockSize}” · {finishedW}” × {finishedH}”
@@ -421,6 +449,41 @@
 		z-index: 4;
 	}
 
+	/*
+	 * Headers align to the blanket's tracks by repeating its column and row
+	 * template, its 1px gaps, and padding that matches its 2px border.
+	 */
+	.sheet {
+		display: grid;
+		grid-template-columns: auto auto;
+		grid-template-rows: auto auto;
+		align-items: start;
+	}
+	.col-headers {
+		display: grid;
+		gap: 1px;
+		padding: 0 2px;
+		box-sizing: border-box;
+	}
+	.row-headers {
+		display: grid;
+		gap: 1px;
+		padding: 2px 0;
+		box-sizing: border-box;
+	}
+	.head {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 1.5rem;
+		font-size: 0.8rem;
+		color: var(--color-text-secondary);
+		line-height: 1.6;
+	}
+	.row-headers .head {
+		padding-right: 0.35rem;
+	}
+
 	.blanket {
 		position: relative;
 		display: grid;
@@ -488,8 +551,13 @@
 		vector-effect: non-scaling-stroke;
 	}
 
+	.readout {
+		margin: 0.9rem 0 0;
+		font-size: 0.8rem;
+		color: var(--color-text-secondary);
+	}
 	.caption {
-		margin: 1rem 0 0;
+		margin: 0.35rem 0 0;
 		font-size: 0.7rem;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;

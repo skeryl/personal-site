@@ -71,11 +71,15 @@
 					title={`${label}, ${fmtInches(store.blockSize / division)}” pieces`}
 					onclick={() => store.setGrid(division)}
 				>
-					<span class="chip-grid" aria-hidden="true">
-						{#each Array(division * division) as _, i (i)}
-							<span style="--n: {division}"></span>
+					<!-- Solid outline, dashed divisions: the sketch's own notation. -->
+					<svg class="chip-grid" viewBox="0 0 24 24" aria-hidden="true">
+						<rect x="0.5" y="0.5" width="23" height="23" />
+						{#each { length: division - 1 } as _, i (i)}
+							{@const at = ((i + 1) * 24) / division}
+							<line class="divide" x1={at} y1="0" x2={at} y2="24" />
+							<line class="divide" x1="0" y1={at} x2="24" y2={at} />
 						{/each}
-					</span>
+					</svg>
 					<span class="chip-size">{fmtInches(store.blockSize / division)}”</span>
 				</button>
 			{/each}
@@ -404,19 +408,23 @@
 	}
 	/* A miniature of the subdivision, so each option shows what it does. */
 	.chip-grid {
-		display: grid;
-		grid-template-columns: repeat(var(--n, 1), 1fr);
-		width: 1.5rem;
-		aspect-ratio: 1;
-		gap: 1px;
-		background: var(--qb-line);
-		border: 1px solid var(--qb-line);
+		width: 1.6rem;
+		height: 1.6rem;
+		display: block;
+		color: #8a8a8a;
 	}
-	.chip-grid span {
-		background: #cfcfcf;
+	.chip.active .chip-grid {
+		color: var(--qb-accent);
 	}
-	.chip.active .chip-grid span {
-		background: var(--qb-accent);
+	.chip-grid rect {
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1;
+	}
+	.chip-grid .divide {
+		stroke: currentColor;
+		stroke-width: 1;
+		stroke-dasharray: 3 2;
 	}
 	.chip-size {
 		font-size: 0.7rem;

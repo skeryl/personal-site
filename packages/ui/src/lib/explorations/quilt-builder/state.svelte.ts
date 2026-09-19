@@ -35,6 +35,7 @@ import {
 	resizeBoard,
 	rotateBlock,
 	rowOf,
+	squareLabel,
 	withoutMaterial,
 	type Block,
 	type Board
@@ -421,6 +422,21 @@ export class QuiltStore {
 	}
 
 	// ── Composition ──────────────────────────────────────────────────
+
+	/*
+	 * How the wall reports the selection. Long selections collapse to a count:
+	 * naming forty squares helps nobody.
+	 */
+	selectionLabel = $derived.by(() => {
+		const count = this.selection.length;
+		if (!count) return 'no squares selected';
+		const names = [...this.selection]
+			.sort((a, b) => a - b)
+			.map((index) => squareLabel(index, this.dims.cols));
+		if (count === 1) return `${names[0]} square selected`;
+		if (count <= 4) return `${names.join(', ')} squares selected`;
+		return `${count} squares selected`;
+	});
 
 	/** What the grid chips show as active: the selection's, else the tool's. */
 	activeDivision = $derived(this.selection.length ? this.selectedDivision : this.gridDivision);

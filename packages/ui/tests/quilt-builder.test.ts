@@ -375,3 +375,32 @@ test('middle-button drag pans the zoomed wall', async ({ page }) => {
 	// Dragging left moves the content left, so the scroll offset grows.
 	expect(after).toBeGreaterThan(before);
 });
+
+test('the wall labels its columns and rows, and names the selection', async ({ page }) => {
+	const cols = await gridCols(page);
+	// Default Throw at 8" blocks is six columns by eight rows.
+	expect(cols).toBe(6);
+	await expect(page.locator('.col-headers .head').first()).toHaveText('A');
+	await expect(page.locator('.col-headers .head').last()).toHaveText('F');
+	await expect(page.locator('.row-headers .head').first()).toHaveText('1');
+	await expect(page.locator('.row-headers .head').last()).toHaveText('8');
+
+	await expect(page.locator('.readout')).toHaveText('no squares selected');
+
+	await tool(page, /^Mouse/).click();
+	await cell(page, at(cols, 1, 2)).click();
+	await expect(page.locator('.readout')).toHaveText('C2 square selected');
+
+	await cell(page, at(cols, 2, 3)).click({ modifiers: ['Shift'] });
+	await expect(page.locator('.readout')).toHaveText('C2, D3 squares selected');
+
+	// Past four it collapses to a count rather than naming them all.
+	for (const [r, c] of [
+		[4, 0],
+		[4, 1],
+		[4, 2]
+	]) {
+		await cell(page, at(cols, r, c)).click({ modifiers: ['Shift'] });
+	}
+	await expect(page.locator('.readout')).toHaveText('5 squares selected');
+});
