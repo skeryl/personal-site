@@ -56,8 +56,8 @@
 	const activeMaterial = $derived(store.selectedMaterial);
 </script>
 
-<section class="attributes" aria-label="Attributes">
-	<div class="label section">Attributes</div>
+<details class="attributes" data-panel="attributes" bind:open={store.panels.attributes}>
+	<summary class="label section">Attributes</summary>
 
 	{#if store.selectedPiece}
 		<ul class="colors">
@@ -260,12 +260,34 @@
 			{/each}
 		</details>
 	{/if}
-</section>
+</details>
 
 <style>
 	.attributes {
 		border-top: 1px solid var(--qb-line);
 		padding-bottom: 1.5rem;
+	}
+	.attributes > summary {
+		cursor: pointer;
+		list-style: none;
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+	.attributes > summary::-webkit-details-marker {
+		display: none;
+	}
+	.attributes > summary::before {
+		content: '';
+		width: 0;
+		height: 0;
+		border-left: 4px solid currentColor;
+		border-top: 3.5px solid transparent;
+		border-bottom: 3.5px solid transparent;
+		transition: transform 120ms ease;
+	}
+	.attributes[open] > summary::before {
+		transform: rotate(90deg);
 	}
 	.label {
 		font-size: 0.65rem;

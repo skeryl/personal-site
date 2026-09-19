@@ -228,9 +228,7 @@ test('a multi-block selection saves as one pattern and stamps as one', async ({ 
 	await page.mouse.down();
 	await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 5 });
 	await page.mouse.up();
-	await expect(page.locator('section[aria-label="Block grid"] .hint')).toContainText(
-		'2 blocks selected'
-	);
+	await expect(page.locator('[data-panel="grid"] .hint')).toContainText('2 blocks selected');
 
 	answerPrompt(page, 'Domino');
 	await page.getByRole('button', { name: '+ Add selection as pattern' }).click();
@@ -260,9 +258,7 @@ test('a pattern can be a non-rectangular shape', async ({ page }) => {
 	await cell(page, ell[0]).click();
 	await cell(page, ell[1]).click({ modifiers: ['Shift'] });
 	await cell(page, ell[2]).click({ modifiers: ['Shift'] });
-	await expect(page.locator('section[aria-label="Block grid"] .hint')).toContainText(
-		'3 blocks selected'
-	);
+	await expect(page.locator('[data-panel="grid"] .hint')).toContainText('3 blocks selected');
 
 	answerPrompt(page, 'Ell');
 	await page.getByRole('button', { name: '+ Add selection as pattern' }).click();
@@ -890,4 +886,28 @@ test('column and row headers stay frozen when the wall scrolls', async ({ page }
 	expect(scrolled.rowTop).toBe(scrolled.cellTop);
 	// And the quilt really did scroll away from the origin.
 	expect(scrolled.cellLeft).toBeLessThan(fit.cellLeft);
+});
+
+test('palette sections collapse, and stay collapsed across a reload', async ({ page }) => {
+	const typePanel = page.locator('[data-panel="type"]');
+	const attributes = page.locator('[data-panel="attributes"]');
+
+	// Everything starts open.
+	await expect(typePanel).toHaveAttribute('open', '');
+	await expect(page.getByRole('button', { name: 'Pinwheel', exact: true })).toBeVisible();
+
+	// Collapsing Block type pulls the colours up the panel.
+	const before = (await attributes.boundingBox())!.y;
+	await typePanel.locator('summary').click();
+	await expect(typePanel).not.toHaveAttribute('open', '');
+	await expect(page.getByRole('button', { name: 'Pinwheel', exact: true })).toBeHidden();
+	const after = (await attributes.boundingBox())!.y;
+	expect(after).toBeLessThan(before);
+
+	await page.waitForTimeout(AUTOSAVE_MS);
+	await page.reload();
+	await page.waitForSelector('[data-cell-index="0"]');
+	await expect(page.locator('[data-panel="type"]')).not.toHaveAttribute('open', '');
+	// The others were left alone.
+	await expect(page.locator('[data-panel="grid"]')).toHaveAttribute('open', '');
 });

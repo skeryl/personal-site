@@ -38,6 +38,7 @@
 	const AUTOSAVE_MS = 250;
 	$effect(() => {
 		void store.savedState;
+		void store.panels;
 		const timer = setTimeout(() => store.persist(), AUTOSAVE_MS);
 		return () => clearTimeout(timer);
 	});

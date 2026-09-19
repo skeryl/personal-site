@@ -27,6 +27,24 @@ import { resample } from './placement';
 import { blocksFrom, coordOf, type Pattern, type PatternBlocks } from './pattern';
 
 export const STATE_KEY = 'quilt-builder:v3';
+/*
+ * Which palette sections are open. Kept out of the saved design: it is a
+ * preference about the window, not part of the quilt.
+ */
+export const PANELS_KEY = 'quilt-builder:panels';
+
+export type Panels = Record<string, boolean>;
+
+export const parsePanels = (raw: unknown, defaults: Panels): Panels => {
+	if (typeof raw !== 'object' || raw === null) return { ...defaults };
+	const saved = raw as Record<string, unknown>;
+	return Object.fromEntries(
+		Object.entries(defaults).map(([id, fallback]) => [
+			id,
+			typeof saved[id] === 'boolean' ? saved[id] : fallback
+		])
+	);
+};
 /** Read once when v3 is absent, so existing designs survive the upgrade. */
 export const LEGACY_STATE_KEY = 'quilt-builder:v2';
 

@@ -65,12 +65,15 @@ import {
 import { emptyHistory, record, redo as redoHistory, undo as undoHistory } from './history';
 import {
 	LEGACY_STATE_KEY,
+	PANELS_KEY,
 	STATE_KEY,
 	gridDims,
+	parsePanels,
 	parseSavedState,
 	sizeInches,
 	readJson,
 	writeJson,
+	type Panels,
 	type SavedState
 } from './persistence';
 import { cuttingListFor, materialsListText } from './cutting';
@@ -80,6 +83,14 @@ export type Tool = 'place' | 'erase' | 'mouse' | 'grid';
 
 /** Compositions offered in the toolbar: one piece, 2x2, or 4x4. */
 export const DIVISIONS = [1, 2, 4] as const;
+
+/** Palette sections start open; collapsing one is remembered. */
+export const DEFAULT_PANELS: Panels = {
+	grid: true,
+	type: true,
+	patterns: true,
+	attributes: true
+};
 
 /** Zoom is view state: never saved, never undone. */
 export const ZOOM_MIN = 1;
@@ -161,6 +172,8 @@ export class QuiltStore {
 	zoom = $state(1);
 	/** The grid the Grid tool paints, and the one G cycles through. */
 	gridDivision = $state<number>(2);
+	/** Which palette sections are open, bound directly by the disclosures. */
+	panels = $state<Panels>({ ...DEFAULT_PANELS });
 
 	hover = $state<Hover | null>(null);
 	gesture = $state<PaintGesture | null>(null);
@@ -175,6 +188,7 @@ export class QuiltStore {
 		const raw = readJson(localStorage, STATE_KEY) ?? readJson(localStorage, LEGACY_STATE_KEY);
 		const saved = parseSavedState(raw);
 		if (saved) this.restore(saved);
+		this.panels = parsePanels(readJson(localStorage, PANELS_KEY), DEFAULT_PANELS);
 	}
 
 	private restore(saved: SavedState) {
@@ -1038,6 +1052,8 @@ export class QuiltStore {
 	}
 
 	persist() {
-		if (browser) writeJson(localStorage, STATE_KEY, this.savedState);
+		if (!browser) return;
+		writeJson(localStorage, STATE_KEY, this.savedState);
+		writeJson(localStorage, PANELS_KEY, this.panels);
 	}
 }

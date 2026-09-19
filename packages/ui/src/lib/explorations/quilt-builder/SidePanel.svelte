@@ -69,8 +69,8 @@
 		</select>
 	</label>
 
-	<section class="group" aria-label="Block grid">
-		<div class="label section">Block grid <kbd>G</kbd></div>
+	<details class="group" data-panel="grid" bind:open={store.panels.grid}>
+		<summary class="label section">Block grid <kbd>G</kbd></summary>
 		<div class="composition" role="group" aria-label="Block grid">
 			{#each DIVISIONS as division (division)}
 				{@const label = division === 1 ? 'One piece' : `${division} by ${division}`}
@@ -108,10 +108,10 @@
 				blocks to change theirs.
 			{/if}
 		</p>
-	</section>
+	</details>
 
-	<section class="group" aria-label="Block type">
-		<div class="label section">Block type</div>
+	<details class="group" data-panel="type" bind:open={store.panels.type}>
+		<summary class="label section">Block type</summary>
 		<div class="types">
 			{#each cutEntries as entry (entry.cut.id)}
 				<button
@@ -138,10 +138,10 @@
 				</button>
 			{/each}
 		</div>
-	</section>
+	</details>
 
-	<section class="group" aria-label="Block patterns">
-		<div class="label section">Block patterns</div>
+	<details class="group" data-panel="patterns" bind:open={store.panels.patterns}>
+		<summary class="label section">Block patterns</summary>
 		{#if patternEntries.length}
 			<div class="types">
 				{#each patternEntries as entry (entry.saved.id)}
@@ -181,7 +181,7 @@
 					: 'Select filled blocks on the quilt to save them as a pattern.'}
 			</p>
 		{/if}
-	</section>
+	</details>
 
 	<AttributesPanel {store} />
 </aside>
@@ -201,6 +201,35 @@
 	.group {
 		border-top: 1px solid var(--qb-line);
 		padding-bottom: 0.9rem;
+	}
+	/*
+	 * Native disclosures, so keyboard and screen readers get the behaviour for
+	 * free. The marker is replaced with one that does not shift the label.
+	 */
+	summary {
+		cursor: pointer;
+		list-style: none;
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+	summary::-webkit-details-marker {
+		display: none;
+	}
+	summary::before {
+		content: '';
+		width: 0;
+		height: 0;
+		border-left: 4px solid currentColor;
+		border-top: 3.5px solid transparent;
+		border-bottom: 3.5px solid transparent;
+		transition: transform 120ms ease;
+	}
+	details[open] > summary::before {
+		transform: rotate(90deg);
+	}
+	summary:hover {
+		color: var(--color-text-strong);
 	}
 
 	.setting {
