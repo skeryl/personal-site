@@ -59,7 +59,7 @@
 		if (store.tool === 'mouse') {
 			return store.selection.length
 				? null
-				: 'Drag a box to select filled squares · hold ⌘ or Ctrl to include empty ones';
+				: 'Drag a box to select filled squares · hold ⌘ or Ctrl for empty ones, or to click into a piece';
 		}
 		if (store.tool === 'grid') return 'Click or drag to paint the grid chosen on the left';
 		if (store.tool === 'paint') return 'Click or drag to color pieces without recutting them';

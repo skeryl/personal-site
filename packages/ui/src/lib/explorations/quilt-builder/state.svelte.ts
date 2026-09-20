@@ -105,6 +105,9 @@ export const DEFAULT_PANELS: Panels = {
 	centerGuides: false
 };
 
+/** Keys that change what the pointer would do, so the preview must follow. */
+const MODIFIERS = new Set(['Alt', 'Meta', 'Control']);
+
 /** Zoom is view state: never saved, never undone. */
 export const ZOOM_MIN = 1;
 export const ZOOM_MAX = 12;
@@ -116,11 +119,10 @@ export type ColorSlot = { kind: 'fabric'; id: MaterialId } | { kind: 'unset'; ro
 export interface Hover {
 	index: number;
 	point: Point;
-	/**
-	 * Alt inverts the grain the tool works at: the Mouse tool drills down to
-	 * the piece under the cursor, Place breaks out to the whole square.
-	 */
+	/** Alt: Place breaks out to the whole square, however finely divided. */
 	alt: boolean;
+	/** Cmd or ctrl: the Mouse tool drills down to the piece under the cursor. */
+	cmd: boolean;
 }
 
 /** One piece of fabric, addressed within the board. */
@@ -148,6 +150,8 @@ interface Marquee {
 	pointerId: number;
 	anchor: number;
 	head: number;
+	/** Where in the anchor square it began, for a click that drills instead. */
+	point: Point;
 	additive: boolean;
 	/** Sweeps skip empty squares unless this is held. */
 	includeEmpty: boolean;
@@ -545,7 +549,7 @@ export class QuiltStore {
 		return { cell: index, path, piece: pieceAt(leaf.cut, leaf.rotation, localPoint(rect, point)) };
 	}
 
-	/** Alt-click: drill past the square to the single piece under the cursor. */
+	/** Cmd-click: drill past the square to the single piece under the cursor. */
 	selectPieceAt(index: number, point: Point) {
 		const ref = this.pieceRefAt(index, point);
 		if (!ref) return;
@@ -712,9 +716,13 @@ export class QuiltStore {
 			this.selection = this.dragTargets(drag);
 			return;
 		}
-		if (drag && drag.mode === 'copy' && drag.over === drag.origin) {
-			this.selectPieceAt(drag.origin, drag.point);
-		}
+		if (!drag || drag.over !== drag.origin) return;
+		/*
+		 * A grab that went nowhere is a click. Cmd drills to the piece under
+		 * it; alt, whose drag duplicates, just takes the square.
+		 */
+		if (drag.mode === 'move') this.selectPieceAt(drag.origin, drag.point);
+		else this.select(drag.origin);
 	}
 
 	/*
@@ -737,6 +745,15 @@ export class QuiltStore {
 			this.toggle(marquee.anchor);
 			return;
 		}
+		// A cmd-click with no drag drills into whatever is under it.
+		if (
+			marquee.anchor === marquee.head &&
+			marquee.includeEmpty &&
+			!isEmpty(this.cells[marquee.anchor])
+		) {
+			this.selectPieceAt(marquee.anchor, marquee.point);
+			return;
+		}
 		const swept = this.sweptIndices(marquee);
 		this.selectedPiece = null;
 		this.selectedNode = null;
@@ -748,7 +765,7 @@ export class QuiltStore {
 	/** The piece alt-hovering would select, previewed before you commit. */
 	hoverPiece = $derived.by((): PieceRef | null => {
 		const hover = this.hover;
-		if (this.tool !== 'mouse' || !hover?.alt || this.blockDrag || this.marquee) return null;
+		if (this.tool !== 'mouse' || !hover?.cmd || this.blockDrag || this.marquee) return null;
 		return this.pieceRefAt(hover.index, hover.point);
 	});
 
@@ -988,6 +1005,7 @@ export class QuiltStore {
 				pointerId: e.pointerId,
 				anchor: index,
 				head: index,
+				point: this.resolve(e.clientX, e.clientY)?.point ?? [0.5, 0.5],
 				additive: e.shiftKey,
 				includeEmpty: e.metaKey || e.ctrlKey
 			};
@@ -1020,7 +1038,7 @@ export class QuiltStore {
 		const g = this.gesture;
 		if (g && g.pointerId !== e.pointerId) return;
 		const hit = this.resolve(e.clientX, e.clientY);
-		this.hover = hit ? { ...hit, alt: e.altKey } : null;
+		this.hover = hit ? { ...hit, alt: e.altKey, cmd: e.metaKey || e.ctrlKey } : null;
 		if (!g || !hit) return;
 		if (g.mode === 'erase') this.eraseAt(hit.index, hit.point);
 		else if (g.mode === 'paint') this.paintAt(hit.index, hit.point);
@@ -1065,14 +1083,18 @@ export class QuiltStore {
 		this.placeAt(index, keyboardPoint(this.pending));
 	}
 
-	/** Alt held or released, with the pointer sitting still over a square. */
-	setAlt(down: boolean) {
-		if (!this.hover || this.hover.alt === down) return;
-		this.hover = { ...this.hover, alt: down };
+	/** A modifier held or released, with the pointer sitting still over a square. */
+	setModifiers(e: KeyboardEvent) {
+		const hover = this.hover;
+		if (!hover) return;
+		const alt = e.altKey;
+		const cmd = e.metaKey || e.ctrlKey;
+		if (hover.alt === alt && hover.cmd === cmd) return;
+		this.hover = { ...hover, alt, cmd };
 	}
 
 	onKeyUp(e: KeyboardEvent) {
-		if (e.key === 'Alt') this.setAlt(false);
+		if (MODIFIERS.has(e.key)) this.setModifiers(e);
 	}
 
 	onKeyDown(e: KeyboardEvent) {
@@ -1085,12 +1107,12 @@ export class QuiltStore {
 			return;
 		}
 		/*
-		 * Alt changes what a click would do, so the preview has to follow the
-		 * key as well as the pointer: held still over a square, it should
-		 * redraw the moment alt goes down.
+		 * A modifier changes what a click would do, so the preview has to
+		 * follow the key as well as the pointer: held still over a square, it
+		 * should redraw the moment the key goes down.
 		 */
-		if (e.key === 'Alt') {
-			this.setAlt(true);
+		if (MODIFIERS.has(e.key)) {
+			this.setModifiers(e);
 			return;
 		}
 		if (e.key === 'Escape') {

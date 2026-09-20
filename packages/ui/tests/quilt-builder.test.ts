@@ -728,14 +728,15 @@ test('alt-drag refuses rather than clipping at the quilt edge', async ({ page })
 });
 
 /** Alt-click without moving, which drills to the piece under the cursor. */
-const altClick = async (page: Page, index: number, fx: number, fy: number) => {
+/** Cmd-click: drill past the square to the piece under the cursor. */
+const pieceClick = async (page: Page, index: number, fx: number, fy: number) => {
 	const box = await cell(page, index).boundingBox();
 	if (!box) throw new Error('cell not found');
-	await page.keyboard.down('Alt');
+	await page.keyboard.down('ControlOrMeta');
 	await page.mouse.move(box.x + box.width * fx, box.y + box.height * fy);
 	await page.mouse.down();
 	await page.mouse.up();
-	await page.keyboard.up('Alt');
+	await page.keyboard.up('ControlOrMeta');
 	await parkMouse(page);
 };
 
@@ -751,7 +752,7 @@ test('alt-click drills past the square to a single piece', async ({ page }) => {
 	expect(before).toHaveLength(8);
 
 	await tool(page, /^Mouse/).click();
-	await altClick(page, target, 0.25, 0.12);
+	await pieceClick(page, target, 0.25, 0.12);
 
 	await expect(page.locator('.readout')).toHaveText('C2 piece selected');
 	// Exactly one piece is outlined, and only in that square.
@@ -779,7 +780,7 @@ test('a selected piece links up to the square that contains it', async ({ page }
 	await parkMouse(page);
 
 	await tool(page, /^Mouse/).click();
-	await altClick(page, target, 0.25, 0.12);
+	await pieceClick(page, target, 0.25, 0.12);
 	await expect(page.locator('.readout')).toHaveText('C2 piece selected');
 
 	// A pinwheel is a 2x2 of triangles, so the ladder has three rungs:
@@ -794,7 +795,7 @@ test('a selected piece links up to the square that contains it', async ({ page }
 	await expect(page.locator('rect.node-outline')).toHaveCount(0);
 
 	// Escape climbs the same ladder, one rung per press.
-	await altClick(page, target, 0.25, 0.12);
+	await pieceClick(page, target, 0.25, 0.12);
 	await expect(page.locator('.readout')).toHaveText('C2 piece selected');
 	await page.keyboard.press('Escape');
 	await expect(page.locator('.readout')).toHaveText('C2 block selected');
@@ -830,7 +831,7 @@ test('the grid applies to a selected block, not the whole square', async ({ page
 
 	// Climb to one quarter of the pinwheel and subdivide just that quarter.
 	await tool(page, /^Mouse/).click();
-	await altClick(page, target, 0.25, 0.12);
+	await pieceClick(page, target, 0.25, 0.12);
 	await page.getByRole('button', { name: 'the block' }).click();
 	await page.getByRole('button', { name: '2 by 2', exact: true }).click();
 	await parkMouse(page);
@@ -1001,7 +1002,7 @@ test('delete on a selected piece clears only that piece', async ({ page }) => {
 	const filled = before.filter((f) => f === '#4f7fe8').length;
 
 	await tool(page, /^Mouse/).click();
-	await altClick(page, target, 0.25, 0.12);
+	await pieceClick(page, target, 0.25, 0.12);
 	await page.keyboard.press('Delete');
 	await parkMouse(page);
 
@@ -1997,4 +1998,30 @@ test('a pattern taller than it is wide fits the square its icon is given', async
 	expect(art.height).toBeLessThanOrEqual(icon.height + 1);
 	expect(art.width).toBeLessThanOrEqual(icon.width + 1);
 	expect(Math.round(art.height / art.width)).toBe(2);
+});
+
+test('alt-click takes the square, cmd-click the piece inside it', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	const cols = await gridCols(page);
+	const target = at(cols, 1, 2);
+	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	await cell(page, target).click();
+	await tool(page, /^Mouse/).click();
+	await parkMouse(page);
+
+	// Cmd drills; alt, whose drag duplicates, takes the whole square.
+	await pieceClick(page, target, 0.25, 0.12);
+	await expect(page.locator('.readout')).toHaveText('C2 piece selected');
+	await expect(page.locator('polygon.piece-outline')).toHaveCount(1);
+
+	await page.keyboard.press('Escape');
+	const box = (await cell(page, target).boundingBox())!;
+	await page.keyboard.down('Alt');
+	await page.mouse.move(box.x + box.width * 0.25, box.y + box.height * 0.12);
+	await page.mouse.down();
+	await page.mouse.up();
+	await page.keyboard.up('Alt');
+	await parkMouse(page);
+	await expect(page.locator('.readout')).toHaveText('C2 square selected');
+	await expect(page.locator('polygon.piece-outline')).toHaveCount(0);
 });
