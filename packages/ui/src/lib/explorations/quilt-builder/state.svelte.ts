@@ -782,14 +782,22 @@ export class QuiltStore {
 	 * The distinct fabrics used by the selected blocks, in reading order. This
 	 * is what ATTRIBUTES lists: two for a plain block, more for a composed one.
 	 */
+	/*
+	 * The distinct fabrics in the selection, with a null entry at the end when
+	 * some piece has none. A bare piece is still something worth pointing at:
+	 * giving the unset slot a colour fills every bare piece in the selection
+	 * at once, rather than drawing over them one at a time.
+	 */
 	selectionFabrics = $derived.by(() => {
 		const seen: MaterialId[] = [];
+		let bare = false;
 		this.scopeBlocks.forEach((block) => {
 			flatten(block).forEach(({ fabric }) => {
-				if (fabric && !seen.includes(fabric)) seen.push(fabric);
+				if (!fabric) bare = true;
+				else if (!seen.includes(fabric)) seen.push(fabric);
 			});
 		});
-		return seen;
+		return bare ? [...seen, null] : seen;
 	});
 
 	/** Rewrite each scoped subtree, leaving everything outside it alone. */
@@ -804,7 +812,8 @@ export class QuiltStore {
 	}
 
 	/** Swap one fabric for another, within the selection only. */
-	remapFabric(from: MaterialId, to: MaterialId) {
+	/** `from` of null fills the pieces that have no fabric yet. */
+	remapFabric(from: MaterialId | null, to: MaterialId) {
 		if (from === to) return;
 		this.editScope((block) =>
 			mapLeaves(block, (leaf) =>

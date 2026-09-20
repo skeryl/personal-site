@@ -28,8 +28,9 @@
 
 	/** Which COLOR n row has its palette open, by fabric id. */
 	let editing = $state<string | null>(null);
-	/** Sentinel for the single row shown when one piece is selected. */
+	/** Sentinels for the rows that have no fabric id of their own. */
 	const PIECE = '\u0000piece';
+	const UNSET = '\u0000unset';
 
 	const hexOf = (id: string | null): string =>
 		id ? (store.materialById.get(id)?.hex ?? '#ffffff') : '#ffffff';
@@ -46,12 +47,12 @@
 		}
 	};
 
-	const remap = (from: string, to: string) => {
+	const remap = (from: string | null, to: string) => {
 		store.remapFabric(from, to);
 		editing = null;
 	};
 
-	const addAndRemap = (from: string, anchor: DOMRect) => {
+	const addAndRemap = (from: string | null, anchor: DOMRect) => {
 		const material = store.addMaterial();
 		store.remapFabric(from, material.id);
 		editing = null;
@@ -154,27 +155,30 @@
 		</p>
 	{:else if !store.activeScope.length}
 		<p class="hint muted">No blocks selected</p>
-	{:else if !store.selectionFabrics.length}
+	{:else if !store.selectionFabrics.some((fabric) => fabric !== null)}
 		<p class="hint muted">The selected blocks are empty</p>
 	{:else}
 		<ul class="colors">
-			{#each store.selectionFabrics as fabric, i (fabric)}
+			{#each store.selectionFabrics as fabric, i (fabric ?? UNSET)}
+				{@const key = fabric ?? UNSET}
+				{@const label = fabric ? `Color ${i + 1}` : 'Unset'}
 				<li class="color">
-					<span class="color-label">Color {i + 1}</span>
+					<span class="color-label">{label}</span>
 					<button
 						class="swatch"
+						class:unset={!fabric}
 						style="background: {hexOf(fabric)}"
-						aria-label={`Color ${i + 1}: ${nameOf(fabric)}. Change it.`}
-						aria-expanded={editing === fabric}
-						onclick={() => (editing = editing === fabric ? null : fabric)}
+						aria-label={`${label}: ${fabric ? nameOf(fabric) : 'no color yet'}. Change it.`}
+						aria-expanded={editing === key}
+						onclick={() => (editing = editing === key ? null : key)}
 					></button>
 					<span class="hex-row">
 						<span class="hex-label">Hex code:</span>
 						<span class="hex-chip">{hexTextOf(fabric)}</span>
 					</span>
-					<span class="color-name">{nameOf(fabric)}</span>
+					<span class="color-name">{fabric ? nameOf(fabric) : 'No color'}</span>
 
-					{#if editing === fabric}
+					{#if editing === key}
 						<div class="picker">
 							<div class="label">Palette</div>
 							<div class="swatches">
@@ -393,6 +397,10 @@
 		width: 6.6875rem;
 		height: 2.3125rem;
 		border: none;
+	}
+	/* Nothing to show, so show the outline of the space a colour would fill. */
+	.color .swatch.unset {
+		border: 1px dashed var(--qb-line);
 	}
 	.hex-row {
 		display: flex;

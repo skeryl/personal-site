@@ -1638,3 +1638,24 @@ test('arming a placement drops the selection, so R turns what is being placed', 
 	expect(await cellPoints(page, 0)).toEqual(placed);
 	expect(await cellPoints(page, 1)).not.toEqual(placed);
 });
+
+test('bare pieces get an unset slot, and colouring it fills all of them', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await addFabric(page, 'Green', '38511f');
+
+	// A half square triangle on an empty square: one piece coloured, one bare.
+	await page.getByRole('button', { name: 'Paint with Blue' }).click();
+	await pickShape(page, 'Half square triangle');
+	await cell(page, 0).click();
+	await parkMouse(page);
+	await selectCell(page, 0);
+	await expect(page.locator('.colors .color-label')).toHaveText(['Color 1', 'Unset']);
+
+	// The slot is pickable like any other, and fills every bare piece at once.
+	const unset = page.locator('.colors .color').filter({ hasText: 'Unset' });
+	await unset.locator('.swatch').first().click();
+	await unset.locator('.picker .swatch.small').last().click();
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toEqual(['#4f7fe8', '#38511f']);
+	await expect(page.locator('.colors .color-label')).toHaveText(['Color 1', 'Color 2']);
+});
