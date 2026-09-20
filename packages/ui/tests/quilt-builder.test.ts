@@ -1824,11 +1824,18 @@ test('the paint tool brushes colour on without touching the shape', async ({ pag
 	expect(await cellFills(page, 0)).toEqual(['#4f7fe8', '#38511f']);
 	expect(await cellPoints(page, 0)).toEqual(shape);
 
-	// And a drag carries it across squares, like the grid brush does.
+	// A blank square has no shape to keep, so it becomes an ordinary square in
+	// that fabric. Never re-cutting one that is there is the difference.
+	const blank = (await cell(page, 4).boundingBox())!;
+	await page.mouse.click(blank.x + blank.width / 2, blank.y + blank.height / 2);
+	await parkMouse(page);
+	expect(await cellFills(page, 4)).toEqual(['#38511f']);
+
+	// And a drag carries the colour across squares.
 	const next = (await cell(page, 1).boundingBox())!;
 	await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.8);
 	await page.mouse.down();
-	await page.mouse.move(next.x + next.width * 0.2, next.y + next.height * 0.8, { steps: 8 });
+	await page.mouse.move(next.x + next.width * 0.2, next.y + next.height * 0.8, { steps: 10 });
 	await page.mouse.up();
 	await parkMouse(page);
 	expect(await cellFills(page, 1)).toContain('#38511f');

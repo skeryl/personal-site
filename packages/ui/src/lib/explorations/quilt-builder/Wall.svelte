@@ -62,7 +62,7 @@
 				: 'Drag a box to select filled squares · hold ⌘ or Ctrl to include empty ones';
 		}
 		if (store.tool === 'grid') return 'Click or drag to paint the grid chosen on the left';
-		if (store.tool === 'paint') return 'Click or drag to brush on the color chosen on the left';
+		if (store.tool === 'paint') return 'Click or drag to color pieces without recutting them';
 		return null;
 	});
 

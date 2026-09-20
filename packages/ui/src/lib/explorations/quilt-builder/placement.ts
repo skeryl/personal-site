@@ -156,8 +156,12 @@ export const buildPlacement = (
 
 /*
  * The block after painting the piece under `point`, or null if it already
- * holds that fabric. The shape is left exactly as it is: this is a brush,
- * not a placement.
+ * holds that fabric.
+ *
+ * A brush, not a placement: it never re-cuts what is under it, so brushing
+ * across a half square triangle colours the half you are over and leaves the
+ * seam where it is. Blank space has no shape to keep, so it becomes an
+ * ordinary square in that fabric.
  */
 export const buildPaint = (
 	block: Block,
