@@ -1797,3 +1797,38 @@ test('a click on the wall beside the quilt drops the selection', async ({ page }
 	await page.mouse.click(view.x + 12, view.y + view.height - 12);
 	await expect(page.locator('.readout')).toHaveText('no squares selected');
 });
+
+test('the paint tool brushes colour on without touching the shape', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await pickShape(page, 'Half square triangle');
+	await cell(page, 0).click();
+	await cell(page, 1).click();
+	await parkMouse(page);
+	const shape = await cellPoints(page, 0);
+	expect(await cellFills(page, 0)).toEqual(['#4f7fe8', '#d9d9d9']);
+
+	await addFabric(page, 'Green', '38511f');
+	await tool(page, /^Paint/).click();
+
+	// One piece takes the fabric; the cut stays exactly as it was.
+	const box = (await cell(page, 0).boundingBox())!;
+	await page.mouse.click(box.x + box.width * 0.8, box.y + box.height * 0.2);
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toEqual(['#4f7fe8', '#38511f']);
+	expect(await cellPoints(page, 0)).toEqual(shape);
+
+	// And a drag carries it across squares, like the grid brush does.
+	const next = (await cell(page, 1).boundingBox())!;
+	await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.8);
+	await page.mouse.down();
+	await page.mouse.move(next.x + next.width * 0.2, next.y + next.height * 0.8, { steps: 8 });
+	await page.mouse.up();
+	await parkMouse(page);
+	expect(await cellFills(page, 1)).toContain('#38511f');
+	expect(await cellPoints(page, 1)).toEqual(shape);
+
+	// T arms it, the way E arms the eraser.
+	await tool(page, /^Mouse/).click();
+	await page.keyboard.press('t');
+	await expect(tool(page, /^Paint/)).toHaveClass(/active/);
+});

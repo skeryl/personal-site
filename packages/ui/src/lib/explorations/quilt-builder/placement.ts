@@ -155,6 +155,20 @@ export const buildPlacement = (
 };
 
 /*
+ * The block after painting the piece under `point`, or null if it already
+ * holds that fabric. The shape is left exactly as it is: this is a brush,
+ * not a placement.
+ */
+export const buildPaint = (
+	block: Block,
+	point: Point,
+	materialId: MaterialId | null
+): Block | null => {
+	const result = paintPiece(block, point, materialId);
+	return blocksEqual(result, block) ? null : result;
+};
+
+/*
  * The block after erasing the piece under `point`.
  *
  * There is no early exit on an uncoloured piece: a shape placed before any

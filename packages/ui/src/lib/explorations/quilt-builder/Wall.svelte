@@ -62,6 +62,7 @@
 				: 'Drag a box to select filled squares · hold ⌘ or Ctrl to include empty ones';
 		}
 		if (store.tool === 'grid') return 'Click or drag to paint the grid chosen on the left';
+		if (store.tool === 'paint') return 'Click or drag to brush on the color chosen on the left';
 		return null;
 	});
 
@@ -385,6 +386,7 @@
 						class:copying={store.blockDrag?.mode === 'copy'}
 						class:moving={store.blockDrag?.mode === 'move'}
 						class:tool-grid={store.tool === 'grid'}
+						class:tool-paint={store.tool === 'paint'}
 						style="grid-template-columns: repeat({store.dims
 							.cols}, 1fr); grid-template-rows: repeat({store.dims
 							.rows}, 1fr); width: {content.w}px; height: {content.h}px"
@@ -413,7 +415,12 @@
 						{/if}
 						{#each store.cells as cell, i (i)}
 							{@const pv =
-								(store.placePreview ?? store.gridPreview ?? store.dragPreview)?.get(i) ?? null}
+								(
+									store.placePreview ??
+									store.paintPreview ??
+									store.gridPreview ??
+									store.dragPreview
+								)?.get(i) ?? null}
 							{@const ev = store.erasePreview?.get(i) ?? null}
 							{@const display = pv ?? cell}
 							{@const pieces = flatten(display)}
@@ -529,6 +536,13 @@
 				onclick={() => (store.tool = 'grid')}
 			>
 				Grid <kbd>G</kbd>
+			</button>
+			<button
+				class="action"
+				class:active={store.tool === 'paint'}
+				onclick={() => (store.tool = 'paint')}
+			>
+				Paint <kbd>T</kbd>
 			</button>
 			<button
 				class="action"
@@ -826,7 +840,8 @@
 		height: 100%;
 		display: block;
 	}
-	.tool-erase .cell {
+	.tool-erase .cell,
+	.tool-paint .cell {
 		cursor: crosshair;
 	}
 

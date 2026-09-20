@@ -50,6 +50,7 @@ import {
 } from './model';
 import {
 	buildErase,
+	buildPaint,
 	buildPlacement,
 	firstFilledPoint,
 	keyboardPoint,
@@ -81,7 +82,7 @@ import {
 import { cuttingListFor, materialsListText } from './cutting';
 
 export type Tab = 'block' | 'piece';
-export type Tool = 'place' | 'erase' | 'mouse' | 'grid';
+export type Tool = 'place' | 'paint' | 'erase' | 'mouse' | 'grid';
 
 /** Compositions offered in the toolbar: one piece, 2x2, or 4x4. */
 export const DIVISIONS = [1, 2, 4] as const;
@@ -329,6 +330,14 @@ export class QuiltStore {
 		return new Map([[index, buildPlacement(target, point, pending, this.selectedMaterialId)]]);
 	});
 
+	/** The hovered piece renders in the fabric a click would give it. */
+	paintPreview = $derived.by(() => {
+		if (this.tool !== 'paint' || this.gesture || !this.hover) return null;
+		const { index, point } = this.hover;
+		const block = buildPaint(this.cells[index], point, this.selectedMaterialId);
+		return block ? new Map([[index, block]]) : null;
+	});
+
 	erasePreview = $derived.by(() => {
 		if (this.tool !== 'erase' || this.gesture || !this.hover) return null;
 		const block = buildErase(this.cells[this.hover.index], this.hover.point);
@@ -419,6 +428,12 @@ export class QuiltStore {
 		const target = this.placementTarget(this.cells[index], whole);
 		const block = buildPlacement(target, point, pending, this.selectedMaterialId);
 		return this.commit(new Map([[index, block]]));
+	}
+
+	/** Set the fabric of one piece, leaving its shape alone. */
+	private paintAt(index: number, point: Point): boolean {
+		const next = buildPaint(this.cells[index], point, this.selectedMaterialId);
+		return next ? this.commit(new Map([[index, next]])) : false;
 	}
 
 	private eraseAt(index: number, point: Point): boolean {
@@ -963,6 +978,7 @@ export class QuiltStore {
 		if (!hit) return;
 		this.beginGesture({ pointerId: e.pointerId, mode: this.tool });
 		if (this.tool === 'erase') this.eraseAt(index, hit.point);
+		else if (this.tool === 'paint') this.paintAt(index, hit.point);
 		else if (this.tool === 'grid') this.gridAt(index);
 		else this.placeAt(index, hit.point, e.altKey);
 	}
@@ -988,6 +1004,7 @@ export class QuiltStore {
 		this.hover = hit ? { ...hit, alt: e.altKey } : null;
 		if (!g || !hit) return;
 		if (g.mode === 'erase') this.eraseAt(hit.index, hit.point);
+		else if (g.mode === 'paint') this.paintAt(hit.index, hit.point);
 		else if (g.mode === 'grid') this.gridAt(hit.index);
 		else this.placeAt(hit.index, hit.point, e.altKey);
 	}
@@ -1020,6 +1037,10 @@ export class QuiltStore {
 		if (this.tool === 'erase') {
 			const point = firstFilledPoint(this.cells[index]);
 			if (point) this.eraseAt(index, point);
+			return;
+		}
+		if (this.tool === 'paint') {
+			this.paintAt(index, firstFilledPoint(this.cells[index]) ?? [0.5, 0.5]);
 			return;
 		}
 		this.placeAt(index, keyboardPoint(this.pending));
@@ -1080,6 +1101,7 @@ export class QuiltStore {
 			return;
 		}
 		if (e.key === 'e' || e.key === 'E') this.tool = 'erase';
+		if (e.key === 't' || e.key === 'T') this.tool = 'paint';
 		if (e.key === 'p' || e.key === 'P') this.tool = 'place';
 		if (e.key === 'v' || e.key === 'V') this.tool = 'mouse';
 		if (e.key === 'g' || e.key === 'G') this.cycleGrid();
