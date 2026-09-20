@@ -938,17 +938,16 @@
 	}
 
 	/*
-	 * The seams inside a square, drawn as the design draws them: one device
-	 * pixel, dashed, in the same grey as the rules between squares. They had
-	 * been heavier and darker than every other line on the quilt, which put
-	 * the emphasis on a subdivision rather than on the quilt. The dash is what
-	 * the block grid chips in the palette use for the same thing.
+	 * The seams inside a square: one device pixel, solid, in the same grey as
+	 * the rules between squares. Every line on the quilt is drawn alike, so
+	 * nothing about a subdivision catches the eye more than the quilt does.
+	 * The design dashes these, but a dash against a pieced block reads as an
+	 * artefact of the drawing rather than as a seam.
 	 */
 	rect.seam {
 		fill: none;
 		stroke: var(--qb-square);
 		stroke-width: 1;
-		stroke-dasharray: 3 3;
 		vector-effect: non-scaling-stroke;
 	}
 	/*
