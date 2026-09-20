@@ -288,6 +288,17 @@ export class QuiltStore {
 
 	filled = $derived(this.cells.filter((block) => !isEmpty(block)).length);
 	inUse = $derived(materialsInUse(this.cells));
+
+	/** Pieces cut from each fabric, which the palette prints beside its name. */
+	usage = $derived.by(() => {
+		const counts = new Map<MaterialId, number>();
+		this.cells.forEach((block) => {
+			flatten(block).forEach(({ fabric }) => {
+				if (fabric) counts.set(fabric, (counts.get(fabric) ?? 0) + 1);
+			});
+		});
+		return counts;
+	});
 	canUndo = $derived(this.history.past.length > 0);
 	canRedo = $derived(this.history.future.length > 0);
 	cutting = $derived(cuttingListFor(this.cells, this.materials, this.blockSize, this.seamInches));

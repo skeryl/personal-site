@@ -153,6 +153,8 @@
 </script>
 
 <div class="attributes" data-panel="attributes">
+	<div class="label section">Color selection</div>
+
 	{#if store.selectedPiece}
 		<ul class="colors">
 			<li class="color">
@@ -163,13 +165,7 @@
 					aria-label={`Piece colour: ${store.selectedPieceFabric ? nameOf(store.selectedPieceFabric) : 'empty'}. Change it.`}
 					onclick={(e) => openPiece(rectOf(e))}
 				></button>
-				<span class="hex-row">
-					<span class="hex-label">Hex code:</span>
-					<span class="hex-chip">{hexTextOf(store.selectedPieceFabric)}</span>
-				</span>
-				<span class="color-name">
-					{store.selectedPieceFabric ? nameOf(store.selectedPieceFabric) : 'Empty'}
-				</span>
+				<span class="hex-chip">{hexTextOf(store.selectedPieceFabric)}</span>
 			</li>
 		</ul>
 		<p class="hint">
@@ -193,15 +189,11 @@
 						aria-label={`${label}: ${fabric ? nameOf(fabric) : 'no color yet'}. Change it.`}
 						onclick={(e) => openSlot(slot, rectOf(e))}
 					></button>
-					<span class="hex-row">
-						<span class="hex-label">Hex code:</span>
-						<span class="hex-chip">
-							{slot.kind === 'fabric'
-								? hexTextOf(slot.id)
-								: ROLE_FILL[slot.role].slice(1).toUpperCase()}
-						</span>
+					<span class="hex-chip">
+						{slot.kind === 'fabric'
+							? hexTextOf(slot.id)
+							: ROLE_FILL[slot.role].slice(1).toUpperCase()}
 					</span>
-					<span class="color-name">{fabric ? nameOf(fabric) : 'No color'}</span>
 				</li>
 			{/each}
 		</ul>
@@ -213,76 +205,33 @@
 		{/if}
 	{/if}
 
-	<div class="label section">Palette</div>
-	<p class="hint muted">Click a color to paint with it and adjust it.</p>
-	<div class="swatches palette">
+	<div class="label section">Color palette</div>
+	<div class="palette">
 		{#each store.materials as material (material.id)}
-			<button
-				class="swatch"
-				class:current={material.id === store.selectedMaterialId}
-				style="background: {material.hex}"
-				title={material.name.trim() || material.hex.toUpperCase()}
-				aria-label={`Paint with ${material.name.trim() || material.hex.toUpperCase()} and adjust it.`}
-				onclick={(e) => {
-					store.selectMaterial(material.id);
-					openPicker(material.id, rectOf(e));
-				}}
-				onkeydown={(e) => {
-					// The swatch you are on is the one delete takes.
-					if (e.key !== 'Delete' && e.key !== 'Backspace') return;
-					e.preventDefault();
-					e.stopPropagation();
-					store.deleteMaterial(material.id);
-				}}
-			></button>
-		{/each}
-		<button class="swatch add" title="Add a color" aria-label="Add a color" onclick={addAndPick}>
-			<span aria-hidden="true">+</span>
-		</button>
-	</div>
-
-	{#if activeMaterial}
-		<div class="active">
-			<label class="field">
-				<span class="label">Name</span>
-				<input
-					class="name"
-					type="text"
-					placeholder="Optional"
-					maxlength="40"
-					value={activeMaterial.name}
-					oninput={(e) => store.renameMaterial(activeMaterial.id, e.currentTarget.value)}
-				/>
-			</label>
-			<label class="field">
-				<span class="hex-label">Hex code:</span>
-				<input
-					class="hex"
-					type="text"
-					maxlength="7"
-					spellcheck="false"
-					value={activeMaterial.hex.slice(1).toUpperCase()}
-					onchange={(e) => onHexChange(e, activeMaterial.id)}
-					onkeydown={(e) => {
-						if (e.key === 'Enter') e.currentTarget.blur();
+			{@const name = material.name.trim() || material.hex.slice(1).toUpperCase()}
+			<div class="entry">
+				<button
+					class="chip"
+					class:current={material.id === store.selectedMaterialId}
+					style="background: {material.hex}"
+					aria-label={`Paint with ${name} and adjust it.`}
+					onclick={(e) => {
+						store.selectMaterial(material.id);
+						openPicker(material.id, rectOf(e));
 					}}
-				/>
-			</label>
-			<button
-				class="remove"
-				onclick={() => store.deleteMaterial(activeMaterial.id)}
-				aria-label={`Remove ${activeMaterial.name.trim() || 'this fabric'}`}
-			>
-				Remove
-			</button>
-		</div>
-	{:else}
-		<p class="hint muted">
-			{store.materials.length
-				? 'No color chosen. Shapes you place stay gray.'
-				: 'No colors yet. Shapes you place stay gray until you add one.'}
-		</p>
-	{/if}
+					onkeydown={(e) => {
+						// The swatch you are on is the one delete takes.
+						if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+						e.preventDefault();
+						e.stopPropagation();
+						store.deleteMaterial(material.id);
+					}}
+				></button>
+				<span class="entry-name" title={name}>{name} ({store.usage.get(material.id) ?? 0})</span>
+			</div>
+		{/each}
+		<button class="add-color" onclick={addAndPick}>+ Add color</button>
+	</div>
 
 	{#if store.cutting.length}
 		<details class="cut-list">
@@ -327,6 +276,8 @@
 		<ColorPicker
 			hex={hexOf(target.id)}
 			anchor={target.anchor}
+			name={store.materialById.get(target.id)?.name ?? ''}
+			onrename={(next) => store.renameMaterial(target.id, next)}
 			swatches={store.materials}
 			selectedId={target.id}
 			onpick={(next) => {
@@ -405,8 +356,57 @@
 		text-transform: uppercase;
 		color: #000;
 	}
-	.color-name {
-		font-size: 0.625rem;
+	/*
+	 * The design's own sizes: a 51 by 37 swatch with its hex directly under
+	 * it, and no label in between. The fabric's name belongs to the palette
+	 * below, where it is shown with how much of it the quilt uses.
+	 */
+	.color .swatch {
+		width: 51px;
+		height: 37px;
+		padding: 0;
+		border: none;
+		cursor: pointer;
+	}
+	.hex-chip {
+		display: block;
+		width: 51px;
+		padding: 0.1875rem 7px;
+		background: #dadbde;
+		font-size: 10px;
+		letter-spacing: 0.3px;
+		text-transform: uppercase;
+		color: #000;
+	}
+
+	/* Swatches 50 by 43, each over its name and its share of the quilt. */
+	.palette {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-start;
+		gap: 0.75rem 19px;
+		padding: 0 var(--qb-pad);
+	}
+	.entry {
+		display: flex;
+		flex-direction: column;
+		gap: 0;
+		width: 50px;
+	}
+	.chip {
+		width: 50px;
+		height: 43px;
+		padding: 0;
+		border: none;
+		cursor: pointer;
+	}
+	.chip.current {
+		outline: 1.5px solid #000;
+		outline-offset: 0;
+	}
+	.entry-name {
+		font-size: 10px;
+		line-height: 18px;
 		letter-spacing: 0.3px;
 		text-transform: uppercase;
 		color: var(--qb-ink);
@@ -414,23 +414,21 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	/* A flat fill, no border: the colour is the control. */
-	.color .swatch {
-		width: 6.6875rem;
-		height: 2.3125rem;
+	.add-color {
+		align-self: center;
+		padding: 0;
 		border: none;
-	}
-	.hex-row {
-		display: flex;
-		align-items: center;
-		gap: 0.3rem;
-	}
-	.hex-label {
-		font-size: 0.625rem;
+		background: none;
+		font: inherit;
+		font-size: 10px;
 		letter-spacing: 0.3px;
 		text-transform: uppercase;
-		color: #000;
-		white-space: nowrap;
+		color: #1d4ed8;
+		cursor: pointer;
+	}
+	.add-color:hover {
+		text-decoration: underline;
+		text-underline-offset: 0.25em;
 	}
 	.hex-chip {
 		display: inline-block;
@@ -444,38 +442,7 @@
 		text-align: center;
 	}
 
-	.swatch {
-		width: 2.5rem;
-		height: 1.35rem;
-		padding: 0;
-		border: 1px solid var(--qb-line);
-		cursor: pointer;
-		position: relative;
-	}
 	/* Marked the way every other chosen tile is: a heavier black rule. */
-	.swatch.current {
-		outline: 1.5px solid #000;
-		outline-offset: 0;
-	}
-	.swatch.add {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: #fff;
-		color: var(--qb-ink);
-		font-size: 0.9rem;
-		line-height: 1;
-	}
-
-	.swatches {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.35rem;
-	}
-	.palette {
-		position: relative;
-		padding: 0 var(--qb-pad);
-	}
 
 	.link {
 		font: inherit;
@@ -485,49 +452,6 @@
 		color: var(--color-text-strong);
 		text-decoration: underline;
 		cursor: pointer;
-	}
-	.active {
-		display: flex;
-		flex-direction: column;
-		gap: 0.4rem;
-		padding: 0.75rem var(--qb-pad) 0;
-	}
-	.field {
-		display: flex;
-		align-items: baseline;
-		gap: 0.5rem;
-	}
-	.name,
-	.hex {
-		flex: 1;
-		min-width: 0;
-		font: inherit;
-		font-size: 0.75rem;
-		color: var(--color-text-strong);
-		background: none;
-		border: none;
-		border-bottom: 1px solid var(--qb-line);
-		padding: 0.1rem 0;
-	}
-	.name:focus,
-	.hex:focus {
-		outline: none;
-		border-bottom-color: var(--color-text-strong);
-	}
-	.remove {
-		align-self: flex-start;
-		font: inherit;
-		font-size: 0.7rem;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: var(--color-text-secondary);
-		background: none;
-		border: none;
-		padding: 0.2rem 0;
-		cursor: pointer;
-	}
-	.remove:hover {
-		color: var(--color-text-strong);
 	}
 
 	.cut-list {

@@ -22,6 +22,8 @@
 		anchor = null,
 		swatches = [],
 		selectedId = null,
+		name = '',
+		onrename = null,
 		onpick,
 		onselect,
 		onreset,
@@ -33,6 +35,9 @@
 		/** The palette, so a colour already in the work is one click away. */
 		swatches?: readonly { id: string; hex: string; name: string }[];
 		selectedId?: string | null;
+		/** The fabric's name, edited here since the palette only shows it. */
+		name?: string;
+		onrename?: ((name: string) => void) | null;
 		onpick: (hex: string) => void;
 		onselect: (id: string) => void;
 		/** Put this back to no colour at all. */
@@ -285,7 +290,20 @@
 	</svg>
 
 	<div class="hex-row">
-		<span class="hex-label">Hex code:</span>
+		{#if onrename}
+			{@const rename = onrename}
+			<input
+				class="name"
+				type="text"
+				placeholder="Name"
+				maxlength="40"
+				aria-label="Color name"
+				value={name}
+				oninput={(e) => rename(e.currentTarget.value)}
+			/>
+		{:else}
+			<span class="hex-label">Hex code:</span>
+		{/if}
 		<input
 			class="hex-chip"
 			type="text"
@@ -454,6 +472,27 @@
 		letter-spacing: 0.3px;
 		text-transform: uppercase;
 		color: var(--qb-line);
+	}
+	/* Named here, since the palette below shows the name but cannot edit it. */
+	.name {
+		width: 86px;
+		height: 17px;
+		padding: 0 4px;
+		border: none;
+		background: var(--qb-wall);
+		font: inherit;
+		font-size: 10px;
+		letter-spacing: 0.3px;
+		text-transform: uppercase;
+		color: #000;
+	}
+	.name::placeholder {
+		color: #8a8a8a;
+		text-transform: none;
+	}
+	.name:focus {
+		outline: 1px solid #fff;
+		outline-offset: 1px;
 	}
 	.hex-chip {
 		width: 51px;

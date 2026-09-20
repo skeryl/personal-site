@@ -95,12 +95,15 @@ const setHex = async (page: Page, trigger: Locator, hex: string) => {
 };
 
 /*
- * Colour lives in the Attributes palette now: adding one through the "+"
- * swatch makes it the active fabric, and naming it is optional.
+ * Colour lives in the Attributes palette: adding one through "+ Add color"
+ * makes it the active fabric, and it is named in the picker, which is the
+ * only place a name can be edited now.
  */
 const addFabric = async (page: Page, name: string, hex: string) => {
-	await setHex(page, page.locator('.palette .add'), hex);
-	await page.locator('.active .name').fill(name);
+	await page.locator('.add-color').click();
+	await page.locator('.picker-window .hex-chip').fill(hex);
+	await page.locator('.picker-window .name').fill(name);
+	await page.locator('.picker-window .close').click();
 };
 
 test.beforeEach(async ({ page }) => {
@@ -117,7 +120,7 @@ test('shapes go down before any colour exists, in the palette greys', async ({ p
 	// Mouse is the resting tool, so the wall talks about selecting until you
 	// arm a shape.
 	await expect(page.locator('.banner')).toContainText(/select filled squares/i);
-	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(0);
+	await expect(page.locator('.palette .chip')).toHaveCount(0);
 
 	// With nothing in the palette at all, a two-tone shape lands in the greys
 	// the palette icons are drawn in, one per role.
@@ -133,7 +136,7 @@ test('shapes go down before any colour exists, in the palette greys', async ({ p
 	expect(await cellFills(page, 1)).toEqual(['#4a4a4a']);
 
 	// Adding a colour is enough: it becomes active and placing works unnamed.
-	await setHex(page, page.locator('.palette .add'), '4f7fe8');
+	await addFabric(page, '', '4f7fe8');
 	await cell(page, 1).click();
 	await parkMouse(page);
 	expect(await cellFills(page, 1)).toEqual(['#4f7fe8']);
@@ -208,7 +211,7 @@ test('the design, fabrics, and size survive a reload', async ({ page }) => {
 	await page.waitForSelector('[data-cell-index="0"]');
 	await expect(page.getByLabel('Quilt name')).toHaveValue('Stars');
 	await expect(page.locator('.size .display')).toHaveText('Throw (48”x64”)');
-	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(1);
+	await expect(page.locator('.palette .chip')).toHaveCount(1);
 	expect(await cellFills(page, 3)).toEqual(['#4f7fe8']);
 });
 
@@ -483,7 +486,7 @@ test('the wall labels its columns and rows, and names the selection', async ({ p
 test('the palette chooses which colour gets painted', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
 	await addFabric(page, 'Green', '38511f');
-	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(2);
+	await expect(page.locator('.palette .chip')).toHaveCount(2);
 
 	// The colour just added is the active one.
 	await pickShape(page, 'Square');
@@ -1097,8 +1100,8 @@ test('double-clicking a palette colour repaints every piece cut from it', async 
 
 	// The palette entry itself moved too, name intact.
 	await page.getByRole('button', { name: /^Paint with Blue/ }).click();
-	await expect(page.locator('.active .name')).toHaveValue('Blue');
-	await expect(page.locator('.active .hex')).toHaveValue('FF0000');
+	await expect(page.locator('.picker-window .name')).toHaveValue('Blue');
+	await expect(page.locator('.picker-window .hex-chip')).toHaveValue('FF0000');
 });
 
 test('a plain square is what is armed on load', async ({ page }) => {
@@ -1563,7 +1566,7 @@ test('the picker opens on screen and repaints the quilt as you drag', async ({ p
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#4f7fe8']);
 
-	await page.locator('.palette .swatch:not(.add)').first().dblclick();
+	await page.locator('.palette .chip').first().dblclick();
 	const win = page.locator('.picker-window');
 	await expect(win).toBeVisible();
 
@@ -1595,7 +1598,7 @@ test('the picker opens on screen and repaints the quilt as you drag', async ({ p
 
 test('the hue strip counts down from red at the top, and its marker follows', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await page.locator('.palette .swatch:not(.add)').first().dblclick();
+	await page.locator('.palette .chip').first().dblclick();
 	const hue = (await page.locator('.picker-window .hue').boundingBox())!;
 	const chip = page.locator('.picker-window .hex-chip');
 	const marker = page.locator('.picker-window .hue-marker');
@@ -1616,7 +1619,7 @@ test('the hue strip counts down from red at the top, and its marker follows', as
 
 test('the picker is a window: the bar drags it, escape closes it', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await page.locator('.palette .swatch:not(.add)').first().dblclick();
+	await page.locator('.palette .chip').first().dblclick();
 	const win = page.locator('.picker-window');
 	const before = (await win.boundingBox())!;
 
@@ -1643,7 +1646,7 @@ test('mixing in a colour row forks a fabric for those pieces alone', async ({ pa
 	// new fabric until something is actually changed.
 	await page.locator('.colors .color').first().locator('.swatch').click();
 	await expect(page.locator('.picker-window')).toBeVisible();
-	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(1);
+	await expect(page.locator('.palette .chip')).toHaveCount(1);
 
 	const hue = (await page.locator('.picker-window .hue').boundingBox())!;
 	await page.mouse.click(hue.x + hue.width / 2, hue.y + hue.height * (2 / 3));
@@ -1653,7 +1656,7 @@ test('mixing in a colour row forks a fabric for those pieces alone', async ({ pa
 
 	// The row is the pieces in front of you, not the fabric: the square that
 	// was selected takes a new colour and the one beside it keeps the old.
-	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(2);
+	await expect(page.locator('.palette .chip')).toHaveCount(2);
 	expect((await cellFills(page, 0))[0]?.toUpperCase()).toBe(`#${picked}`);
 	expect(await cellFills(page, 1)).toEqual(['#4f7fe8']);
 });
@@ -1673,7 +1676,7 @@ test('reset puts a colour row back to unset', async ({ page }) => {
 	expect(await cellFills(page, 0)).toEqual(['#4a4a4a']);
 	await expect(page.locator('.colors .color-label')).toHaveText(['Unset 1']);
 	// And the fabric is still in the palette for anything else using it.
-	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(1);
+	await expect(page.locator('.palette .chip')).toHaveCount(1);
 });
 
 test('removing a fabric leaves the shapes cut from it, unset', async ({ page }) => {
@@ -1686,7 +1689,7 @@ test('removing a fabric leaves the shapes cut from it, unset', async ({ page }) 
 	// No warning any more: nothing is lost but the colour.
 	await page.getByRole('button', { name: /^Paint with Blue/ }).click();
 	await page.keyboard.press('Delete');
-	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(0);
+	await expect(page.locator('.palette .chip')).toHaveCount(0);
 	await parkMouse(page);
 
 	// The triangle is still a triangle, in the greys it started as.
@@ -1728,22 +1731,20 @@ test('alt while placing covers the whole square, however finely it is divided', 
 	expect((await cellFills(page, plain)).length).toBeGreaterThan(8);
 });
 
-test('picking a palette colour leaves the palette where it is', async ({ page }) => {
-	await addFabric(page, 'Blue', '4f7fe8');
-	await addFabric(page, 'Green', '38511f');
-	await tool(page, /^Select/).click();
-
-	const swatch = page.locator('.palette .swatch:not(.add)').first();
-	const before = (await swatch.boundingBox())!;
-	await swatch.click();
-	await expect(tool(page, /^Place/)).toHaveClass(/active/);
-
+test('the grid hint keeps its height as the tool changes', async ({ page }) => {
 	/*
-	 * The hint above the palette is reworded as the tool changes. If it
-	 * resizes with it, everything below shifts, and the second half of a
-	 * double-click lands on whatever slid into the swatch's place.
+	 * The hint is reworded as the tool changes, and everything below it in the
+	 * pane rides on its height: the palette, and the colours of whatever is
+	 * selected. It is held open to its tallest wording so none of that moves.
 	 */
-	expect((await swatch.boundingBox())!.y).toBe(before.y);
+	await tool(page, /^Select/).click();
+	const hint = page.locator('[data-panel="grid"] .hint');
+	const settled = (await hint.boundingBox())!.height;
+
+	for (const name of [/^Place/, /^Grid/, /^Paint/, /^Erase/]) {
+		await tool(page, name).click();
+		expect((await hint.boundingBox())!.height).toBe(settled);
+	}
 });
 
 test('arming a placement drops the selection, so R turns what is being placed', async ({
@@ -1789,7 +1790,7 @@ test('bare pieces get an unset slot, and colouring it fills all of them', async 
 	await expect(page.locator('.picker-window')).toBeVisible();
 	await page.locator('.picker-window').getByRole('button', { name: 'Green', exact: true }).click();
 	await page.locator('.picker-window .close').click();
-	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(2);
+	await expect(page.locator('.palette .chip')).toHaveCount(2);
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#4f7fe8', '#38511f']);
 	await expect(page.locator('.colors .color-label')).toHaveText(['Color 1', 'Color 2']);
@@ -1877,17 +1878,17 @@ test('the unset slots print the grey they are drawn in', async ({ page }) => {
 test('delete takes the palette swatch you are on out of the palette', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
 	await addFabric(page, 'Green', '38511f');
-	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(2);
+	await expect(page.locator('.palette .chip')).toHaveCount(2);
 
 	// Nothing is cut from it, so it goes without asking.
 	await page.getByRole('button', { name: /^Paint with Green/ }).click();
 	await page.keyboard.press('Delete');
-	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(1);
+	await expect(page.locator('.palette .chip')).toHaveCount(1);
 	await expect(page.getByRole('button', { name: /^Paint with Blue/ })).toBeVisible();
 });
 
 test('the colour picker closes on a click outside it', async ({ page }) => {
-	await page.locator('.palette .add').click();
+	await page.locator('.add-color').click();
 	await expect(page.locator('.picker-window')).toBeVisible();
 
 	await page.locator('.quilt-name').click();
@@ -2165,4 +2166,44 @@ test('the quilt size opens as the design table', async ({ page }) => {
 		.click();
 	await expect(page.locator('.size .display')).toHaveText('King (112”x112”)');
 	await expect(page.locator('.size .menu')).toHaveCount(0);
+});
+
+test('the palette names each fabric and how much of it the quilt uses', async ({ page }) => {
+	await addFabric(page, 'Denim', '4f7fe8');
+	await addFabric(page, 'Peach', 'f4a6a6');
+
+	// Nothing cut yet, so nothing used.
+	await expect(page.locator('.entry-name')).toHaveText(['Denim (0)', 'Peach (0)']);
+
+	await page.getByRole('button', { name: /^Paint with Denim/ }).click();
+	await page.locator('.picker-window .close').click();
+	await pickShape(page, 'Square');
+	for (const index of [0, 1, 2]) await cell(page, index).click();
+	await parkMouse(page);
+	await expect(page.locator('.entry-name')).toHaveText(['Denim (3)', 'Peach (0)']);
+
+	// The design's own sizes: 50 by 43 in the palette, 51 by 37 in the
+	// selection, with the hex directly under it and no label between.
+	const chip = (await page.locator('.palette .chip').first().boundingBox())!;
+	expect([Math.round(chip.width), Math.round(chip.height)]).toEqual([50, 43]);
+
+	await selectCell(page, 0);
+	const swatch = (await page.locator('.colors .swatch').first().boundingBox())!;
+	expect([Math.round(swatch.width), Math.round(swatch.height)]).toEqual([51, 37]);
+	await expect(page.locator('.colors .hex-chip')).toHaveText(['4F7FE8']);
+	await expect(page.locator('.attributes .label.section')).toHaveText([
+		'Color selection',
+		'Color palette'
+	]);
+});
+
+test('a fabric is named in the picker, which the palette then shows', async ({ page }) => {
+	await addFabric(page, 'Denim', '4f7fe8');
+	await expect(page.locator('.entry-name')).toHaveText(['Denim (0)']);
+
+	// Renaming there reaches the palette, which is the only place it shows.
+	await page.getByRole('button', { name: /^Paint with Denim/ }).click();
+	await page.locator('.picker-window .name').fill('Indigo');
+	await page.locator('.picker-window .close').click();
+	await expect(page.locator('.entry-name')).toHaveText(['Indigo (0)']);
 });
