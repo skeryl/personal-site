@@ -255,7 +255,11 @@
 </script>
 
 <section class="wall">
-	<!-- The quilt's name and size head the canvas, as the design places them. -->
+	<!--
+		The quilt's name and size head the canvas, as the design places them,
+		with what is selected between them: it belongs with the other things
+		that say what you are looking at, not down among the controls.
+	-->
 	<div class="titlebar">
 		<input
 			class="quilt-name"
@@ -268,6 +272,7 @@
 				if (e.key === 'Enter') e.currentTarget.blur();
 			}}
 		/>
+		<p class="readout" aria-live="polite">{store.selectionLabel}</p>
 		<div class="size">
 			<label>
 				<span class="sr-only">Quilt size</span>
@@ -481,13 +486,6 @@
 			{/if}
 		</div>
 
-		<p class="readout" aria-live="polite">{store.selectionLabel}</p>
-
-		<p class="caption">
-			{store.dims.cols} × {store.dims.rows} blocks at {store.blockSize}” · {finishedW}” × {finishedH}”
-			finished
-		</p>
-
 		<div class="actions">
 			<button
 				class="action"
@@ -537,46 +535,52 @@
 			>
 		</div>
 
-		<div class="zoom" role="group" aria-label="Zoom">
-			<button
-				class="action"
-				aria-label="Zoom out"
-				onclick={() => store.zoomBy(1 / ZOOM_STEP)}
-				disabled={store.zoom <= ZOOM_MIN}>−</button
-			>
-			<button class="action zoom-level" onclick={() => store.resetZoom()} title="Reset zoom">
-				{zoomPercent}%
-			</button>
-			<button
-				class="action"
-				aria-label="Zoom in"
-				onclick={() => store.zoomBy(ZOOM_STEP)}
-				disabled={store.zoom >= ZOOM_MAX}>+</button
-			>
-			<span class="zoom-hint">⌃scroll</span>
-		</div>
+		<div class="footer">
+			<div class="zoom" role="group" aria-label="Zoom">
+				<button
+					class="action"
+					aria-label="Zoom out"
+					onclick={() => store.zoomBy(1 / ZOOM_STEP)}
+					disabled={store.zoom <= ZOOM_MIN}>−</button
+				>
+				<button class="action zoom-level" onclick={() => store.resetZoom()} title="Reset zoom">
+					{zoomPercent}%
+				</button>
+				<button
+					class="action"
+					aria-label="Zoom in"
+					onclick={() => store.zoomBy(ZOOM_STEP)}
+					disabled={store.zoom >= ZOOM_MAX}>+</button
+				>
+				<span class="zoom-hint">⌃scroll</span>
+			</div>
 
-		<button
-			class="export"
-			onclick={() => store.exportMaterialsList()}
-			disabled={!store.cutting.length}
-		>
-			Export materials list
-		</button>
+			<p class="caption">
+				{store.dims.cols} × {store.dims.rows} blocks at {store.blockSize}” · {finishedW}” × {finishedH}”
+				finished
+			</p>
+
+			<button
+				class="export"
+				onclick={() => store.exportMaterialsList()}
+				disabled={!store.cutting.length}
+			>
+				Export materials list
+			</button>
+		</div>
 	</div>
 </section>
 
 <style>
 	.titlebar {
 		flex-shrink: 0;
-		display: flex;
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
 		align-items: baseline;
-		justify-content: space-between;
 		gap: 2rem;
 		padding: 0.7rem 2rem 0.6rem;
 	}
 	.quilt-name {
-		flex: 1;
 		min-width: 0;
 		font: inherit;
 		font-size: 1.05rem;
@@ -596,6 +600,7 @@
 	.size {
 		display: flex;
 		align-items: center;
+		justify-self: end;
 		gap: 0.5rem;
 	}
 	.size select {
@@ -922,13 +927,30 @@
 		border-bottom: 2px dashed var(--qb-guide);
 	}
 
+	/* The site gives every <p> vertical padding; these two set their own room. */
 	.readout {
-		margin: 0.9rem 0 0;
+		margin: 0;
+		padding: 0;
+		text-align: center;
 		font-size: 0.8rem;
 		color: var(--color-text-secondary);
 	}
+	/*
+	 * One row under the tools: zoom at one end, the export at the other, and
+	 * what the quilt comes to between them.
+	 */
+	.footer {
+		width: 100%;
+		margin-top: 0.6rem;
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
+		align-items: center;
+		gap: 1rem;
+	}
 	.caption {
-		margin: 0.35rem 0 0;
+		margin: 0;
+		padding: 0;
+		text-align: center;
 		font-size: 0.7rem;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
@@ -937,9 +959,8 @@
 	.zoom {
 		display: flex;
 		align-items: center;
-		justify-content: center;
+		justify-self: start;
 		gap: 0.4rem;
-		margin-top: 0.5rem;
 	}
 	.zoom-level {
 		min-width: 3.5rem;
@@ -987,7 +1008,7 @@
 	}
 
 	.export {
-		margin-top: 2.5rem;
+		justify-self: end;
 		border: none;
 		background: none;
 		font: inherit;
