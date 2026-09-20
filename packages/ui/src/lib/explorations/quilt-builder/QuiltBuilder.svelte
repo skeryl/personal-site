@@ -60,6 +60,8 @@
 <style>
 	.qb {
 		--qb-mono: 'JetBrains Mono', 'Fira Mono', 'SF Mono', Menlo, Consolas, monospace;
+		/* The design sets its labels and lists in a sans; the values stay mono. */
+		--qb-sans: var(--font-sans, system-ui, -apple-system, 'Segoe UI', sans-serif);
 
 		/* Read from the design file rather than eyeballed. */
 		--qb-accent: #763edf;

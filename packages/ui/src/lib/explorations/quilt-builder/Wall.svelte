@@ -1,6 +1,13 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { CUSTOM_SIZE_ID, MAX_CUSTOM_INCHES, MIN_CUSTOM_INCHES, QUILT_SIZES } from './data';
+	import {
+		CUSTOM_SIZE_ID,
+		MAX_CUSTOM_INCHES,
+		MIN_CUSTOM_INCHES,
+		QUILT_SIZE_BY_ID,
+		QUILT_SIZES
+	} from './data';
+	import Dropdown from './Dropdown.svelte';
 	import Minimap from './Minimap.svelte';
 	import { ROLE_FILL, toPolygonPoints } from './geometry';
 	import {
@@ -64,6 +71,13 @@
 		if (store.tool === 'grid') return 'Click or drag to paint the grid chosen on the left';
 		if (store.tool === 'paint') return 'Click or drag to color pieces without recutting them';
 		return null;
+	});
+
+	/** What the size field shows: the preset's name and its finished inches. */
+	const sizeLabel = $derived.by(() => {
+		if (store.isCustomSize) return `Custom (${store.customWidth}”x${store.customHeight}”)`;
+		const size = QUILT_SIZE_BY_ID[store.sizeId];
+		return size ? `${size.name} (${size.width}”x${size.height}”)` : 'Custom';
 	});
 
 	const finishedW = $derived(store.dims.cols * store.blockSize);
@@ -314,48 +328,26 @@
 			}}
 		/>
 		<div class="size">
-			<label>
-				<span class="sr-only">Quilt size</span>
-				<select value={store.sizeId} onchange={(e) => store.setSize(e.currentTarget.value)}>
-					{#each QUILT_SIZES as size (size.id)}
-						<option value={size.id}>
-							{size.name.toUpperCase()} ({size.width}”x{size.height}”)
-						</option>
-					{/each}
-					<option value={CUSTOM_SIZE_ID}>
-						CUSTOM ({store.customWidth}”x{store.customHeight}”)
-					</option>
-				</select>
-			</label>
-			{#if store.isCustomSize}
-				<span class="custom-size">
-					<label>
-						<span class="sr-only">Custom width in inches</span>
-						<input
-							class="inches"
-							type="number"
-							min={MIN_CUSTOM_INCHES}
-							max={MAX_CUSTOM_INCHES}
-							value={store.customWidth}
-							onchange={(e) =>
-								store.setCustomSize(Number(e.currentTarget.value), store.customHeight)}
-						/>
-					</label>
-					<span aria-hidden="true">×</span>
-					<label>
-						<span class="sr-only">Custom height in inches</span>
-						<input
-							class="inches"
-							type="number"
-							min={MIN_CUSTOM_INCHES}
-							max={MAX_CUSTOM_INCHES}
-							value={store.customHeight}
-							onchange={(e) =>
-								store.setCustomSize(store.customWidth, Number(e.currentTarget.value))}
-						/>
-					</label>
-				</span>
-			{/if}
+			<Dropdown
+				variant="boxed"
+				display={sizeLabel}
+				value={store.sizeId}
+				headings={['Size:', '(W)', '(H)']}
+				choices={QUILT_SIZES.map((size) => ({
+					value: size.id,
+					label: size.name,
+					cols: [`${size.width}”`, `${size.height}”`]
+				}))}
+				custom={{
+					value: CUSTOM_SIZE_ID,
+					w: store.customWidth,
+					h: store.customHeight,
+					min: MIN_CUSTOM_INCHES,
+					max: MAX_CUSTOM_INCHES,
+					onchange: (w, h) => store.setCustomSize(w, h)
+				}}
+				onpick={(next) => store.setSize(next)}
+			/>
 		</div>
 	</div>
 	<!--
@@ -664,30 +656,6 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
-	}
-	.size select {
-		font: inherit;
-		font-size: 0.85rem;
-		color: var(--color-text-strong);
-		background: transparent;
-		border: none;
-		cursor: pointer;
-	}
-	.custom-size {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.25rem;
-		font-size: 0.85rem;
-		color: var(--color-text-secondary);
-	}
-	.inches {
-		font: inherit;
-		font-size: 0.85rem;
-		width: 3.5rem;
-		padding: 0.1rem 0.2rem;
-		color: var(--color-text-strong);
-		background: transparent;
-		border: 1px solid var(--qb-line);
 	}
 	.sr-only {
 		position: absolute;

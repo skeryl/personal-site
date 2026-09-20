@@ -14,7 +14,9 @@ import {
 	STARTER_HEXES,
 	clampCustomInches,
 	normalizeHex,
-	type Material
+	type Material,
+	DEFAULT_BINDING_INCHES,
+	DEFAULT_SEAM_INCHES
 } from './data';
 import { BLOCK_TYPES, BLOCK_TYPE_BY_ID } from './blocks';
 import { CUTS, pieceAt, rotatedPieces, type Point } from './geometry';
@@ -216,6 +218,15 @@ export class QuiltStore {
 		this.#tool = next;
 		if (next === 'place') this.clearSelection();
 	}
+	/*
+	 * Dimensions that apply to the whole design. The seam allowance is real:
+	 * every blank in the cutting list is the finished size plus two of it.
+	 * The binding is stored and shown but does not reach the cutting list
+	 * yet, since binding is cut from the length of a bolt rather than pieced.
+	 */
+	seamInches = $state<number>(DEFAULT_SEAM_INCHES);
+	bindingInches = $state<number>(DEFAULT_BINDING_INCHES);
+
 	/** 1 fits the whole quilt in the viewport; above that the wall scrolls. */
 	zoom = $state(1);
 	/*
@@ -250,6 +261,8 @@ export class QuiltStore {
 		this.customWidth = saved.customWidth;
 		this.customHeight = saved.customHeight;
 		this.blockSize = saved.blockSize;
+		this.seamInches = saved.seamInches;
+		this.bindingInches = saved.bindingInches;
 		this.materials = saved.materials;
 		this.selectedMaterialId = saved.selectedMaterialId;
 		this.patterns = saved.patterns;
@@ -277,7 +290,7 @@ export class QuiltStore {
 	inUse = $derived(materialsInUse(this.cells));
 	canUndo = $derived(this.history.past.length > 0);
 	canRedo = $derived(this.history.future.length > 0);
-	cutting = $derived(cuttingListFor(this.cells, this.materials, this.blockSize));
+	cutting = $derived(cuttingListFor(this.cells, this.materials, this.blockSize, this.seamInches));
 
 	selectedPattern = $derived(
 		this.blockId.startsWith(PATTERN_PREFIX)
@@ -360,6 +373,8 @@ export class QuiltStore {
 		customWidth: this.customWidth,
 		customHeight: this.customHeight,
 		blockSize: this.blockSize,
+		seamInches: this.seamInches,
+		bindingInches: this.bindingInches,
 		materials: this.materials,
 		selectedMaterialId: this.selectedMaterialId,
 		patterns: this.patterns,

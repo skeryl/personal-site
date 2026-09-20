@@ -7,7 +7,7 @@
  * block, so a pinwheel's small triangles come from half-block blanks.
  */
 
-import { SEAM_INCHES, fmtInches, type Material } from './data';
+import { DEFAULT_SEAM_INCHES, fmtInches, type Material } from './data';
 import { type ShapeKind } from './geometry';
 import { flatten, type Block } from './model';
 
@@ -38,8 +38,8 @@ export const KIND_ICON_CUT: Record<ShapeKind, string> = {
 	qst: 'hourglass'
 };
 
-export const blankInches = (blockSize: number, frac: number): number =>
-	blockSize * frac + 2 * SEAM_INCHES;
+export const blankInches = (blockSize: number, frac: number, seam = DEFAULT_SEAM_INCHES): number =>
+	blockSize * frac + 2 * seam;
 
 export interface CutKind {
 	kind: ShapeKind;
@@ -67,7 +67,8 @@ const plural = (n: number, noun: string): string => (n === 1 ? noun : `${noun}s`
 export const cuttingListFor = (
 	blocks: readonly Block[],
 	materials: readonly Material[],
-	blockSize: number
+	blockSize: number,
+	seam = DEFAULT_SEAM_INCHES
 ): CutGroup[] => {
 	// material -> frac -> kind -> piece count
 	const tally = new Map<string, Map<number, Map<ShapeKind, number>>>();
@@ -96,7 +97,7 @@ export const cuttingListFor = (
 						pieces: byKind.get(kind)!,
 						blanks: Math.ceil(byKind.get(kind)! / CUT_YIELD[kind])
 					}));
-					const inches = blankInches(blockSize, frac);
+					const inches = blankInches(blockSize, frac, seam);
 					return {
 						frac,
 						inches,

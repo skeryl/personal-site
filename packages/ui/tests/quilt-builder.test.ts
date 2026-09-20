@@ -68,6 +68,19 @@ const placeInto = async (page: Page, index: number, fx = 0.25, fy = 0.75) => {
 	await page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);
 };
 
+/*
+ * The quilt size is a list of its own now, not a native select. A row reads
+ * out as its name and its two measurements, so match from the start of it:
+ * plain "Throw" would otherwise take "Sq. Throw" as well.
+ */
+const pickSize = async (page: Page, name: string) => {
+	await page.locator('.size .trigger').click();
+	await page
+		.locator('.size')
+		.getByRole('option', { name: new RegExp(`^${name.replace('.', '\\.')}\\b`) })
+		.click();
+};
+
 /** Hover previews pollute fill reads; park the pointer off the quilt. */
 const parkMouse = (page: Page) => page.mouse.move(10, 10);
 
@@ -187,14 +200,14 @@ test('the design, fabrics, and size survive a reload', async ({ page }) => {
 	await pickShape(page, 'Square');
 	await cell(page, 3).click();
 	await page.getByLabel('Quilt name').fill('Stars');
-	await page.getByLabel('Quilt size').selectOption('throw');
+	await pickSize(page, 'Throw');
 	await parkMouse(page);
 	await page.waitForTimeout(AUTOSAVE_MS);
 
 	await page.reload();
 	await page.waitForSelector('[data-cell-index="0"]');
 	await expect(page.getByLabel('Quilt name')).toHaveValue('Stars');
-	await expect(page.getByLabel('Quilt size')).toHaveValue('throw');
+	await expect(page.locator('.size .display')).toHaveText('Throw (48”x64”)');
 	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(1);
 	expect(await cellFills(page, 3)).toEqual(['#4f7fe8']);
 });
@@ -519,7 +532,7 @@ test('attributes says so when nothing is selected', async ({ page }) => {
 });
 
 test('the app fits the window: only the wall and the palette scroll', async ({ page }) => {
-	await page.selectOption('.size select', 'king');
+	await pickSize(page, 'King');
 
 	const state = await page.evaluate(() => {
 		const viewport = document.querySelector('.viewport')!;
@@ -887,7 +900,7 @@ test('rotate turns the selected squares, not just the palette', async ({ page })
 });
 
 test('column and row headers stay frozen when the wall scrolls', async ({ page }) => {
-	await page.selectOption('.size select', 'king');
+	await pickSize(page, 'King');
 
 	const probe = () =>
 		page.evaluate(() => {
@@ -1103,7 +1116,7 @@ test('a plain square is what is armed on load', async ({ page }) => {
 });
 
 test('seam detail follows how much room a sub-cell has on screen', async ({ page }) => {
-	await page.selectOption('.size select', 'king');
+	await pickSize(page, 'King');
 	const cols = await gridCols(page);
 	const target = at(cols, 2, 2);
 
@@ -1211,7 +1224,7 @@ test('centre guides are off until asked for, and remembered after that', async (
 });
 
 test('the guides run the whole width and height of the quilt', async ({ page }) => {
-	await page.selectOption('.size select', 'king');
+	await pickSize(page, 'King');
 	await centerToggle(page).click();
 
 	const blanket = (await page.locator('.blanket').boundingBox())!;
@@ -1224,7 +1237,7 @@ test('the guides run the whole width and height of the quilt', async ({ page }) 
 });
 
 test('an even grid brackets the two columns and rows either side of centre', async ({ page }) => {
-	await page.selectOption('.size select', 'king');
+	await pickSize(page, 'King');
 	await centerToggle(page).click();
 
 	const cols = await gridCols(page);
@@ -1245,11 +1258,15 @@ test('an even grid brackets the two columns and rows either side of centre', asy
 
 test('an odd grid brackets its one real middle square', async ({ page }) => {
 	// 40 inches of 8" blocks is five across and five down.
-	await page.selectOption('.size select', 'custom');
-	for (const box of [page.locator('.inches').first(), page.locator('.inches').last()]) {
+	await page.locator('.size .trigger').click();
+	for (const box of [
+		page.locator('.size .custom input').first(),
+		page.locator('.size .custom input').last()
+	]) {
 		await box.fill('40');
 		await box.blur();
 	}
+	await page.keyboard.press('Escape');
 	await centerToggle(page).click();
 
 	const cols = await gridCols(page);
@@ -2090,4 +2107,62 @@ test('the quilt settles at every zoom instead of chasing its scrollbar', async (
 			expect(await quiltWidth()).toBe(settled);
 		}
 	}
+});
+
+test('the dimensions are the design dropdowns, and the seam allowance is real', async ({
+	page
+}) => {
+	// Three along the top of the palette, as the Color Palette frame has them.
+	await expect(page.locator('.dimensions .field-label')).toHaveText([
+		'Block size:',
+		'Seam allowance:',
+		'Binding'
+	]);
+	await expect(page.locator('.dimensions .display')).toHaveText(['8”', '1/4', '5/8”']);
+
+	// Every blank is its finished size plus two allowances, so changing the
+	// allowance changes the cutting list.
+	await addFabric(page, 'Blue', '4f7fe8');
+	await pickShape(page, 'Square');
+	await cell(page, 0).click();
+	await parkMouse(page);
+	await page.locator('.cut-list summary').click();
+	await expect(page.locator('.cut-row .label').first()).toContainText('8½” squares');
+
+	const seam = page.locator('.dimensions .dropdown').nth(1);
+	await seam.locator('.trigger').click();
+	await seam.getByRole('option', { name: '1/2”' }).click();
+	await expect(page.locator('.cut-row .label').first()).toContainText('9” squares');
+	await expect(seam.locator('.display')).toHaveText('1/2');
+});
+
+test('the quilt size opens as the design table', async ({ page }) => {
+	await page.locator('.size .trigger').click();
+
+	// The References frame's own measurements.
+	const menu = (await page.locator('.size .menu').boundingBox())!;
+	expect(Math.round(menu.width)).toBe(172);
+	expect(Math.round(menu.height)).toBe(227);
+
+	await expect(page.locator('.size .headings span')).toHaveText(['Size:', '(W)', '(H)']);
+	await expect(page.locator('.size .option .lead')).toHaveText([
+		'Baby',
+		'Crib',
+		'Throw',
+		'Sq. Throw',
+		'Twin',
+		'Full/Queen',
+		'King'
+	]);
+
+	// Custom is a row of its own, with the two inches beside it.
+	await expect(page.locator('.size .custom input')).toHaveCount(2);
+
+	// Already open, so take the row directly rather than toggling it shut.
+	await page
+		.locator('.size')
+		.getByRole('option', { name: /^King\b/ })
+		.click();
+	await expect(page.locator('.size .display')).toHaveText('King (112”x112”)');
+	await expect(page.locator('.size .menu')).toHaveCount(0);
 });

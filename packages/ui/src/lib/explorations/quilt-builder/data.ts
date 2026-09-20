@@ -51,8 +51,31 @@ export const LEGACY_SIZE_IDS: Record<string, string> = {
 export const BLOCK_SIZES = [4, 6, 8, 10, 12];
 export const DEFAULT_BLOCK_SIZE = 8;
 
-/** Seam allowance per side, in inches. */
-export const SEAM_INCHES = 0.25;
+/** Seam allowances offered, per side, in inches. */
+export const SEAM_ALLOWANCES = [0.25, 0.375, 0.5] as const;
+export const DEFAULT_SEAM_INCHES = 0.25;
+
+/** Binding widths offered, in inches. Cut from the fabric, not pieced. */
+export const BINDINGS = [0.5, 0.625, 1, 2] as const;
+export const DEFAULT_BINDING_INCHES = 0.625;
+
+/** Inches as the design writes them: halves, thirds, quarters and eighths. */
+const FRACTIONS: [number, string][] = [
+	[0.125, '1/8'],
+	[0.25, '1/4'],
+	[0.375, '3/8'],
+	[0.5, '1/2'],
+	[0.625, '5/8'],
+	[0.75, '3/4'],
+	[0.875, '7/8']
+];
+
+export const fmtFraction = (inches: number): string => {
+	const whole = Math.floor(inches);
+	const part = FRACTIONS.find(([n]) => Math.abs(n - (inches - whole)) < 1e-6)?.[1];
+	if (!part) return String(inches);
+	return whole ? `${whole} ${part}` : part;
+};
 
 /** Starter swatches for new fabrics, cycled so each new one looks distinct. */
 export const STARTER_HEXES = ['#4f7fe8', '#38511f', '#c766e4', '#e8b04f', '#d94f4f', '#2f9e8f'];

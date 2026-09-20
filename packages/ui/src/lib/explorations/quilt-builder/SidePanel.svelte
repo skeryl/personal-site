@@ -10,7 +10,8 @@
 	 * the store works it out.
 	 */
 
-	import { BLOCK_SIZES, fmtInches } from './data';
+	import { BINDINGS, BLOCK_SIZES, SEAM_ALLOWANCES, fmtFraction, fmtInches } from './data';
+	import Dropdown from './Dropdown.svelte';
 	import { BLOCK_TYPES } from './blocks';
 	import { PIECE_CUTS, ROLE_FILL } from './geometry';
 	import { flatten, leafBlock, rotateBlock, type Block } from './model';
@@ -67,18 +68,37 @@
 </script>
 
 <aside class="side">
-	<label class="setting">
-		<span class="label">Block size:</span>
-		<select
-			class="select"
-			value={store.blockSize}
-			onchange={(e) => store.setBlockSize(Number(e.currentTarget.value))}
-		>
-			{#each BLOCK_SIZES as size (size)}
-				<option value={size}>{size}”</option>
-			{/each}
-		</select>
-	</label>
+	<!-- The dimensions the whole design is cut to, along the top. -->
+	<div class="dimensions">
+		<Dropdown
+			label="Block size:"
+			display={`${store.blockSize}”`}
+			value={String(store.blockSize)}
+			choices={BLOCK_SIZES.map((size) => ({ value: String(size), label: `${size}”` }))}
+			onpick={(next) => store.setBlockSize(Number(next))}
+		/>
+		<Dropdown
+			label="Seam allowance:"
+			display={fmtFraction(store.seamInches)}
+			value={String(store.seamInches)}
+			title="Added to every side of every blank in the cutting list"
+			choices={SEAM_ALLOWANCES.map((inches) => ({
+				value: String(inches),
+				label: `${fmtFraction(inches)}”`
+			}))}
+			onpick={(next) => (store.seamInches = Number(next))}
+		/>
+		<Dropdown
+			label="Binding"
+			display={`${fmtFraction(store.bindingInches)}”`}
+			value={String(store.bindingInches)}
+			choices={BINDINGS.map((inches) => ({
+				value: String(inches),
+				label: `${fmtFraction(inches)}”`
+			}))}
+			onpick={(next) => (store.bindingInches = Number(next))}
+		/>
+	</div>
 
 	<div class="stack">
 		<details class="group" data-panel="type" bind:open={store.panels.type}>
@@ -344,14 +364,14 @@
 		color: var(--color-text-strong);
 	}
 
-	.setting {
+	/* Three dimensions on one line, at the design's 10px gutter. */
+	.dimensions {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: baseline;
-		gap: 1.3rem;
-		padding: 2.3rem var(--qb-pad) 1.6rem;
-	}
-	.setting .label {
-		white-space: nowrap;
+		gap: 0.5rem 1.55rem;
+		padding: 0.9rem 10px 0.75rem;
+		border-bottom: 1px solid var(--qb-line);
 	}
 	.label {
 		/* 12px uppercase, in black: the design's section heading. */
@@ -368,16 +388,6 @@
 		font-size: 0.85em;
 		opacity: 0.55;
 		margin-left: 0.25rem;
-	}
-	.select {
-		font: inherit;
-		font-size: 1.05rem;
-		color: var(--color-text-strong);
-		background: transparent;
-		border: none;
-		border-bottom: 1px solid var(--qb-line);
-		padding: 0.15rem 0;
-		cursor: pointer;
 	}
 
 	.composition {

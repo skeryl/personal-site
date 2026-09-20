@@ -18,7 +18,11 @@ import {
 	QUILT_SIZE_BY_ID,
 	clampCustomInches,
 	normalizeHex,
-	type Material
+	type Material,
+	BINDINGS,
+	DEFAULT_BINDING_INCHES,
+	DEFAULT_SEAM_INCHES,
+	SEAM_ALLOWANCES
 } from './data';
 import { REPLACED_BY } from './blocks';
 import { CUTS, isCutId, normalizeTurns } from './geometry';
@@ -61,6 +65,8 @@ export interface SavedState {
 	customWidth: number;
 	customHeight: number;
 	blockSize: number;
+	seamInches: number;
+	bindingInches: number;
 	materials: Material[];
 	selectedMaterialId: string | null;
 	patterns: Pattern[];
@@ -233,6 +239,9 @@ export const parseSavedState = (raw: unknown): SavedState | null => {
 		typeof s.blockSize === 'number' && BLOCK_SIZES.includes(s.blockSize)
 			? s.blockSize
 			: DEFAULT_BLOCK_SIZE;
+	/** One of the offered values, or the default; saves predate both. */
+	const oneOf = (raw: unknown, allowed: readonly number[], fallbackValue: number) =>
+		typeof raw === 'number' && allowed.includes(raw) ? raw : fallbackValue;
 	const materials = sanitizeMaterials(s.materials);
 	const known = new Set(materials.map((m) => m.id));
 	const { rows, cols } = gridDims(sizeId, blockSize, customWidth, customHeight);
@@ -242,6 +251,8 @@ export const parseSavedState = (raw: unknown): SavedState | null => {
 		customWidth,
 		customHeight,
 		blockSize,
+		seamInches: oneOf(s.seamInches, SEAM_ALLOWANCES, DEFAULT_SEAM_INCHES),
+		bindingInches: oneOf(s.bindingInches, BINDINGS, DEFAULT_BINDING_INCHES),
 		materials,
 		selectedMaterialId:
 			typeof s.selectedMaterialId === 'string' && known.has(s.selectedMaterialId)
