@@ -743,7 +743,7 @@
 		justify-content: center;
 		height: var(--head-h);
 		font-size: 0.8rem;
-		color: var(--color-text-secondary);
+		color: var(--qb-ink);
 		line-height: 1;
 	}
 	.row-headers {
@@ -764,7 +764,8 @@
 		position: relative;
 		display: grid;
 		gap: 1px;
-		background: var(--qb-line);
+		/* Squares are ruled lighter than the panel's borders. */
+		background: var(--qb-square);
 		border: 2px solid #1a1a1a;
 		/* Width and height are set from the fit, so the border must sit inside. */
 		box-sizing: border-box;
@@ -899,12 +900,12 @@
 		z-index: 4;
 	}
 	.center-guide.vertical {
-		border-left: 2px dashed #e0584f;
-		border-right: 2px dashed #e0584f;
+		border-left: 2px dashed var(--qb-guide);
+		border-right: 2px dashed var(--qb-guide);
 	}
 	.center-guide.horizontal {
-		border-top: 2px dashed #e0584f;
-		border-bottom: 2px dashed #e0584f;
+		border-top: 2px dashed var(--qb-guide);
+		border-bottom: 2px dashed var(--qb-guide);
 	}
 
 	.readout {

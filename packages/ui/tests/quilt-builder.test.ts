@@ -1208,3 +1208,43 @@ test('the block grid tiles are squares labelled by division', async ({ page }) =
 	);
 	expect(seams).toEqual([0, 2, 6]);
 });
+
+test("the builder uses the design file's own colours and gutter", async ({ page }) => {
+	const tokens = await page.evaluate(() => {
+		const style = getComputedStyle(document.querySelector('.qb')!);
+		const read = (name: string) => style.getPropertyValue(name).trim();
+		return {
+			accent: read('--qb-accent'),
+			panel: read('--qb-panel'),
+			wall: read('--qb-wall'),
+			line: read('--qb-line'),
+			square: read('--qb-square'),
+			tile: read('--qb-tile'),
+			ink: read('--qb-ink'),
+			guide: read('--qb-guide')
+		};
+	});
+
+	// Read out of the Figma file, not picked by eye.
+	expect(tokens).toEqual({
+		accent: '#763edf',
+		panel: '#ffffff',
+		wall: '#f3f3f3',
+		line: '#cacaca',
+		square: '#dfdfdf',
+		tile: '#d9d9d9',
+		ink: '#525252',
+		guide: '#ff8585'
+	});
+
+	// A 426px panel with a 40px gutter, as the design lays it out.
+	const side = (await page.locator('.side').boundingBox())!;
+	expect(side.width).toBeCloseTo(426, 0);
+	// Three tiles a row, square, inset 40px, with 20px between them.
+	const tiles = await page.locator('[data-panel="type"] .type').all();
+	const first = (await tiles[0].boundingBox())!;
+	const second = (await tiles[1].boundingBox())!;
+	expect(first.x - side.x).toBeCloseTo(40, 0);
+	expect(first.width).toBeCloseTo(first.height, 0);
+	expect(second.x - (first.x + first.width)).toBeCloseTo(20, 0);
+});

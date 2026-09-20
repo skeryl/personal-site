@@ -59,10 +59,19 @@
 <style>
 	.qb {
 		--qb-mono: 'JetBrains Mono', 'Fira Mono', 'SF Mono', Menlo, Consolas, monospace;
-		--qb-accent: #c766e4;
-		--qb-panel: #f4f4f4;
-		--qb-wall: #efefef;
-		--qb-line: #cfcfcf;
+
+		/* Read from the design file rather than eyeballed. */
+		--qb-accent: #763edf;
+		--qb-panel: #ffffff;
+		--qb-wall: #f3f3f3;
+		--qb-line: #cacaca;
+		/* Squares on the quilt are ruled lighter than the panel's own borders. */
+		--qb-square: #dfdfdf;
+		--qb-tile: #d9d9d9;
+		--qb-ink: #525252;
+		--qb-guide: #ff8585;
+		/* The panel's 40px gutter, in a 426px panel. */
+		--qb-pad: 2.5rem;
 
 		/*
 		 * Full bleed: cancel the page layout's horizontal padding (px-6, and
@@ -85,7 +94,7 @@
 
 	.body {
 		display: grid;
-		grid-template-columns: 22rem minmax(0, 1fr);
+		grid-template-columns: 26.625rem minmax(0, 1fr);
 		align-items: stretch;
 		border-top: 1px solid var(--qb-line);
 		flex: 1;
@@ -101,7 +110,7 @@
 
 	@media (max-width: 1100px) {
 		.body {
-			grid-template-columns: 18rem minmax(0, 1fr);
+			grid-template-columns: 20rem minmax(0, 1fr);
 		}
 	}
 	/* Narrow screens go back to a document that scrolls as a whole. */

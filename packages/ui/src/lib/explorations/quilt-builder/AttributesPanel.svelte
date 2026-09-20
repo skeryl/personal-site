@@ -317,18 +317,18 @@
 		transform: rotate(90deg);
 	}
 	.label {
-		font-size: 0.65rem;
+		font-size: 0.75rem;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
-		color: var(--color-text-secondary);
+		color: #000;
 	}
 	.section {
-		padding: 0.9rem 1rem 0.5rem;
+		padding: 1.5rem var(--qb-pad) 0.55rem;
 	}
 	.hint {
-		margin: 0 1rem 0.5rem;
+		margin: 0 var(--qb-pad) 0.5rem;
 		font-size: 0.75rem;
-		color: var(--color-text-secondary);
+		color: var(--qb-ink);
 	}
 	.muted {
 		font-style: italic;
@@ -337,7 +337,7 @@
 	.colors {
 		list-style: none;
 		margin: 0;
-		padding: 0 1rem;
+		padding: 0 var(--qb-pad);
 	}
 	.color {
 		display: grid;
@@ -347,7 +347,7 @@
 		margin-bottom: 0.4rem;
 	}
 	.color-name {
-		font-size: 0.75rem;
+		font-size: 0.8rem;
 		color: var(--color-text-strong);
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -401,7 +401,7 @@
 	}
 	.palette {
 		position: relative;
-		padding: 0 1rem;
+		padding: 0 var(--qb-pad);
 	}
 
 	.picker {
@@ -441,7 +441,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.4rem;
-		padding: 0.75rem 1rem 0;
+		padding: 0.75rem var(--qb-pad) 0;
 	}
 	.field {
 		display: flex;
@@ -482,7 +482,7 @@
 	}
 
 	.cut-list {
-		margin: 1rem 1rem 0;
+		margin: 1rem var(--qb-pad) 0;
 		font-size: 0.75rem;
 	}
 	.cut-list summary {

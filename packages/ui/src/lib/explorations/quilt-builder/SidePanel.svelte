@@ -237,20 +237,21 @@
 	.setting {
 		display: flex;
 		align-items: baseline;
-		gap: 0.6rem;
-		padding: 0.9rem 1rem;
+		gap: 1.3rem;
+		padding: 2.3rem var(--qb-pad) 1.6rem;
 	}
 	.setting .label {
 		white-space: nowrap;
 	}
 	.label {
-		font-size: 0.65rem;
+		/* 12px uppercase, in black: the design's section heading. */
+		font-size: 0.75rem;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
-		color: var(--color-text-secondary);
+		color: #000;
 	}
 	.section {
-		padding: 0.9rem 1rem 0.5rem;
+		padding: 1.5rem var(--qb-pad) 0.55rem;
 	}
 	.section kbd {
 		font: inherit;
@@ -272,8 +273,8 @@
 	.composition {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
-		gap: 0.75rem;
-		padding: 0 1rem;
+		gap: 1.25rem;
+		padding: 0 var(--qb-pad);
 	}
 	.chip {
 		display: flex;
@@ -292,15 +293,16 @@
 		width: 100%;
 		aspect-ratio: 1;
 		background: #fff;
-		border: 1px solid var(--qb-line);
-		color: #b4b4b4;
+		border: 1px solid var(--qb-ink);
+		color: var(--qb-ink);
 	}
 	.chip:hover .chip-grid {
-		border-color: var(--color-text-secondary);
+		border-color: #000;
 	}
+	/* The design marks the chosen tile with a heavier black rule, not colour. */
 	.chip.active .chip-grid {
-		border: 2px solid var(--qb-accent);
-		color: var(--qb-accent);
+		border: 1.5px solid #000;
+		color: #000;
 	}
 	.chip-grid line {
 		stroke: currentColor;
@@ -308,33 +310,33 @@
 		stroke-dasharray: 4 3;
 	}
 	.chip-label {
-		font-size: 0.7rem;
-		color: var(--color-text-secondary);
+		font-size: 0.75rem;
+		color: var(--qb-ink);
 	}
 	.chip.active .chip-label {
-		color: var(--color-text-strong);
+		color: #000;
 	}
 
+	/* Three 102px tiles with 20px gutters is exactly the design's 426px panel. */
 	.types {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
-		gap: 0.6rem;
-		padding: 0 1rem;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 1.25rem;
+		padding: 0 var(--qb-pad);
 	}
 	.type {
 		aspect-ratio: 1;
 		padding: 0;
-		border: 1px solid transparent;
+		border: 1px solid var(--qb-tile);
 		background: none;
 		cursor: pointer;
 		line-height: 0;
 	}
 	.type:hover {
-		border-color: var(--qb-line);
+		border-color: var(--qb-ink);
 	}
 	.type.active {
-		border-color: var(--qb-accent);
-		outline: 1px solid var(--qb-accent);
+		border: 1.5px solid #000;
 	}
 	.type:focus-visible {
 		outline: 2px solid var(--qb-accent);
@@ -348,8 +350,8 @@
 		gap: 0.2rem;
 	}
 	.saved-name {
-		font-size: 0.65rem;
-		color: var(--color-text-secondary);
+		font-size: 0.7rem;
+		color: var(--qb-ink);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -380,7 +382,7 @@
 
 	.add-new {
 		display: block;
-		margin: 0.7rem 1rem 0;
+		margin: 0.9rem var(--qb-pad) 0;
 		font: inherit;
 		font-size: 0.7rem;
 		letter-spacing: 0.06em;
@@ -401,8 +403,8 @@
 	}
 
 	.hint {
-		margin: 0.5rem 1rem 0;
-		font-size: 0.7rem;
+		margin: 0.6rem var(--qb-pad) 0;
+		font-size: 0.75rem;
 		line-height: 1.5;
 		color: var(--color-text-secondary);
 	}
