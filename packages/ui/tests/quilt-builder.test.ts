@@ -1846,3 +1846,33 @@ test('the paint tool brushes colour on without touching the shape', async ({ pag
 	await page.keyboard.press('t');
 	await expect(tool(page, /^Paint/)).toHaveClass(/active/);
 });
+
+test('picking a block type with squares selected puts it in them', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	const cols = await gridCols(page);
+	const a = at(cols, 1, 1);
+	const b = at(cols, 1, 2);
+
+	// Empty squares need the modifier to be swept up.
+	await tool(page, /^Mouse/).click();
+	const from = (await cell(page, a).boundingBox())!;
+	const to = (await cell(page, b).boundingBox())!;
+	await page.keyboard.down('Meta');
+	await page.mouse.move(from.x + 4, from.y + 4);
+	await page.mouse.down();
+	await page.mouse.move(to.x + to.width - 4, to.y + to.height - 4, { steps: 6 });
+	await page.mouse.up();
+	await page.keyboard.up('Meta');
+	await expect(page.locator('.readout')).toHaveText('B2, C2 squares selected');
+
+	// The palette acts on the selection rather than arming for a later click,
+	// the way picking a grid does.
+	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	await parkMouse(page);
+	expect(await cellFills(page, a)).toHaveLength(8);
+	expect(await cellFills(page, b)).toHaveLength(8);
+
+	// And the selection stays, so another shape can be tried on the same squares.
+	await expect(page.locator('.readout')).toHaveText('B2, C2 squares selected');
+	await expect(tool(page, /^Mouse/)).toHaveClass(/active/);
+});

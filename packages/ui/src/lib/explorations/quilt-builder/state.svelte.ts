@@ -1112,15 +1112,37 @@ export class QuiltStore {
 
 	// ── Palette ──────────────────────────────────────────────────────
 
+	/*
+	 * Put the armed shape into every square in the scope, replacing whatever
+	 * was there. Patterns are excluded: one spans several squares, so there is
+	 * no sense in which it goes into each of them.
+	 */
+	private applyPending(): boolean {
+		const pending = this.pending;
+		if (pending.mode === 'pattern') return false;
+		const point = keyboardPoint(pending);
+		return this.editScope(() =>
+			buildPlacement(emptyBlock(), point, pending, this.selectedMaterialId)
+		);
+	}
+
+	/*
+	 * Picking a shape with squares selected fills them with it, the way
+	 * picking a grid applies that grid: the selection is what you are working
+	 * on, so the palette acts on it rather than arming for a later click. With
+	 * nothing selected it arms, as before.
+	 */
 	pickPiece(id: string) {
 		this.tab = 'piece';
 		this.pieceId = id;
+		if (this.applyPending()) return;
 		this.tool = 'place';
 	}
 
 	pickBlock(id: string) {
 		this.tab = 'block';
 		this.blockId = id;
+		if (this.applyPending()) return;
 		this.tool = 'place';
 	}
 
