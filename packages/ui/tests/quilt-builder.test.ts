@@ -1904,6 +1904,28 @@ test('a palette colour opens the picker, with the palette inside it', async ({ p
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#38511f']);
 });
+test('recolouring a palette fabric is undoable', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await pickShape(page, 'Square');
+	await cell(page, 0).click();
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toEqual(['#4f7fe8']);
+
+	await setHex(page, page.getByRole('button', { name: /^Paint with Blue/ }), 'ff0000');
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toEqual(['#ff0000']);
+
+	// The palette is half the document: undo puts the colour back, not just
+	// the pieces cut from it.
+	await tool(page, /^Undo/).click();
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toEqual(['#4f7fe8']);
+
+	await tool(page, /^Redo/).click();
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toEqual(['#ff0000']);
+});
+
 test('a pattern taller than it is wide fits the square its icon is given', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
 	const cols = await gridCols(page);

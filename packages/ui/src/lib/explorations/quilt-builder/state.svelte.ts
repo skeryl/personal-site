@@ -65,7 +65,13 @@ import {
 	type Pattern,
 	type PatternBlocks
 } from './pattern';
-import { emptyHistory, record, redo as redoHistory, undo as undoHistory } from './history';
+import {
+	emptyHistory,
+	record,
+	redo as redoHistory,
+	undo as undoHistory,
+	type Snapshot
+} from './history';
 import {
 	LEGACY_STATE_KEY,
 	PANELS_KEY,
@@ -223,7 +229,7 @@ export class QuiltStore {
 
 	private history = $state(emptyHistory());
 	/** Pre-gesture board, recorded into history on the first real change. */
-	private gestureBase: Board | null = null;
+	private gestureBase: Snapshot | null = null;
 	private gestureRecorded = false;
 
 	constructor() {
@@ -358,6 +364,16 @@ export class QuiltStore {
 
 	// ── Mutation gate ────────────────────────────────────────────────
 
+	/** What an undo would put back: the board and the palette together. */
+	private get snapshot(): Snapshot {
+		return { board: this.cells, materials: this.materials };
+	}
+
+	/** Note the state before a change is made to it. */
+	private recordState() {
+		this.history = record(this.history, this.snapshot);
+	}
+
 	private commit(updates: ReadonlyMap<number, Block>): boolean {
 		const next = applyUpdates(this.cells, updates);
 		if (!next) return false;
@@ -367,7 +383,7 @@ export class QuiltStore {
 				this.gestureRecorded = true;
 			}
 		} else {
-			this.history = record(this.history, this.cells);
+			this.recordState();
 		}
 		this.cells = next;
 		return true;
@@ -375,14 +391,14 @@ export class QuiltStore {
 
 	private replaceBoard(next: Board): boolean {
 		if (boardsEqual(next, this.cells)) return false;
-		this.history = record(this.history, this.cells);
+		this.recordState();
 		this.cells = cloneBoard(next);
 		return true;
 	}
 
 	private beginGesture(gesture: PaintGesture) {
 		this.gesture = gesture;
-		this.gestureBase = cloneBoard(this.cells);
+		this.gestureBase = { board: cloneBoard(this.cells), materials: this.materials };
 		this.gestureRecorded = false;
 	}
 
@@ -395,7 +411,7 @@ export class QuiltStore {
 	/** Escape: a cancelled stroke reverts entirely. */
 	cancelGesture() {
 		if (this.gesture && this.gestureRecorded && this.gestureBase) {
-			this.cells = cloneBoard(this.gestureBase);
+			this.cells = cloneBoard(this.gestureBase.board);
 			this.history = { past: this.history.past.slice(0, -1), future: this.history.future };
 		}
 		this.endGesture();
@@ -403,18 +419,20 @@ export class QuiltStore {
 
 	undo() {
 		if (this.gesture) return;
-		const restored = undoHistory(this.history, this.cells);
+		const restored = undoHistory(this.history, this.snapshot);
 		if (!restored) return;
 		this.history = restored.history;
-		this.cells = restored.board;
+		this.cells = restored.snapshot.board;
+		this.materials = [...restored.snapshot.materials];
 	}
 
 	redo() {
 		if (this.gesture) return;
-		const restored = redoHistory(this.history, this.cells);
+		const restored = redoHistory(this.history, this.snapshot);
 		if (!restored) return;
 		this.history = restored.history;
-		this.cells = restored.board;
+		this.cells = restored.snapshot.board;
+		this.materials = [...restored.snapshot.materials];
 	}
 
 	// ── Editing ──────────────────────────────────────────────────────
@@ -1195,6 +1213,7 @@ export class QuiltStore {
 
 	/** Add a fabric to the palette and make it the one being painted with. */
 	addMaterial(hex?: string): Material {
+		this.recordState();
 		const material: Material = {
 			id: crypto.randomUUID(),
 			name: '',
@@ -1216,7 +1235,8 @@ export class QuiltStore {
 
 	recolorMaterial(id: string, raw: string): boolean {
 		const hex = normalizeHex(raw);
-		if (!hex) return false;
+		if (!hex || this.materialById.get(id)?.hex === hex) return false;
+		this.recordState();
 		this.materials = this.materials.map((m) => (m.id === id ? { ...m, hex } : m));
 		return true;
 	}
