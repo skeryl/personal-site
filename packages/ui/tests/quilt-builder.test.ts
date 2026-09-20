@@ -1278,3 +1278,15 @@ test("the builder uses the design file's own colours and gutter", async ({ page 
 	expect(first.width).toBeCloseTo(first.height, 0);
 	expect(second.x - (first.x + first.width)).toBeCloseTo(20, 0);
 });
+
+test('nothing is subdivided on load, so the one-piece tile is the armed one', async ({ page }) => {
+	const tiles = page.locator('.composition .chip');
+	await expect(tiles.nth(0)).toHaveClass(/active/);
+	await expect(tiles.nth(1)).not.toHaveClass(/active/);
+	await expect(tiles.nth(2)).not.toHaveClass(/active/);
+
+	// G cycles on from there rather than starting part way along.
+	await page.keyboard.press('g');
+	await expect(tiles.nth(1)).toHaveClass(/active/);
+	await expect(tiles.nth(0)).not.toHaveClass(/active/);
+});

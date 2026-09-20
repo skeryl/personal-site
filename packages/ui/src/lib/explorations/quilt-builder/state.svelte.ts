@@ -183,8 +183,13 @@ export class QuiltStore {
 	tool = $state<Tool>('mouse');
 	/** 1 fits the whole quilt in the viewport; above that the wall scrolls. */
 	zoom = $state(1);
-	/** The grid the Grid tool paints, and the one G cycles through. */
-	gridDivision = $state<number>(2);
+	/*
+	 * The grid the Grid tool paints, and the one G cycles through. Starts at
+	 * one piece: on load nothing is subdivided, so marking 2x2 as the armed
+	 * grid drew a tile darker than its neighbours for no reason the eye could
+	 * account for.
+	 */
+	gridDivision = $state<number>(1);
 	/** Which palette sections are open, bound directly by the disclosures. */
 	panels = $state<Panels>({ ...DEFAULT_PANELS });
 
