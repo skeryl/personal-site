@@ -18,7 +18,7 @@
 	import AttributesPanel from './AttributesPanel.svelte';
 	import BlockSvg from './BlockSvg.svelte';
 	import PatternSvg from './PatternSvg.svelte';
-	import { DIVISIONS, type QuiltStore } from './state.svelte';
+	import { DIVISIONS, PATTERN_PREFIX, type QuiltStore } from './state.svelte';
 
 	let { store }: { store: QuiltStore } = $props();
 
@@ -31,18 +31,32 @@
 
 	/*
 	 * Everything that fills exactly one square: the cuts, which paint, and the
-	 * block types, which stamp. Rotated once per rotation change so the flatten
-	 * cache keeps hitting.
+	 * block types, which stamp.
+	 *
+	 * Only the armed one turns with R. The palette is a list of what the shapes
+	 * are, and spinning every icon in it to show the turn of the one about to
+	 * be placed made the list hard to read. Leaving the rest at their own
+	 * identity also keeps the flatten cache hitting.
 	 */
+	const armedCut = $derived(store.tab === 'piece' ? store.pieceId : null);
+	const armedBlock = $derived(store.tab === 'block' ? store.blockId : null);
+
 	const cutEntries = $derived(
-		PIECE_CUTS.map((cut) => ({ cut, block: leafBlock(cut.id, store.rotation) }))
+		PIECE_CUTS.map((cut) => ({
+			cut,
+			block: leafBlock(cut.id, cut.id === armedCut ? store.rotation : 0)
+		}))
 	);
 	const blockEntries = $derived(
-		BLOCK_TYPES.map((type) => ({ type, block: rotateBlock(type.block, store.rotation) }))
+		BLOCK_TYPES.map((type) => ({
+			type,
+			block: type.id === armedBlock ? rotateBlock(type.block, store.rotation) : type.block
+		}))
 	);
 	const patternEntries = $derived(
 		store.patterns.map((saved) => {
-			const blocks = rotatePattern(saved.blocks, store.rotation);
+			const armed = `${PATTERN_PREFIX}${saved.id}` === armedBlock;
+			const blocks = armed ? rotatePattern(saved.blocks, store.rotation) : saved.blocks;
 			const { w, h } = boundsOf(blocks);
 			return { saved, blocks, size: w === 1 && h === 1 ? null : `${w}×${h}` };
 		})

@@ -134,7 +134,7 @@ interface PaintGesture {
 	mode: Tool;
 }
 
-const PATTERN_PREFIX = 'pattern:';
+export const PATTERN_PREFIX = 'pattern:';
 
 /** A drag with the Select tool: a rectangle from `anchor` to `head`. */
 interface Marquee {

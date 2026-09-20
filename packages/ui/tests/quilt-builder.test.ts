@@ -1728,3 +1728,23 @@ test('a square placed with no colour is a shape, and the eraser takes it', async
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#ffffff']);
 });
+
+test('R turns the shape about to be placed, not the whole palette', async ({ page }) => {
+	await pickShape(page, 'Half square triangle');
+	const icons = page.locator('[data-panel="types"] .type, .types .type');
+	const pointsOf = () =>
+		icons.evaluateAll((els) =>
+			els.map((el) => el.querySelector('polygon')?.getAttribute('points') ?? '')
+		);
+
+	const before = await pointsOf();
+	await page.keyboard.press('r');
+	const after = await pointsOf();
+
+	const turned = before.map((points, i) => points !== after[i]);
+	expect(turned.filter(Boolean)).toHaveLength(1);
+
+	// And the one that turned is the armed one.
+	const armed = await icons.evaluateAll((els) => els.map((el) => el.classList.contains('active')));
+	expect(armed[turned.indexOf(true)]).toBe(true);
+});
