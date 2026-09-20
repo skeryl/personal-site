@@ -350,6 +350,13 @@ export const columnLabel = (col: number): string => {
 export const squareLabel = (index: number, cols: number): string =>
 	`${columnLabel(index % cols)}${Math.floor(index / cols) + 1}`;
 
+/*
+ * The middle of a run: one index when it is odd, two when it is even. A 14
+ * wide quilt has no middle column, so both 7 and 8 count.
+ */
+export const middleOf = (count: number): number[] =>
+	count % 2 ? [(count - 1) / 2] : [count / 2 - 1, count / 2];
+
 export const rowOf = (index: number, cols: number): number => Math.floor(index / cols);
 export const colOf = (index: number, cols: number): number => index % cols;
 export const cellIndex = (row: number, col: number, cols: number): number => row * cols + col;

@@ -38,6 +38,7 @@ import {
 	recompose,
 	resizeBoard,
 	rotateBlock,
+	middleOf,
 	rowOf,
 	setAt,
 	subtreeAt,
@@ -85,12 +86,16 @@ export type Tool = 'place' | 'erase' | 'mouse' | 'grid';
 /** Compositions offered in the toolbar: one piece, 2x2, or 4x4. */
 export const DIVISIONS = [1, 2, 4] as const;
 
-/** Palette sections start open; collapsing one is remembered. */
+/*
+ * Small UI toggles, remembered between visits: which palette sections are
+ * open, and whether the centre markers are showing.
+ */
 export const DEFAULT_PANELS: Panels = {
 	grid: true,
 	type: true,
 	patterns: true,
-	attributes: true
+	attributes: true,
+	centerGuides: false
 };
 
 /** Zoom is view state: never saved, never undone. */
@@ -574,6 +579,21 @@ export class QuiltStore {
 			updates.set(cellIndex(row, col, cols), cloneBlock(this.cells[source]));
 		}
 		return updates;
+	});
+
+	/*
+	 * The squares at the middle of the quilt. On an even grid there is no
+	 * middle square, so the two either side of the centre seam both count,
+	 * which makes four in the general case.
+	 */
+	centerCells = $derived.by(() => {
+		if (!this.panels.centerGuides) return new Set<number>();
+		const { cols, rows } = this.dims;
+		const marked = new Set<number>();
+		for (const row of middleOf(rows)) {
+			for (const col of middleOf(cols)) marked.add(cellIndex(row, col, cols));
+		}
+		return marked;
 	});
 
 	/** The rectangle a marquee drag currently covers, in grid coordinates. */

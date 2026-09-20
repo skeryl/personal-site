@@ -1094,3 +1094,58 @@ test('a sweep takes filled squares, and a click takes whatever it names', async 
 	await cell(page, at(cols, 5, 1)).click();
 	await expect(page.locator('.readout')).toHaveText('B6 square selected');
 });
+
+const centerToggle = (page: Page) =>
+	page.locator('.actions').getByRole('button', { name: 'Center' });
+
+const markedCells = (page: Page) =>
+	page.$$eval('rect.center-mark', (marks) =>
+		marks
+			.map((mark) => Number(mark.closest('[data-cell-index]')!.getAttribute('data-cell-index')))
+			.sort((a, b) => a - b)
+	);
+
+test('centre markers are off until asked for, and remembered after that', async ({ page }) => {
+	await expect(page.locator('rect.center-mark')).toHaveCount(0);
+	await expect(centerToggle(page)).not.toHaveClass(/active/);
+
+	await centerToggle(page).click();
+	await expect(centerToggle(page)).toHaveClass(/active/);
+	await expect(page.locator('rect.center-mark')).not.toHaveCount(0);
+
+	await page.waitForTimeout(AUTOSAVE_MS);
+	await page.reload();
+	await page.waitForSelector('[data-cell-index="0"]');
+	await expect(page.locator('rect.center-mark')).not.toHaveCount(0);
+});
+
+test('an even grid has no middle square, so the four around the centre are marked', async ({
+	page
+}) => {
+	await page.selectOption('.size select', 'king');
+	await centerToggle(page).click();
+
+	const cols = await gridCols(page);
+	expect(cols).toBe(14);
+	// Columns G and H, rows 7 and 8: the squares either side of the centre seam.
+	expect(await markedCells(page)).toEqual([
+		at(cols, 6, 6),
+		at(cols, 6, 7),
+		at(cols, 7, 6),
+		at(cols, 7, 7)
+	]);
+});
+
+test('an odd grid has a real middle square, and marks only that one', async ({ page }) => {
+	// 40 inches of 8" blocks is five across and five down.
+	await page.selectOption('.size select', 'custom');
+	for (const box of [page.locator('.inches').first(), page.locator('.inches').last()]) {
+		await box.fill('40');
+		await box.blur();
+	}
+	await centerToggle(page).click();
+
+	const cols = await gridCols(page);
+	expect(cols).toBe(5);
+	expect(await markedCells(page)).toEqual([at(cols, 2, 2)]);
+});

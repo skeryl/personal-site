@@ -346,6 +346,9 @@
 											vector-effect="non-scaling-stroke"
 										/>
 									{/each}
+									{#if store.centerCells.has(i)}
+										<rect class="center-mark" x="0" y="0" width={VB} height={VB} />
+									{/if}
 									{#if store.selectedNode?.cell === i}
 										{@const node = rectAt(display, store.selectedNode.path)}
 										<rect
@@ -440,6 +443,14 @@
 			</button>
 			<button class="action" onclick={() => store.redo()} disabled={!store.canRedo}>
 				Redo <kbd>⇧⌘Z</kbd>
+			</button>
+			<button
+				class="action"
+				class:active={store.panels.centerGuides}
+				aria-pressed={store.panels.centerGuides}
+				onclick={() => (store.panels.centerGuides = !store.panels.centerGuides)}
+			>
+				Center
 			</button>
 			<button class="action" onclick={() => store.clearAll()} disabled={store.filled === 0}
 				>Clear</button
@@ -735,6 +746,18 @@
 	rect.seam {
 		fill: none;
 		vector-effect: non-scaling-stroke;
+	}
+	/*
+	 * The middle of the quilt. An even grid has no middle square, so this
+	 * marks the two or four squares around the centre seam instead.
+	 */
+	rect.center-mark {
+		fill: none;
+		stroke: #e0584f;
+		stroke-width: 2;
+		stroke-dasharray: 6 4;
+		vector-effect: non-scaling-stroke;
+		pointer-events: none;
 	}
 
 	.readout {
