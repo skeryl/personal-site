@@ -1768,6 +1768,23 @@ test('R turns the shape about to be placed, not the whole palette', async ({ pag
 	expect(armed[turned.indexOf(true)]).toBe(true);
 });
 
+test('removing a fabric leaves the shapes cut from it, unset', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await pickShape(page, 'Half square triangle');
+	await cell(page, 0).click();
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toEqual(['#4f7fe8', '#d9d9d9']);
+
+	// No warning any more: nothing is lost but the colour.
+	await page.getByRole('button', { name: /^Paint with Blue/ }).click();
+	await page.keyboard.press('Delete');
+	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(0);
+	await parkMouse(page);
+
+	// The triangle is still a triangle, in the greys it started as.
+	expect(await cellFills(page, 0)).toEqual(['#4a4a4a', '#d9d9d9']);
+});
+
 test('the unset slots print the grey they are drawn in', async ({ page }) => {
 	await pickShape(page, 'Half square triangle');
 	await cell(page, 0).click();

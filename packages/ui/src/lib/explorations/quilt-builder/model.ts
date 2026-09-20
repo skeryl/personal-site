@@ -408,13 +408,18 @@ export const resizeBoard = (board: readonly Block[], from: Dims, to: Dims): Boar
 	});
 
 /** Blank out every piece cut from a material that no longer exists. */
+/*
+ * The board with a fabric taken out of it. The pieces cut from it stay exactly
+ * where they are and go back to unset: a shape without a colour is still a
+ * shape, so losing a fabric costs no work.
+ */
 export const withoutMaterial = (board: readonly Block[], materialId: MaterialId): Board =>
 	board.map((block) =>
-		mapLeaves(block, (leaf) => {
-			if (!leaf.fabrics.includes(materialId)) return leaf;
-			const fabrics = leaf.fabrics.map((f) => (f === materialId ? null : f));
-			return fabrics.every((f) => f === null) ? (emptyBlock() as LeafBlock) : { ...leaf, fabrics };
-		})
+		mapLeaves(block, (leaf) =>
+			leaf.fabrics.includes(materialId)
+				? { ...leaf, fabrics: leaf.fabrics.map((f) => (f === materialId ? null : f)) }
+				: leaf
+		)
 	);
 
 /** Materials referenced by the board, so the palette can warn before a delete. */

@@ -1241,17 +1241,14 @@ export class QuiltStore {
 		return true;
 	}
 
+	/*
+	 * Removing a fabric costs no work now: the pieces cut from it stay where
+	 * they are and go back to unset, so there is nothing to warn about. One
+	 * history entry covers the palette and the board together.
+	 */
 	deleteMaterial(id: string) {
-		const material = this.materialById.get(id);
-		if (!material) return;
-		if (
-			this.inUse.has(id) &&
-			!confirm(
-				`Remove ${material.name.trim() || 'this fabric'}? Pieces cut from it will be cleared.`
-			)
-		) {
-			return;
-		}
+		if (!this.materialById.has(id)) return;
+		this.recordState();
 		this.materials = this.materials.filter((m) => m.id !== id);
 		if (this.selectedMaterialId === id) this.selectedMaterialId = this.materials[0]?.id ?? null;
 		this.patterns = this.patterns.map((p) => ({
@@ -1260,7 +1257,7 @@ export class QuiltStore {
 				Object.entries(p.blocks).map(([at, block]) => [at, this.withKnownFabrics(block)])
 			) as PatternBlocks
 		}));
-		this.replaceBoard(withoutMaterial(this.cells, id));
+		this.cells = withoutMaterial(this.cells, id);
 	}
 
 	// ── Quilt settings ───────────────────────────────────────────────

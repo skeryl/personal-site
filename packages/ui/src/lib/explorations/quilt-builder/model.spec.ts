@@ -99,9 +99,13 @@ describe('board queries reach into compositions', () => {
 		expect([...materialsInUse([composed])]).toEqual(['blue']);
 	});
 
-	it('withoutMaterial clears nested pieces', () => {
-		const [cleared] = withoutMaterial([composed], 'blue');
-		expect(isEmpty(cleared)).toBe(true);
+	it('withoutMaterial takes the fabric and leaves the shape', () => {
+		const [stripped] = withoutMaterial([composed], 'blue');
+		// Losing a fabric costs no work: the pinwheel is still a pinwheel.
+		expect(isEmpty(stripped)).toBe(false);
+		expect(sameStructure(stripped, composed)).toBe(true);
+		// Nothing in it is cut from that fabric any more, though.
+		expect(flatten(stripped).every((piece) => piece.fabric === null)).toBe(true);
 	});
 });
 
