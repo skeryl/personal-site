@@ -57,7 +57,7 @@
 
 <aside class="side">
 	<label class="setting">
-		<span class="label">Block size</span>
+		<span class="label">Block size:</span>
 		<select
 			class="select"
 			value={store.blockSize}
@@ -82,19 +82,21 @@
 					title={`${label}, ${fmtInches(store.blockSize / division)}” pieces`}
 					onclick={() => store.setGrid(division)}
 				>
-					<!-- Solid outline, dashed divisions: the sketch's own notation. -->
-					<svg class="chip-grid" viewBox="0 0 24 24" aria-hidden="true">
-						<rect x="0.5" y="0.5" width="23" height="23" />
+					<!-- The tile IS the block: a square, divided by dashed seams. -->
+					<svg class="chip-grid" viewBox="0 0 48 48" aria-hidden="true">
 						{#each { length: division - 1 } as _, i (i)}
-							{@const at = ((i + 1) * 24) / division}
-							<line class="divide" x1={at} y1="0" x2={at} y2="24" />
-							<line class="divide" x1="0" y1={at} x2="24" y2={at} />
+							{@const at = ((i + 1) * 48) / division}
+							<line x1={at} y1="3" x2={at} y2="45" />
+							<line x1="3" y1={at} x2="45" y2={at} />
 						{/each}
 					</svg>
-					<span class="chip-size">{fmtInches(store.blockSize / division)}”</span>
+					<span class="chip-label">
+						{division === 1 ? '(1)' : `(${division}X${division})`}
+					</span>
 				</button>
 			{/each}
 		</div>
+
 		<p class="hint">
 			{#if selectedCount}
 				{selectedCount === 1
@@ -234,9 +236,12 @@
 
 	.setting {
 		display: flex;
-		align-items: center;
-		gap: 0.75rem;
+		align-items: baseline;
+		gap: 0.6rem;
 		padding: 0.9rem 1rem;
+	}
+	.setting .label {
+		white-space: nowrap;
 	}
 	.label {
 		font-size: 0.65rem;
@@ -255,7 +260,7 @@
 	}
 	.select {
 		font: inherit;
-		font-size: 0.85rem;
+		font-size: 1.05rem;
 		color: var(--color-text-strong);
 		background: transparent;
 		border: none;
@@ -267,52 +272,47 @@
 	.composition {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
-		gap: 0.4rem;
+		gap: 0.75rem;
 		padding: 0 1rem;
 	}
 	.chip {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 0.4rem;
+		gap: 0.35rem;
 		font: inherit;
-		padding: 0.5rem 0.25rem;
-		border: 1px solid var(--qb-line);
-		background: #fff;
-		color: var(--color-text-strong);
+		padding: 0;
+		border: none;
+		background: none;
 		cursor: pointer;
 	}
-	.chip:hover {
-		border-color: var(--color-text-strong);
-	}
-	.chip.active {
-		border-color: var(--qb-accent);
-		outline: 1px solid var(--qb-accent);
-		outline-offset: -2px;
-	}
-	/* A miniature of the subdivision, so each option shows what it does. */
+	/* The square itself carries the state, so there is no button chrome. */
 	.chip-grid {
-		width: 1.6rem;
-		height: 1.6rem;
 		display: block;
-		color: #8a8a8a;
+		width: 100%;
+		aspect-ratio: 1;
+		background: #fff;
+		border: 1px solid var(--qb-line);
+		color: #b4b4b4;
+	}
+	.chip:hover .chip-grid {
+		border-color: var(--color-text-secondary);
 	}
 	.chip.active .chip-grid {
+		border: 2px solid var(--qb-accent);
 		color: var(--qb-accent);
 	}
-	.chip-grid rect {
-		fill: none;
+	.chip-grid line {
 		stroke: currentColor;
-		stroke-width: 1;
+		stroke-width: 1.5;
+		stroke-dasharray: 4 3;
 	}
-	.chip-grid .divide {
-		stroke: currentColor;
-		stroke-width: 1;
-		stroke-dasharray: 3 2;
-	}
-	.chip-size {
+	.chip-label {
 		font-size: 0.7rem;
 		color: var(--color-text-secondary);
+	}
+	.chip.active .chip-label {
+		color: var(--color-text-strong);
 	}
 
 	.types {

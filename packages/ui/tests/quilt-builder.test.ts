@@ -868,9 +868,10 @@ test('column and row headers stay frozen when the wall scrolls', async ({ page }
 		const quilt = document.querySelector('.blanket')!.getBoundingClientRect();
 		return { left: quilt.left - rows.right, top: quilt.top - cols.bottom };
 	});
-	expect(gap.left).toBeGreaterThanOrEqual(0);
+	// Touching or nearly so; the tolerance is for sub-pixel layout, not slack.
+	expect(gap.left).toBeGreaterThan(-2);
 	expect(gap.left).toBeLessThan(12);
-	expect(gap.top).toBeGreaterThanOrEqual(0);
+	expect(gap.top).toBeGreaterThan(-2);
 	expect(gap.top).toBeLessThan(12);
 
 	for (let i = 0; i < 7; i++) await page.keyboard.press('+');
@@ -1164,4 +1165,46 @@ test('an odd grid brackets its one real middle square', async ({ page }) => {
 	const vertical = (await guideBounds(page, 'vertical'))!;
 	expect(vertical.x).toBeCloseTo(middle.x, 0);
 	expect(vertical.width).toBeCloseTo(middle.width, 0);
+});
+
+test('the quilt name and size head the canvas, and nothing is left over below', async ({
+	page
+}) => {
+	// The title row sits above the quilt, inside the canvas column, not above
+	// the whole builder: name to the left, size to the right.
+	const side = (await page.locator('.side').boundingBox())!;
+	const name = (await page.getByLabel('Quilt name').boundingBox())!;
+	const size = (await page.locator('.size').boundingBox())!;
+	const wall = (await page.locator('.wall-frame').boundingBox())!;
+
+	expect(name.x).toBeGreaterThan(side.x + side.width - 2);
+	expect(size.x).toBeGreaterThan(name.x + name.width - 2);
+	expect(name.y).toBeLessThan(wall.y);
+
+	// The page has no second heading of its own any more, and the builder
+	// runs to the bottom edge rather than stopping short of it.
+	await expect(page.locator('.qb h1')).toHaveCount(0);
+	const fit = await page.evaluate(() => ({
+		overflow: document.documentElement.scrollHeight - window.innerHeight,
+		below: Math.round(
+			window.innerHeight - document.querySelector('.wall-frame')!.getBoundingClientRect().bottom
+		)
+	}));
+	expect(fit.overflow).toBeLessThanOrEqual(0);
+	expect(fit.below).toBeLessThanOrEqual(1);
+});
+
+test('the block grid tiles are squares labelled by division', async ({ page }) => {
+	const labels = await page.locator('.composition .chip-label').allInnerTexts();
+	expect(labels.map((t) => t.trim())).toEqual(['(1)', '(2X2)', '(4X4)']);
+
+	// Each tile is the block itself: a square, not an icon inside a button.
+	const tile = (await page.locator('.composition .chip-grid').first().boundingBox())!;
+	expect(tile.width).toBeCloseTo(tile.height, 0);
+
+	// One piece has no seams; 2x2 has one each way; 4x4 has three.
+	const seams = await page.$$eval('.composition .chip-grid', (grids) =>
+		grids.map((g) => g.querySelectorAll('line').length)
+	);
+	expect(seams).toEqual([0, 2, 6]);
 });
