@@ -25,6 +25,10 @@ export interface LeafBlock {
 	/**
 	 * Added to every piece's role. Lets a grid alternate which of its children
 	 * take the stamped fabric, the way a four patch checkerboards.
+	 *
+	 * Present, even as zero, means a composition gave this leaf its role. That
+	 * is what tells a four patch's plain quarters apart from blank space,
+	 * which is otherwise the same leaf.
 	 */
 	roleOffset?: number;
 }
@@ -69,7 +73,7 @@ export const leafBlock = (
 	cut,
 	rotation,
 	fabrics: fabrics ?? Array(CUTS[cut].pieces.length).fill(null),
-	...(roleOffset ? { roleOffset } : {})
+	...(roleOffset === undefined ? {} : { roleOffset })
 });
 
 export const emptyBlock = (): Block => leafBlock('square');
@@ -236,12 +240,27 @@ export interface FlatPiece {
 	role: number;
 	points: Point[];
 	fabric: MaterialId | null;
+	/*
+	 * Whether this piece belongs to a shape somebody put down, as opposed to
+	 * the blank square a block starts as. A shape can be placed before it has
+	 * any fabric, and an unset piece of one is drawn and listed; blank space
+	 * is neither.
+	 */
+	shaped: boolean;
 }
 
 /*
  * Grids are square for now (2x2, 4x4), so a leaf's rect.w is the scale factor
  * for its blanks. Non-square cells would need frac to carry both axes.
  */
+/*
+ * A leaf holds a shape once it has been cut into one, or given a role by the
+ * composition that built it (a four patch is four plain squares whose roles
+ * alternate). Until then it is the blank a block starts as.
+ */
+const isShaped = (leaf: LeafBlock): boolean =>
+	leaf.cut !== 'square' || leaf.roleOffset !== undefined;
+
 const flattenUncached = (block: Block): FlatPiece[] =>
 	walkLeaves(block).flatMap(({ leaf, rect, path }) =>
 		rotatedPieces(leaf.cut, leaf.rotation).map((shape, i) => ({
@@ -250,7 +269,8 @@ const flattenUncached = (block: Block): FlatPiece[] =>
 			frac: shape.frac * rect.w,
 			role: shape.role + (leaf.roleOffset ?? 0),
 			points: shape.points.map(([x, y]): Point => [rect.x + x * rect.w, rect.y + y * rect.h]),
-			fabric: leaf.fabrics[i] ?? null
+			fabric: leaf.fabrics[i] ?? null,
+			shaped: isShaped(leaf)
 		}))
 	);
 
@@ -331,8 +351,13 @@ const rotateGridOnce = (grid: GridBlock): GridBlock => {
 
 // ── Queries ────────────────────────────────────────────────────────
 
+/*
+ * Empty means nothing has been put down here, not merely that nothing is
+ * coloured: a shape can be placed before it has any fabric, and it is still
+ * a shape. A square subdivided but not cut into anything is still blank.
+ */
 export const isEmpty = (block: Block): boolean =>
-	walkLeaves(block).every(({ leaf }) => leaf.fabrics.every((f) => f === null));
+	walkLeaves(block).every(({ leaf }) => !isShaped(leaf) && leaf.fabrics.every((f) => f === null));
 
 /*
  * Squares are named like spreadsheet cells, which is how the design refers to

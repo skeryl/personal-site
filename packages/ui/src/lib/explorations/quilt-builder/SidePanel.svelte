@@ -12,7 +12,7 @@
 
 	import { BLOCK_SIZES, fmtInches } from './data';
 	import { BLOCK_TYPES } from './blocks';
-	import { PIECE_CUTS } from './geometry';
+	import { PIECE_CUTS, ROLE_FILL } from './geometry';
 	import { flatten, leafBlock, rotateBlock, type Block } from './model';
 	import { boundsOf, rotatePattern } from './pattern';
 	import AttributesPanel from './AttributesPanel.svelte';
@@ -22,12 +22,9 @@
 
 	let { store }: { store: QuiltStore } = $props();
 
-	const DARK = '#4a4a4a';
-	const LIGHT = '#d9d9d9';
-
 	/** Icon fills: dark for the fabric role, light for background, white for empty. */
 	const roleFills = (block: Block): string[] =>
-		flatten(block).map((p) => (p.role === 0 ? DARK : p.role === 1 ? LIGHT : '#ffffff'));
+		flatten(block).map((p) => ROLE_FILL[p.role] ?? '#ffffff');
 
 	const hexOf = (id: string | null): string =>
 		id ? (store.materialById.get(id)?.hex ?? '#fff') : '#fff';

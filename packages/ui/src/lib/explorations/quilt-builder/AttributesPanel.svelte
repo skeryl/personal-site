@@ -12,11 +12,12 @@
 	 */
 
 	import { KIND_ICON_CUT, KIND_NOUN } from './cutting';
+	import { ROLE_FILL } from './geometry';
 	import BlockSvg from './BlockSvg.svelte';
 	import ColorPicker from './ColorPicker.svelte';
 	import { leafBlock, type Block } from './model';
 	import type { ShapeKind } from './geometry';
-	import type { QuiltStore } from './state.svelte';
+	import type { ColorSlot, QuiltStore } from './state.svelte';
 
 	let { store }: { store: QuiltStore } = $props();
 
@@ -28,9 +29,12 @@
 
 	/** Which COLOR n row has its palette open, by fabric id. */
 	let editing = $state<string | null>(null);
-	/** Sentinels for the rows that have no fabric id of their own. */
+	/** Sentinel for the single row shown when one piece is selected. */
 	const PIECE = '\u0000piece';
-	const UNSET = '\u0000unset';
+
+	/** Which row of the Attributes list a slot is, for the open-popover state. */
+	const slotKey = (slot: ColorSlot) =>
+		slot.kind === 'fabric' ? slot.id : `\u0000unset:${slot.role}`;
 
 	const hexOf = (id: string | null): string =>
 		id ? (store.materialById.get(id)?.hex ?? '#ffffff') : '#ffffff';
@@ -47,15 +51,16 @@
 		}
 	};
 
-	const remap = (from: string | null, to: string) => {
-		store.remapFabric(from, to);
+	/** Both halves of the same gesture: point a row at a fabric. */
+	const assign = (slot: ColorSlot, to: string) => {
+		if (slot.kind === 'fabric') store.remapFabric(slot.id, to);
+		else store.fillUnset(slot.role, to);
 		editing = null;
 	};
 
-	const addAndRemap = (from: string | null, anchor: DOMRect) => {
+	const addAndAssign = (slot: ColorSlot, anchor: DOMRect) => {
 		const material = store.addMaterial();
-		store.remapFabric(from, material.id);
-		editing = null;
+		assign(slot, material.id);
 		openPicker(material.id, anchor);
 	};
 
@@ -155,19 +160,19 @@
 		</p>
 	{:else if !store.activeScope.length}
 		<p class="hint muted">No blocks selected</p>
-	{:else if !store.selectionFabrics.some((fabric) => fabric !== null)}
+	{:else if !store.selectionSlots.length}
 		<p class="hint muted">The selected blocks are empty</p>
 	{:else}
 		<ul class="colors">
-			{#each store.selectionFabrics as fabric, i (fabric ?? UNSET)}
-				{@const key = fabric ?? UNSET}
-				{@const label = fabric ? `Color ${i + 1}` : 'Unset'}
+			{#each store.selectionSlots as slot, i (slotKey(slot))}
+				{@const key = slotKey(slot)}
+				{@const fabric = slot.kind === 'fabric' ? slot.id : null}
+				{@const label = slot.kind === 'fabric' ? `Color ${i + 1}` : `Unset ${slot.role + 1}`}
 				<li class="color">
 					<span class="color-label">{label}</span>
 					<button
 						class="swatch"
-						class:unset={!fabric}
-						style="background: {hexOf(fabric)}"
+						style="background: {slot.kind === 'fabric' ? hexOf(slot.id) : ROLE_FILL[slot.role]}"
 						aria-label={`${label}: ${fabric ? nameOf(fabric) : 'no color yet'}. Change it.`}
 						aria-expanded={editing === key}
 						onclick={() => (editing = editing === key ? null : key)}
@@ -189,11 +194,11 @@
 										style="background: {material.hex}"
 										title={material.name.trim() || material.hex.toUpperCase()}
 										aria-label={material.name.trim() || material.hex.toUpperCase()}
-										onclick={() => remap(fabric, material.id)}
+										onclick={() => assign(slot, material.id)}
 									></button>
 								{/each}
 							</div>
-							<button class="new" onclick={(e) => addAndRemap(fabric, rectOf(e))}>
+							<button class="new" onclick={(e) => addAndAssign(slot, rectOf(e))}>
 								<span class="label">New color</span>
 								<span class="new-chip" aria-hidden="true">+</span>
 							</button>
@@ -265,7 +270,7 @@
 			</button>
 		</div>
 	{:else}
-		<p class="hint muted">Add a color to start placing.</p>
+		<p class="hint muted">No colors yet. Shapes you place stay gray until you add one.</p>
 	{/if}
 
 	{#if store.cutting.length}
@@ -397,10 +402,6 @@
 		width: 6.6875rem;
 		height: 2.3125rem;
 		border: none;
-	}
-	/* Nothing to show, so show the outline of the space a colour would fill. */
-	.color .swatch.unset {
-		border: 1px dashed var(--qb-line);
 	}
 	.hex-row {
 		display: flex;

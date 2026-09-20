@@ -17,7 +17,7 @@ import {
 	type Material
 } from './data';
 import { BLOCK_TYPES, BLOCK_TYPE_BY_ID } from './blocks';
-import { CUTS, pieceAt, type Point } from './geometry';
+import { CUTS, pieceAt, rotatedPieces, type Point } from './geometry';
 import {
 	applyUpdates,
 	blocksEqual,
@@ -102,6 +102,9 @@ export const DEFAULT_PANELS: Panels = {
 export const ZOOM_MIN = 1;
 export const ZOOM_MAX = 12;
 export const ZOOM_STEP = 1.25;
+
+/** A row in Attributes: a fabric in the selection, or its bare pieces of one role. */
+export type ColorSlot = { kind: 'fabric'; id: MaterialId } | { kind: 'unset'; role: number };
 
 export interface Hover {
 	index: number;
@@ -258,7 +261,7 @@ export class QuiltStore {
 	 * Placement needs a fabric, but no longer a NAMED one: names are optional
 	 * now, and an unnamed fabric exports as its hex code.
 	 */
-	canPlace = $derived(this.selectedMaterial !== null);
+
 	filled = $derived(this.cells.filter((block) => !isEmpty(block)).length);
 	inUse = $derived(materialsInUse(this.cells));
 	canUndo = $derived(this.history.past.length > 0);
@@ -319,7 +322,6 @@ export class QuiltStore {
 	/** The hovered cells render as the exact state a click would produce. */
 	placePreview = $derived.by(() => {
 		if (this.tool !== 'place' || this.gesture || !this.hover) return null;
-		if (!this.canPlace || !this.selectedMaterialId) return null;
 		const { index, point, alt } = this.hover;
 		const pending = this.pending;
 		if (pending.mode === 'pattern') return this.patternUpdates(index, pending.blocks);
@@ -409,7 +411,6 @@ export class QuiltStore {
 	// ── Editing ──────────────────────────────────────────────────────
 
 	private placeAt(index: number, point: Point, whole = false): boolean {
-		if (!this.canPlace || !this.selectedMaterialId) return false;
 		const pending = this.pending;
 		if (pending.mode === 'pattern') {
 			const updates = this.patternUpdates(index, pending.blocks);
@@ -783,21 +784,28 @@ export class QuiltStore {
 	 * is what ATTRIBUTES lists: two for a plain block, more for a composed one.
 	 */
 	/*
-	 * The distinct fabrics in the selection, with a null entry at the end when
-	 * some piece has none. A bare piece is still something worth pointing at:
-	 * giving the unset slot a colour fills every bare piece in the selection
-	 * at once, rather than drawing over them one at a time.
+	 * What Attributes lists for the selection: every fabric in it, then a slot
+	 * for each role that still has bare pieces. A shape placed with no colour
+	 * has a slot per role, so a half square triangle reads as Unset 1 and
+	 * Unset 2 and each can be given its own fabric. Blank space contributes
+	 * nothing: there is no shape there to colour.
 	 */
-	selectionFabrics = $derived.by(() => {
-		const seen: MaterialId[] = [];
-		let bare = false;
+	selectionSlots = $derived.by((): ColorSlot[] => {
+		const fabrics: MaterialId[] = [];
+		const roles: number[] = [];
 		this.scopeBlocks.forEach((block) => {
-			flatten(block).forEach(({ fabric }) => {
-				if (!fabric) bare = true;
-				else if (!seen.includes(fabric)) seen.push(fabric);
+			flatten(block).forEach(({ fabric, role, shaped }) => {
+				if (fabric) {
+					if (!fabrics.includes(fabric)) fabrics.push(fabric);
+				} else if (shaped && !roles.includes(role)) {
+					roles.push(role);
+				}
 			});
 		});
-		return bare ? [...seen, null] : seen;
+		return [
+			...fabrics.map((id): ColorSlot => ({ kind: 'fabric', id })),
+			...roles.sort((a, b) => a - b).map((role): ColorSlot => ({ kind: 'unset', role }))
+		];
 	});
 
 	/** Rewrite each scoped subtree, leaving everything outside it alone. */
@@ -812,8 +820,24 @@ export class QuiltStore {
 	}
 
 	/** Swap one fabric for another, within the selection only. */
-	/** `from` of null fills the pieces that have no fabric yet. */
-	remapFabric(from: MaterialId | null, to: MaterialId) {
+	/*
+	 * Give every bare piece of one role a fabric, across the selection. The
+	 * counterpart of remapping a colour, for pieces that never had one.
+	 */
+	fillUnset(role: number, to: MaterialId) {
+		this.editScope((block) =>
+			mapLeaves(block, (leaf) => {
+				const offset = leaf.roleOffset ?? 0;
+				const shapes = rotatedPieces(leaf.cut, leaf.rotation);
+				const bare = (fabric: MaterialId | null, i: number) =>
+					fabric === null && shapes[i].role + offset === role;
+				if (!leaf.fabrics.some(bare)) return leaf;
+				return { ...leaf, fabrics: leaf.fabrics.map((f, i) => (bare(f, i) ? to : f)) };
+			})
+		);
+	}
+
+	remapFabric(from: MaterialId, to: MaterialId) {
 		if (from === to) return;
 		this.editScope((block) =>
 			mapLeaves(block, (leaf) =>

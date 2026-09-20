@@ -74,7 +74,7 @@ export const resample = (target: Block, source: Block): Block =>
 const stampInto = (
 	target: Block,
 	source: Block,
-	materialId: MaterialId,
+	materialId: MaterialId | null,
 	into: Rect = UNIT_RECT
 ): Block =>
 	mapLeavesWithRect(
@@ -102,7 +102,7 @@ export const recutLeaf = (leaf: LeafBlock, cut: string, rotation: number): LeafB
 });
 
 /** Set the fabric of just the piece under `point`, leaving the shape alone. */
-const paintPiece = (block: Block, point: Point, materialId: MaterialId): Block => {
+const paintPiece = (block: Block, point: Point, materialId: MaterialId | null): Block => {
 	const { leaf, rect, path } = leafAt(block, point);
 	const fabrics = [...leaf.fabrics];
 	fabrics[pieceAt(leaf.cut, leaf.rotation, localPoint(rect, point))] = materialId;
@@ -113,7 +113,8 @@ export const buildPlacement = (
 	block: Block,
 	point: Point,
 	pending: BlockPending,
-	materialId: MaterialId
+	/** Null places the shape with no fabric: its pieces read as unset. */
+	materialId: MaterialId | null
 ): Block => {
 	const { leaf, rect, path } = leafAt(block, point);
 

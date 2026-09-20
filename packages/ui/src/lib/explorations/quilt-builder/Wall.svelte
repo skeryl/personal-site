@@ -2,7 +2,7 @@
 	import { tick } from 'svelte';
 	import { CUSTOM_SIZE_ID, MAX_CUSTOM_INCHES, MIN_CUSTOM_INCHES, QUILT_SIZES } from './data';
 	import Minimap from './Minimap.svelte';
-	import { toPolygonPoints } from './geometry';
+	import { ROLE_FILL, toPolygonPoints } from './geometry';
 	import {
 		colOf,
 		columnLabel,
@@ -15,7 +15,8 @@
 		leafRects,
 		rowOf,
 		walkLeaves,
-		type Block
+		type Block,
+		type FlatPiece
 	} from './model';
 	import { ZOOM_MAX, ZOOM_MIN, ZOOM_STEP, type QuiltStore } from './state.svelte';
 
@@ -25,6 +26,18 @@
 
 	const hexOf = (id: string | null): string =>
 		id ? (store.materialById.get(id)?.hex ?? '#ffffff') : '#ffffff';
+
+	/*
+	 * A shape can be placed before it has any fabric. Its pieces are then drawn
+	 * in the greys the palette icons use, so it still reads as the shape it is.
+	 * Blank space stays blank.
+	 */
+	const fillOf = (piece: FlatPiece): string =>
+		piece.fabric
+			? hexOf(piece.fabric)
+			: piece.shaped
+				? (ROLE_FILL[piece.role] ?? '#ffffff')
+				: '#ffffff';
 
 	const nameOf = (id: string | null): string =>
 		id ? store.materialById.get(id)?.name.trim() || 'unnamed fabric' : 'empty';
@@ -49,9 +62,6 @@
 				: 'Drag a box to select filled squares · hold ⌘ or Ctrl to include empty ones';
 		}
 		if (store.tool === 'grid') return 'Click or drag to paint the grid chosen on the left';
-		if (store.tool === 'erase') return null;
-		if (!store.materials.length) return 'Add a color in Attributes to start placing';
-		if (!store.selectedMaterial) return 'Pick a color in Attributes to start placing';
 		return null;
 	});
 
@@ -348,7 +358,6 @@
 						class:copying={store.blockDrag?.mode === 'copy'}
 						class:moving={store.blockDrag?.mode === 'move'}
 						class:tool-grid={store.tool === 'grid'}
-						class:locked={store.tool === 'place' && !store.canPlace}
 						style="grid-template-columns: repeat({store.dims
 							.cols}, 1fr); grid-template-rows: repeat({store.dims
 							.rows}, 1fr); width: {content.w}px; height: {content.h}px"
@@ -407,7 +416,7 @@
 									{#each pieces as piece (piece.key)}
 										<polygon
 											points={toPolygonPoints(piece.points, VB)}
-											fill={hexOf(piece.fabric)}
+											fill={fillOf(piece)}
 											class:ghost={before !== null &&
 												(before.get(piece.key) ?? null) !== piece.fabric}
 											class:erasing={after !== null &&
@@ -789,9 +798,6 @@
 		width: 100%;
 		height: 100%;
 		display: block;
-	}
-	.locked .cell {
-		cursor: not-allowed;
 	}
 	.tool-erase .cell {
 		cursor: crosshair;

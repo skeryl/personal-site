@@ -99,12 +99,12 @@ const sanitizeLeaf = (raw: Loose, known: ReadonlySet<string>): Block => {
 	if (!isCutId(raw.cut)) return emptyBlock();
 	const count = CUTS[raw.cut].pieces.length;
 	if (!Array.isArray(raw.fabrics) || raw.fabrics.length !== count) return emptyBlock();
-	const roleOffset = typeof raw.roleOffset === 'number' ? raw.roleOffset : 0;
+	// Kept even when zero: its presence is what marks a composed leaf.
 	return leafBlock(
 		raw.cut,
 		normalizeTurns(typeof raw.rotation === 'number' ? raw.rotation : 0),
 		fabricList(raw.fabrics, count, known),
-		roleOffset || undefined
+		typeof raw.roleOffset === 'number' ? raw.roleOffset : undefined
 	);
 };
 

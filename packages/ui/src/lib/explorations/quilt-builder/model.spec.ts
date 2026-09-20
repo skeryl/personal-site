@@ -12,6 +12,7 @@ import {
 	recompose,
 	rotateBlock,
 	sameStructure,
+	setAt,
 	withoutMaterial,
 	type Block
 } from './model';
@@ -101,5 +102,37 @@ describe('board queries reach into compositions', () => {
 	it('withoutMaterial clears nested pieces', () => {
 		const [cleared] = withoutMaterial([composed], 'blue');
 		expect(isEmpty(cleared)).toBe(true);
+	});
+});
+
+describe('empty means nothing placed, not nothing coloured', () => {
+	it('a fresh block is empty, and so is one merely subdivided', () => {
+		expect(isEmpty(emptyBlock())).toBe(true);
+		expect(isEmpty(recompose(emptyBlock(), 2))).toBe(true);
+	});
+
+	it('a shape put down without fabric is not empty', () => {
+		expect(isEmpty(leafBlock('hst'))).toBe(false);
+	});
+
+	/*
+	 * A four patch is four plain squares, structurally the same as blank ones.
+	 * The role its composition gave each is the only thing that tells them
+	 * apart, which is why the offset is kept even when it is zero.
+	 */
+	it('a four patch is not empty, though every leaf of it is a plain square', () => {
+		const fourPatch = BLOCK_TYPE_BY_ID['four-patch'].block;
+		expect(isEmpty(fourPatch)).toBe(false);
+		expect(flatten(fourPatch).map((piece) => piece.shaped)).toEqual([true, true, true, true]);
+	});
+
+	it('marks the pieces of a placed shape, and leaves blank space alone', () => {
+		expect(flatten(leafBlock('hst')).map((piece) => piece.shaped)).toEqual([true, true]);
+		expect(flatten(emptyBlock()).map((piece) => piece.shaped)).toEqual([false]);
+
+		// One quarter cut into a shape; the other three are still blank.
+		const mixed = setAt(recompose(emptyBlock(), 2), [0], leafBlock('hst'));
+		expect(isEmpty(mixed)).toBe(false);
+		expect(flatten(mixed).map((piece) => piece.shaped)).toEqual([true, true, false, false, false]);
 	});
 });

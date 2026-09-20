@@ -89,23 +89,49 @@ test.beforeEach(async ({ page }) => {
 	await page.waitForSelector('[data-cell-index="0"]');
 });
 
-test('nothing can be placed until a colour exists, and naming is optional', async ({ page }) => {
+test('shapes go down before any colour exists, in the palette greys', async ({ page }) => {
 	// Mouse is the resting tool, so the wall talks about selecting until you
 	// arm a shape.
 	await expect(page.locator('.banner')).toContainText(/select filled squares/i);
+	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(0);
 
-	await pickShape(page, 'Square');
-	await expect(page.locator('.banner')).toContainText(/add a color/i);
+	// With nothing in the palette at all, a two-tone shape lands in the greys
+	// the palette icons are drawn in, one per role.
+	await pickShape(page, 'Half square triangle');
 	await cell(page, 0).click();
 	await parkMouse(page);
-	expect(await cellFills(page, 0)).toEqual(['#ffffff']);
+	expect(await cellFills(page, 0)).toEqual(['#4a4a4a', '#d9d9d9']);
+
+	// A plain square has no second role to show, so it stays blank.
+	await pickShape(page, 'Square');
+	await cell(page, 1).click();
+	await parkMouse(page);
+	expect(await cellFills(page, 1)).toEqual(['#ffffff']);
 
 	// Adding a colour is enough: it becomes active and placing works unnamed.
 	await setHex(page, page.locator('.palette .add'), '4f7fe8');
-	await expect(page.locator('.banner')).toHaveCount(0);
-	await cell(page, 0).click();
+	await cell(page, 1).click();
 	await parkMouse(page);
-	expect(await cellFills(page, 0)).toEqual(['#4f7fe8']);
+	expect(await cellFills(page, 1)).toEqual(['#4f7fe8']);
+});
+
+test('an uncoloured shape is on the quilt, and a blank square is not', async ({ page }) => {
+	await pickShape(page, 'Half square triangle');
+	await cell(page, 0).click();
+	await pickShape(page, 'Square');
+	await cell(page, 1).click();
+	await parkMouse(page);
+
+	// A sweep takes filled squares. The uncoloured triangle counts; the blank
+	// square it was dragged across does not.
+	await tool(page, /^Mouse/).click();
+	const from = (await cell(page, 0).boundingBox())!;
+	const to = (await cell(page, 1).boundingBox())!;
+	await page.mouse.move(from.x + 2, from.y + 2);
+	await page.mouse.down();
+	await page.mouse.move(to.x + to.width - 2, to.y + to.height - 2, { steps: 6 });
+	await page.mouse.up();
+	await expect(page.locator('.readout')).toHaveText('A1 square selected');
 });
 
 test('a paint drag is one undo step and redo restores it', async ({ page }) => {
@@ -1649,10 +1675,10 @@ test('bare pieces get an unset slot, and colouring it fills all of them', async 
 	await cell(page, 0).click();
 	await parkMouse(page);
 	await selectCell(page, 0);
-	await expect(page.locator('.colors .color-label')).toHaveText(['Color 1', 'Unset']);
+	await expect(page.locator('.colors .color-label')).toHaveText(['Color 1', 'Unset 2']);
 
 	// The slot is pickable like any other, and fills every bare piece at once.
-	const unset = page.locator('.colors .color').filter({ hasText: 'Unset' });
+	const unset = page.locator('.colors .color').filter({ hasText: 'Unset 2' });
 	await unset.locator('.swatch').first().click();
 	await unset.locator('.picker .swatch.small').last().click();
 	await parkMouse(page);
