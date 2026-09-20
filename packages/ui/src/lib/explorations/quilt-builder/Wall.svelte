@@ -255,11 +255,7 @@
 </script>
 
 <section class="wall">
-	<!--
-		The quilt's name and size head the canvas, as the design places them,
-		with what is selected between them: it belongs with the other things
-		that say what you are looking at, not down among the controls.
-	-->
+	<!-- The quilt's name and size head the canvas, as the design places them. -->
 	<div class="titlebar">
 		<input
 			class="quilt-name"
@@ -272,7 +268,6 @@
 				if (e.key === 'Enter') e.currentTarget.blur();
 			}}
 		/>
-		<p class="readout" aria-live="polite">{store.selectionLabel}</p>
 		<div class="size">
 			<label>
 				<span class="sr-only">Quilt size</span>
@@ -318,6 +313,13 @@
 			{/if}
 		</div>
 	</div>
+	<!--
+		Spoken, not shown. The selection is already plain from the outlines on
+		the quilt, and naming every square wrapped over several lines once a few
+		were selected; but somebody who cannot see those outlines still needs to
+		be told what changed.
+	-->
+	<p class="readout sr-only" aria-live="polite">{store.selectionLabel}</p>
 	<div class="wall-frame">
 		<div class="banner-slot" aria-live="polite">
 			{#if banner}
@@ -574,13 +576,14 @@
 <style>
 	.titlebar {
 		flex-shrink: 0;
-		display: grid;
-		grid-template-columns: 1fr auto 1fr;
+		display: flex;
 		align-items: baseline;
+		justify-content: space-between;
 		gap: 2rem;
 		padding: 0.7rem 2rem 0.6rem;
 	}
 	.quilt-name {
+		flex: 1;
 		min-width: 0;
 		font: inherit;
 		font-size: 1.05rem;
@@ -600,7 +603,6 @@
 	.size {
 		display: flex;
 		align-items: center;
-		justify-self: end;
 		gap: 0.5rem;
 	}
 	.size select {
@@ -927,14 +929,6 @@
 		border-bottom: 2px dashed var(--qb-guide);
 	}
 
-	/* The site gives every <p> vertical padding; these two set their own room. */
-	.readout {
-		margin: 0;
-		padding: 0;
-		text-align: center;
-		font-size: 0.8rem;
-		color: var(--color-text-secondary);
-	}
 	/*
 	 * One row under the tools: zoom at one end, the export at the other, and
 	 * what the quilt comes to between them.
@@ -947,6 +941,7 @@
 		align-items: center;
 		gap: 1rem;
 	}
+	/* The site gives every <p> vertical padding; this one sets its own room. */
 	.caption {
 		margin: 0;
 		padding: 0;

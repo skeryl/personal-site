@@ -1686,15 +1686,18 @@ test('bare pieces get an unset slot, and colouring it fills all of them', async 
 	await expect(page.locator('.colors .color-label')).toHaveText(['Color 1', 'Color 2']);
 });
 
-test('what is selected reads at the top, and the bottom is two rows', async ({ page }) => {
+test('the titlebar is name and size alone, and the bottom is two rows', async ({ page }) => {
 	const boxOf = async (selector: string) => (await page.locator(selector).boundingBox())!;
-	const wall = await boxOf('.wall-frame');
-	const readout = await boxOf('.readout');
 	const actions = await boxOf('.actions');
 	const footer = await boxOf('.footer');
 
-	// The readout heads the canvas with the name and the size, not the tools.
-	expect(readout.y).toBeLessThan(wall.y);
+	// What is selected is spoken, not shown: it takes no room in the titlebar.
+	await selectCell(page, 0);
+	await expect(page.locator('.readout')).toHaveText('A1 square selected');
+	const readout = await boxOf('.readout');
+	expect(readout.width).toBeLessThanOrEqual(1);
+	expect(readout.height).toBeLessThanOrEqual(1);
+	expect((await boxOf('.titlebar')).height).toBeLessThan(52);
 
 	// Below the quilt: the tools, then one row of zoom, size and export.
 	expect(actions.y + actions.height).toBeLessThanOrEqual(footer.y + 1);
