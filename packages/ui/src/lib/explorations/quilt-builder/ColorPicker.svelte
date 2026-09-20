@@ -20,19 +20,34 @@
 		hex,
 		title = 'Color Picker',
 		anchor = null,
+		swatches = [],
+		selectedId = null,
 		onpick,
+		onselect,
 		onclose
 	}: {
 		hex: string;
 		title?: string;
 		anchor?: DOMRect | null;
+		/** The palette, so a colour already in the work is one click away. */
+		swatches?: readonly { id: string; hex: string; name: string }[];
+		selectedId?: string | null;
 		onpick: (hex: string) => void;
+		onselect: (id: string) => void;
 		onclose: () => void;
 	} = $props();
 
-	/* The design's frame, to the pixel: 380x410 with a 29px title bar. */
+	/*
+	 * The design's frame, to the pixel: 380 wide, a 29px title bar, the hex row
+	 * 370 down, and 410 tall. The palette below it is ours, so the window grows
+	 * by the rows it needs and stays the design's height when there is none.
+	 */
 	const W = 380;
-	const H = 410;
+	const ROW_CAP = 2;
+	const paletteRows = $derived(
+		swatches.length ? Math.min(ROW_CAP, Math.ceil(swatches.length / 9)) : 0
+	);
+	const H = $derived(paletteRows ? 414 + paletteRows * 24 + 12 : 410);
 	const MARGIN = 12;
 
 	const clamp01 = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
@@ -201,7 +216,7 @@
 	role="dialog"
 	aria-label={title}
 	bind:this={root}
-	style="left: {pos.x}px; top: {pos.y}px"
+	style="left: {pos.x}px; top: {pos.y}px; height: {H}px"
 >
 	<div
 		class="bar"
@@ -290,6 +305,23 @@
 			</button>
 		{/if}
 	</div>
+
+	{#if swatches.length}
+		<div class="palette-label">Palette</div>
+		<div class="palette-row">
+			{#each swatches as swatch (swatch.id)}
+				<button
+					class="pick"
+					class:current={swatch.id === selectedId}
+					style="background: {swatch.hex}"
+					title={swatch.name.trim() || swatch.hex.toUpperCase()}
+					aria-label={swatch.name.trim() || swatch.hex.toUpperCase()}
+					aria-pressed={swatch.id === selectedId}
+					onclick={() => onselect(swatch.id)}
+				></button>
+			{/each}
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -301,7 +333,7 @@
 		position: fixed;
 		z-index: 40;
 		width: 380px;
-		height: 410px;
+
 		background: #444343;
 		font-family: var(--qb-mono);
 		user-select: none;
@@ -447,5 +479,43 @@
 	}
 	.dropper:hover {
 		opacity: 1;
+	}
+
+	/*
+	 * The colours already in the work, under the one being mixed. Picking one
+	 * here switches to it rather than recolouring what is open, so a colour
+	 * that exists is one click away and a new one is the square above.
+	 */
+	.palette-label {
+		position: absolute;
+		left: 18px;
+		top: 394px;
+		font-size: 10px;
+		line-height: 20px;
+		letter-spacing: 0.3px;
+		text-transform: uppercase;
+		color: var(--qb-line);
+	}
+	.palette-row {
+		position: absolute;
+		left: 18px;
+		right: 15px;
+		top: 414px;
+		max-height: 42px;
+		overflow-y: auto;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+	}
+	.pick {
+		width: 30px;
+		height: 18px;
+		padding: 0;
+		border: 1px solid rgba(255, 255, 255, 0.25);
+		cursor: pointer;
+	}
+	.pick.current {
+		outline: 1.5px solid #fff;
+		outline-offset: 1px;
 	}
 </style>

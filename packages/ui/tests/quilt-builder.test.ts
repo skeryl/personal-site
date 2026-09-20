@@ -1510,10 +1510,12 @@ test('the picker opens on screen and repaints the quilt as you drag', async ({ p
 	const win = page.locator('.picker-window');
 	await expect(win).toBeVisible();
 
-	// The design's frame, wholly inside the window.
+	// The design's frame, wholly inside the window. It is 410 tall in the
+	// design; the palette row below the hex adds to that.
 	const box = (await win.boundingBox())!;
 	const view = page.viewportSize()!;
-	expect([box.width, box.height]).toEqual([380, 410]);
+	expect(box.width).toBe(380);
+	expect(box.height).toBeGreaterThanOrEqual(410);
 	expect(box.x).toBeGreaterThanOrEqual(0);
 	expect(box.y).toBeGreaterThanOrEqual(0);
 	expect(box.x + box.width).toBeLessThanOrEqual(view.width);
@@ -1875,4 +1877,30 @@ test('picking a block type with squares selected puts it in them', async ({ page
 	// And the selection stays, so another shape can be tried on the same squares.
 	await expect(page.locator('.readout')).toHaveText('B2, C2 squares selected');
 	await expect(tool(page, /^Mouse/)).toHaveClass(/active/);
+});
+
+test('a palette colour opens the picker, with the palette inside it', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await addFabric(page, 'Green', '38511f');
+
+	// One click arms the colour and opens it for adjusting.
+	await page.getByRole('button', { name: /^Paint with Blue/ }).click();
+	const win = page.locator('.picker-window');
+	await expect(win).toBeVisible();
+	await expect(win.locator('.hex-chip')).toHaveValue('4F7FE8');
+
+	// The palette rides along, so a colour already in the work is one click
+	// away and a new one is the square above.
+	await expect(win.locator('.pick')).toHaveCount(2);
+	await expect(win.locator('.pick.current')).toHaveAttribute('aria-label', 'Blue');
+	await win.locator('.pick').nth(1).click();
+	await expect(win.locator('.hex-chip')).toHaveValue('38511F');
+	await expect(win.locator('.pick.current')).toHaveAttribute('aria-label', 'Green');
+
+	// And that is the one that gets painted.
+	await win.locator('.close').click();
+	await pickShape(page, 'Square');
+	await cell(page, 0).click();
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toEqual(['#38511f']);
 });

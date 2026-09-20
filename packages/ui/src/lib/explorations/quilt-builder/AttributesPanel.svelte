@@ -220,17 +220,19 @@
 	{/if}
 
 	<div class="label section">Palette</div>
-	<p class="hint muted">Click to paint with a color, double-click to edit it.</p>
+	<p class="hint muted">Click a color to paint with it and adjust it.</p>
 	<div class="swatches palette">
 		{#each store.materials as material (material.id)}
 			<button
 				class="swatch"
 				class:current={material.id === store.selectedMaterialId}
 				style="background: {material.hex}"
-				title={`${material.name.trim() || material.hex.toUpperCase()} — double-click to edit`}
-				aria-label={`Paint with ${material.name.trim() || material.hex.toUpperCase()}. Double-click to edit it.`}
-				onclick={() => store.selectMaterial(material.id)}
-				ondblclick={(e) => openPicker(material.id, rectOf(e))}
+				title={material.name.trim() || material.hex.toUpperCase()}
+				aria-label={`Paint with ${material.name.trim() || material.hex.toUpperCase()} and adjust it.`}
+				onclick={(e) => {
+					store.selectMaterial(material.id);
+					openPicker(material.id, rectOf(e));
+				}}
 				onkeydown={(e) => {
 					// The swatch you are on is the one delete takes.
 					if (e.key !== 'Delete' && e.key !== 'Backspace') return;
@@ -327,7 +329,13 @@
 		<ColorPicker
 			hex={hexOf(target.id)}
 			anchor={target.anchor}
+			swatches={store.materials}
+			selectedId={target.id}
 			onpick={(next) => store.recolorMaterial(target.id, next)}
+			onselect={(id) => {
+				store.selectMaterial(id);
+				picking = { id, anchor: target.anchor };
+			}}
 			onclose={() => (picking = null)}
 		/>
 	{/key}
