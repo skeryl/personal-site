@@ -36,6 +36,9 @@
 	const nameOf = (id: string): string =>
 		store.materialById.get(id)?.name.trim() || hexOf(id).slice(1).toUpperCase();
 
+	/** Bare hex, as the design prints it in its chip. */
+	const hexTextOf = (id: string | null): string => (id ? hexOf(id).slice(1).toUpperCase() : '—');
+
 	const onHexChange = (e: Event & { currentTarget: HTMLInputElement }, id: string) => {
 		if (!store.recolorMaterial(id, e.currentTarget.value)) {
 			e.currentTarget.value = hexOf(id).slice(1).toUpperCase();
@@ -80,7 +83,7 @@
 	{#if store.selectedPiece}
 		<ul class="colors">
 			<li class="color">
-				<span class="label">Color 1</span>
+				<span class="color-label">Color 1</span>
 				<button
 					class="swatch"
 					style="background: {hexOf(store.selectedPieceFabric)}"
@@ -88,6 +91,10 @@
 					aria-expanded={editing === PIECE}
 					onclick={() => (editing = editing === PIECE ? null : PIECE)}
 				></button>
+				<span class="hex-row">
+					<span class="hex-label">Hex code:</span>
+					<span class="hex-chip">{hexTextOf(store.selectedPieceFabric)}</span>
+				</span>
 				<span class="color-name">
 					{store.selectedPieceFabric ? nameOf(store.selectedPieceFabric) : 'Empty'}
 				</span>
@@ -137,7 +144,7 @@
 		<ul class="colors">
 			{#each store.selectionFabrics as fabric, i (fabric)}
 				<li class="color">
-					<span class="label">Color {i + 1}</span>
+					<span class="color-label">Color {i + 1}</span>
 					<button
 						class="swatch"
 						style="background: {hexOf(fabric)}"
@@ -145,6 +152,10 @@
 						aria-expanded={editing === fabric}
 						onclick={() => (editing = editing === fabric ? null : fabric)}
 					></button>
+					<span class="hex-row">
+						<span class="hex-label">Hex code:</span>
+						<span class="hex-chip">{hexTextOf(fabric)}</span>
+					</span>
 					<span class="color-name">{nameOf(fabric)}</span>
 
 					{#if editing === fabric}
@@ -228,7 +239,7 @@
 				/>
 			</label>
 			<label class="field">
-				<span class="label">Hex code</span>
+				<span class="hex-label">Hex code:</span>
 				<input
 					class="hex"
 					type="text"
@@ -334,41 +345,82 @@
 		font-style: italic;
 	}
 
+	/* Two 107px columns, 33px apart: the design's attributes block. */
 	.colors {
 		list-style: none;
 		margin: 0;
 		padding: 0 var(--qb-pad);
+		display: grid;
+		grid-template-columns: repeat(auto-fill, 6.6875rem);
+		gap: 1.1rem 2.0625rem;
 	}
 	.color {
-		display: grid;
-		grid-template-columns: 4rem auto 1fr;
-		align-items: center;
-		gap: 0.5rem;
-		margin-bottom: 0.4rem;
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+	}
+	.color-label {
+		font-size: 0.625rem;
+		letter-spacing: 0.3px;
+		text-transform: uppercase;
+		color: #000;
 	}
 	.color-name {
-		font-size: 0.8rem;
-		color: var(--color-text-strong);
+		font-size: 0.625rem;
+		letter-spacing: 0.3px;
+		text-transform: uppercase;
+		color: var(--qb-ink);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
+	/* A flat fill, no border: the colour is the control. */
+	.color .swatch {
+		width: 6.6875rem;
+		height: 2.3125rem;
+		border: none;
+	}
+	.hex-row {
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
+	}
+	.hex-label {
+		font-size: 0.625rem;
+		letter-spacing: 0.3px;
+		text-transform: uppercase;
+		color: #000;
+		white-space: nowrap;
+	}
+	.hex-chip {
+		display: inline-block;
+		min-width: 2.75rem;
+		padding: 0.1875rem 0.3rem;
+		background: #dadbde;
+		font-size: 0.625rem;
+		letter-spacing: 0.3px;
+		text-transform: uppercase;
+		color: #000;
+		text-align: center;
+	}
 
 	.swatch {
-		width: 1.6rem;
-		height: 1.6rem;
+		width: 2.5rem;
+		height: 1.35rem;
 		padding: 0;
 		border: 1px solid var(--qb-line);
 		cursor: pointer;
 		position: relative;
 	}
 	.swatch.small {
-		width: 1.25rem;
-		height: 1.25rem;
+		width: 2rem;
+		height: 1.1rem;
 	}
+	/* Marked the way every other chosen tile is: a heavier black rule. */
 	.swatch.current {
-		outline: 2px solid var(--qb-accent);
-		outline-offset: 1px;
+		outline: 1.5px solid #000;
+		outline-offset: 0;
 	}
 	.swatch input[type='color'] {
 		position: absolute;
@@ -381,8 +433,8 @@
 		align-items: center;
 		justify-content: center;
 		background: #fff;
-		color: var(--color-text-secondary);
-		font-size: 1rem;
+		color: var(--qb-ink);
+		font-size: 0.9rem;
 		line-height: 1;
 	}
 
@@ -405,14 +457,19 @@
 	}
 
 	.picker {
-		grid-column: 1 / -1;
+		position: absolute;
+		z-index: 5;
+		top: 100%;
+		left: 0;
+		min-width: 10rem;
 		display: flex;
 		flex-direction: column;
 		gap: 0.4rem;
-		margin: 0.35rem 0 0.6rem;
+		margin-top: 0.35rem;
 		padding: 0.6rem;
 		background: #fff;
 		border: 1px solid var(--qb-line);
+		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
 	}
 	.new {
 		display: flex;
@@ -453,7 +510,7 @@
 		flex: 1;
 		min-width: 0;
 		font: inherit;
-		font-size: 0.8rem;
+		font-size: 0.75rem;
 		color: var(--color-text-strong);
 		background: none;
 		border: none;

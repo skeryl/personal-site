@@ -726,14 +726,15 @@
 	.col-headers {
 		display: grid;
 		gap: 1px;
-		padding: 0 2px;
+		/* Matches the blanket's 1px border so the labels line up exactly. */
+		padding: 0 1px;
 		box-sizing: border-box;
 		will-change: transform;
 	}
 	.row-headers {
 		display: grid;
 		gap: 1px;
-		padding: 2px 0;
+		padding: 1px 0;
 		box-sizing: border-box;
 		will-change: transform;
 	}
@@ -764,9 +765,12 @@
 		position: relative;
 		display: grid;
 		gap: 1px;
-		/* Squares are ruled lighter than the panel's borders. */
+		/*
+		 * The design has no heavy frame: the quilt's outer edge is the same
+		 * 1px rule as the seams between its squares.
+		 */
 		background: var(--qb-square);
-		border: 2px solid #1a1a1a;
+		border: 1px solid var(--qb-square);
 		/* Width and height are set from the fit, so the border must sit inside. */
 		box-sizing: border-box;
 	}
