@@ -491,8 +491,7 @@
 												y={seam.y * VB}
 												width={seam.w * VB}
 												height={seam.h * VB}
-												stroke={`rgba(0, 0, 0, ${0.32 * detail})`}
-												stroke-width={0.75 + detail}
+												style="opacity: {detail}"
 											/>
 										{/each}
 									{/if}
@@ -938,9 +937,18 @@
 		vector-effect: non-scaling-stroke;
 	}
 
-	/* Seams between composed children read heavier than seams inside one. */
+	/*
+	 * The seams inside a square, drawn as the design draws them: one device
+	 * pixel, dashed, in the same grey as the rules between squares. They had
+	 * been heavier and darker than every other line on the quilt, which put
+	 * the emphasis on a subdivision rather than on the quilt. The dash is what
+	 * the block grid chips in the palette use for the same thing.
+	 */
 	rect.seam {
 		fill: none;
+		stroke: var(--qb-square);
+		stroke-width: 1;
+		stroke-dasharray: 3 3;
 		vector-effect: non-scaling-stroke;
 	}
 	/*

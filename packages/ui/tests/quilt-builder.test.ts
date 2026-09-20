@@ -1078,7 +1078,7 @@ test('seam detail follows how much room a sub-cell has on screen', async ({ page
 			const first = found[0];
 			return {
 				count: found.length,
-				width: first ? parseFloat(first.getAttribute('stroke-width') ?? '0') : 0
+				fade: first ? parseFloat(getComputedStyle(first).opacity) : 0
 			};
 		}, index);
 
@@ -1086,10 +1086,17 @@ test('seam detail follows how much room a sub-cell has on screen', async ({ page
 	for (let i = 0; i < 6; i++) await page.keyboard.press('+');
 	const zoomedIn = await seams(target);
 
-	// Zoomed in there is room for the seams; zoomed out they thin or vanish
-	// rather than swamping the pieces they divide.
+	// Zoomed in there is room for the seams; zoomed out they fade away rather
+	// than swamping the pieces they divide. They keep their weight either way:
+	// one pixel, like every other line on the quilt.
 	expect(zoomedIn.count).toBeGreaterThan(0);
-	expect(zoomedIn.width).toBeGreaterThan(out.width);
+	expect(zoomedIn.fade).toBeGreaterThan(out.fade);
+	const weight = await page.evaluate(
+		(i) =>
+			getComputedStyle(document.querySelector(`[data-cell-index="${i}"] rect.seam`)!).strokeWidth,
+		target
+	);
+	expect(weight).toBe('1px');
 
 	// A plain square keeps its outline at every zoom: it has room either way.
 	const plain = at(cols, 2, 4);
