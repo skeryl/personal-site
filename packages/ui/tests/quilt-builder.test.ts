@@ -492,9 +492,10 @@ test('attributes lists the fabrics in a selection and remaps one', async ({ page
 	await cell(page, 0).click();
 	await expect(page.locator('.colors .color')).toHaveCount(2);
 
-	// Remapping green to blue leaves the block in one fabric.
+	// The row opens the picker, and the palette in it remaps the row.
 	await page.locator('.colors .color').first().locator('.swatch').click();
-	await page.locator('.picker').getByRole('button', { name: 'Blue' }).click();
+	await page.locator('.picker-window').getByRole('button', { name: 'Blue', exact: true }).click();
+	await page.locator('.picker-window .close').click();
 	await parkMouse(page);
 	expect(new Set(await cellFills(page, 0))).toEqual(new Set(['#4f7fe8']));
 
@@ -761,7 +762,8 @@ test('alt-click drills past the square to a single piece', async ({ page }) => {
 	// Recolouring touches exactly one piece of the eight.
 	await addFabric(page, 'Green', '38511f');
 	await page.locator('.colors .color').first().locator('.swatch').click();
-	await page.locator('.picker').getByRole('button', { name: 'Green' }).click();
+	await page.locator('.picker-window').getByRole('button', { name: 'Green', exact: true }).click();
+	await page.locator('.picker-window .close').click();
 	await parkMouse(page);
 	const after = await cellFills(page, target);
 	expect(after.filter((f) => f === '#38511f')).toHaveLength(1);
@@ -1574,25 +1576,29 @@ test('the picker is a window: the bar drags it, escape closes it', async ({ page
 	await expect(win).toHaveCount(0);
 });
 
-test('new color in the attributes popover adds a fabric and picks it', async ({ page }) => {
+test('a colour row opens the picker, and mixing there recolours that fabric', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
 	await pickShape(page, 'Square');
 	await cell(page, 0).click();
+	await cell(page, 1).click();
 	await tool(page, /^Mouse/).click();
 	await cell(page, 0).click();
 
+	// Straight to the picker, on the fabric the row names. No new fabric, and
+	// no popover in between.
 	await page.locator('.colors .color').first().locator('.swatch').click();
-	await page.locator('.colors .picker .new').click();
 	await expect(page.locator('.picker-window')).toBeVisible();
-	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(2);
+	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(1);
 
-	// The square was remapped to the new fabric, so it tracks the picker.
 	const hue = (await page.locator('.picker-window .hue').boundingBox())!;
 	await page.mouse.click(hue.x + hue.width / 2, hue.y + hue.height * (2 / 3));
 	const picked = await page.locator('.picker-window .hex-chip').inputValue();
 	await page.locator('.picker-window .close').click();
 	await parkMouse(page);
+
+	// The fabric changed, so every piece cut from it did, selected or not.
 	expect((await cellFills(page, 0))[0]?.toUpperCase()).toBe(`#${picked}`);
+	expect((await cellFills(page, 1))[0]?.toUpperCase()).toBe(`#${picked}`);
 });
 
 test('alt while placing covers the whole square, however finely it is divided', async ({
@@ -1684,10 +1690,14 @@ test('bare pieces get an unset slot, and colouring it fills all of them', async 
 	await selectCell(page, 0);
 	await expect(page.locator('.colors .color-label')).toHaveText(['Color 1', 'Unset 2']);
 
-	// The slot is pickable like any other, and fills every bare piece at once.
-	const unset = page.locator('.colors .color').filter({ hasText: 'Unset 2' });
-	await unset.locator('.swatch').first().click();
-	await unset.locator('.picker .swatch.small').last().click();
+	// Opening an unset slot gives those pieces a fabric of their own; its
+	// palette then points them at one already in the work, and the stand-in
+	// goes again rather than littering the palette.
+	await page.locator('.colors .color').filter({ hasText: 'Unset 2' }).locator('.swatch').click();
+	await expect(page.locator('.picker-window')).toBeVisible();
+	await page.locator('.picker-window').getByRole('button', { name: 'Green', exact: true }).click();
+	await page.locator('.picker-window .close').click();
+	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(2);
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#4f7fe8', '#38511f']);
 	await expect(page.locator('.colors .color-label')).toHaveText(['Color 1', 'Color 2']);
@@ -1904,6 +1914,7 @@ test('a palette colour opens the picker, with the palette inside it', async ({ p
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#38511f']);
 });
+
 test('recolouring a palette fabric is undoable', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
 	await pickShape(page, 'Square');

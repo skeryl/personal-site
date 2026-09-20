@@ -27,12 +27,7 @@
 		Object.entries(KIND_ICON_CUT).map(([kind, cut]) => [kind, leafBlock(cut)])
 	) as Record<ShapeKind, Block>;
 
-	/** Which COLOR n row has its palette open, by fabric id. */
-	let editing = $state<string | null>(null);
-	/** Sentinel for the single row shown when one piece is selected. */
-	const PIECE = '\u0000piece';
-
-	/** Which row of the Attributes list a slot is, for the open-popover state. */
+	/** Which row of the Attributes list a slot is, for keying the list. */
 	const slotKey = (slot: ColorSlot) =>
 		slot.kind === 'fabric' ? slot.id : `\u0000unset:${slot.role}`;
 
@@ -51,19 +46,6 @@
 		}
 	};
 
-	/** Both halves of the same gesture: point a row at a fabric. */
-	const assign = (slot: ColorSlot, to: string) => {
-		if (slot.kind === 'fabric') store.remapFabric(slot.id, to);
-		else store.fillUnset(slot.role, to);
-		editing = null;
-	};
-
-	const addAndAssign = (slot: ColorSlot, anchor: DOMRect) => {
-		const material = store.addMaterial();
-		assign(slot, material.id);
-		openPicker(material.id, anchor);
-	};
-
 	const activeMaterial = $derived(store.selectedMaterial);
 
 	/*
@@ -76,10 +58,54 @@
 	 * through here rather than an add path and an edit path, and a new colour
 	 * shows up in the palette while you are still choosing it.
 	 */
-	let picking = $state<{ id: string; anchor: DOMRect } | null>(null);
+	interface Picking {
+		/** The fabric the window is open on. */
+		id: string;
+		anchor: DOMRect;
+		/** Made only to open this row, and dropped again if it ends up unused. */
+		created?: boolean;
+		/** What choosing from the window's palette means for the row it came from. */
+		apply: (from: string, to: string) => void;
+	}
 
+	let picking = $state<Picking | null>(null);
+
+	/** From the palette: the colour you pick is the one you paint with. */
 	const openPicker = (id: string, anchor: DOMRect) => {
-		picking = { id, anchor };
+		picking = { id, anchor, apply: (_from, to) => store.selectMaterial(to) };
+	};
+
+	/*
+	 * From a COLOR row: the colours in the selection. Choosing another fabric
+	 * remaps every piece cut from this one; mixing a new shade in the square
+	 * recolours the fabric itself, wherever else it is used.
+	 *
+	 * An unset row has no fabric to open, so it gets one first. That is what
+	 * the row is asking for, and the window's palette is right there if an
+	 * existing colour was wanted instead.
+	 */
+	const openSlot = (slot: ColorSlot, anchor: DOMRect) => {
+		const apply = (from: string, to: string) => store.remapFabric(from, to);
+		if (slot.kind === 'fabric') {
+			picking = { id: slot.id, anchor, apply };
+			return;
+		}
+		const id = store.addMaterial().id;
+		store.fillUnset(slot.role, id);
+		picking = { id, anchor, created: true, apply };
+	};
+
+	/** From the one-piece row: the fabric that piece is cut from. */
+	const openPiece = (anchor: DOMRect) => {
+		const apply = (_from: string, to: string) => store.setPieceFabric(to);
+		const current = store.selectedPieceFabric;
+		if (current) {
+			picking = { id: current, anchor, apply };
+			return;
+		}
+		const id = store.addMaterial().id;
+		store.setPieceFabric(id);
+		picking = { id, anchor, created: true, apply };
 	};
 
 	/*
@@ -108,8 +134,7 @@
 					class="swatch"
 					style="background: {hexOf(store.selectedPieceFabric)}"
 					aria-label={`Piece colour: ${store.selectedPieceFabric ? nameOf(store.selectedPieceFabric) : 'empty'}. Change it.`}
-					aria-expanded={editing === PIECE}
-					onclick={() => (editing = editing === PIECE ? null : PIECE)}
+					onclick={(e) => openPiece(rectOf(e))}
 				></button>
 				<span class="hex-row">
 					<span class="hex-label">Hex code:</span>
@@ -118,40 +143,6 @@
 				<span class="color-name">
 					{store.selectedPieceFabric ? nameOf(store.selectedPieceFabric) : 'Empty'}
 				</span>
-
-				{#if editing === PIECE}
-					<div class="picker">
-						<div class="label">Palette</div>
-						<div class="swatches">
-							{#each store.materials as material (material.id)}
-								<button
-									class="swatch small"
-									class:current={material.id === store.selectedPieceFabric}
-									style="background: {material.hex}"
-									title={material.name.trim() || material.hex.toUpperCase()}
-									aria-label={material.name.trim() || material.hex.toUpperCase()}
-									onclick={() => {
-										store.setPieceFabric(material.id);
-										editing = null;
-									}}
-								></button>
-							{/each}
-						</div>
-						<button
-							class="new"
-							onclick={(e) => {
-								const anchor = rectOf(e);
-								const material = store.addMaterial();
-								store.setPieceFabric(material.id);
-								editing = null;
-								openPicker(material.id, anchor);
-							}}
-						>
-							<span class="label">New color</span>
-							<span class="new-chip" aria-hidden="true">+</span>
-						</button>
-					</div>
-				{/if}
 			</li>
 		</ul>
 		<p class="hint">
@@ -165,7 +156,6 @@
 	{:else}
 		<ul class="colors">
 			{#each store.selectionSlots as slot, i (slotKey(slot))}
-				{@const key = slotKey(slot)}
 				{@const fabric = slot.kind === 'fabric' ? slot.id : null}
 				{@const label = slot.kind === 'fabric' ? `Color ${i + 1}` : `Unset ${slot.role + 1}`}
 				<li class="color">
@@ -174,8 +164,7 @@
 						class="swatch"
 						style="background: {slot.kind === 'fabric' ? hexOf(slot.id) : ROLE_FILL[slot.role]}"
 						aria-label={`${label}: ${fabric ? nameOf(fabric) : 'no color yet'}. Change it.`}
-						aria-expanded={editing === key}
-						onclick={() => (editing = editing === key ? null : key)}
+						onclick={(e) => openSlot(slot, rectOf(e))}
 					></button>
 					<span class="hex-row">
 						<span class="hex-label">Hex code:</span>
@@ -186,28 +175,6 @@
 						</span>
 					</span>
 					<span class="color-name">{fabric ? nameOf(fabric) : 'No color'}</span>
-
-					{#if editing === key}
-						<div class="picker">
-							<div class="label">Palette</div>
-							<div class="swatches">
-								{#each store.materials as material (material.id)}
-									<button
-										class="swatch small"
-										class:current={material.id === fabric}
-										style="background: {material.hex}"
-										title={material.name.trim() || material.hex.toUpperCase()}
-										aria-label={material.name.trim() || material.hex.toUpperCase()}
-										onclick={() => assign(slot, material.id)}
-									></button>
-								{/each}
-							</div>
-							<button class="new" onclick={(e) => addAndAssign(slot, rectOf(e))}>
-								<span class="label">New color</span>
-								<span class="new-chip" aria-hidden="true">+</span>
-							</button>
-						</div>
-					{/if}
 				</li>
 			{/each}
 		</ul>
@@ -333,8 +300,10 @@
 			selectedId={target.id}
 			onpick={(next) => store.recolorMaterial(target.id, next)}
 			onselect={(id) => {
-				store.selectMaterial(id);
-				picking = { id, anchor: target.anchor };
+				target.apply(target.id, id);
+				// A fabric made only to open the row goes again if nothing took it up.
+				if (target.created && !store.inUse.has(target.id)) store.deleteMaterial(target.id);
+				picking = { id, anchor: target.anchor, apply: target.apply };
 			}}
 			onclose={() => (picking = null)}
 		/>
@@ -454,10 +423,6 @@
 		cursor: pointer;
 		position: relative;
 	}
-	.swatch.small {
-		width: 2rem;
-		height: 1.1rem;
-	}
 	/* Marked the way every other chosen tile is: a heavier black rule. */
 	.swatch.current {
 		outline: 1.5px solid #000;
@@ -481,43 +446,6 @@
 	.palette {
 		position: relative;
 		padding: 0 var(--qb-pad);
-	}
-
-	.picker {
-		position: absolute;
-		z-index: 5;
-		top: 100%;
-		left: 0;
-		min-width: 10rem;
-		display: flex;
-		flex-direction: column;
-		gap: 0.4rem;
-		margin-top: 0.35rem;
-		padding: 0.6rem;
-		background: #fff;
-		border: 1px solid var(--qb-line);
-		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
-	}
-	.new {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0;
-		border: none;
-		background: none;
-		font: inherit;
-		text-align: left;
-		cursor: pointer;
-	}
-	.new-chip {
-		display: grid;
-		place-items: center;
-		width: 1.1rem;
-		height: 1.1rem;
-		border: 1px solid var(--qb-line);
-		color: var(--qb-ink);
-		font-size: 0.8rem;
-		line-height: 1;
 	}
 
 	.link {
