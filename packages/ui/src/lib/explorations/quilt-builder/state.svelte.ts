@@ -870,7 +870,8 @@ export class QuiltStore {
 		);
 	}
 
-	remapFabric(from: MaterialId, to: MaterialId) {
+	/** `to` of null puts the pieces cut from a fabric back to unset. */
+	remapFabric(from: MaterialId, to: MaterialId | null) {
 		if (from === to) return;
 		this.editScope((block) =>
 			mapLeaves(block, (leaf) =>

@@ -24,6 +24,7 @@
 		selectedId = null,
 		onpick,
 		onselect,
+		onreset,
 		onclose
 	}: {
 		hex: string;
@@ -34,6 +35,8 @@
 		selectedId?: string | null;
 		onpick: (hex: string) => void;
 		onselect: (id: string) => void;
+		/** Put this back to no colour at all. */
+		onreset: () => void;
 		onclose: () => void;
 	} = $props();
 
@@ -47,7 +50,7 @@
 	const paletteRows = $derived(
 		swatches.length ? Math.min(ROW_CAP, Math.ceil(swatches.length / 9)) : 0
 	);
-	const H = $derived(paletteRows ? 414 + paletteRows * 24 + 12 : 410);
+	const H = $derived(414 + paletteRows * 24 + 12);
 	const MARGIN = 12;
 
 	const clamp01 = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
@@ -306,8 +309,11 @@
 		{/if}
 	</div>
 
+	<div class="palette-head">
+		<span class="palette-label">{swatches.length ? 'Palette' : ''}</span>
+		<button class="reset" onclick={onreset}>Reset</button>
+	</div>
 	{#if swatches.length}
-		<div class="palette-label">Palette</div>
 		<div class="palette-row">
 			{#each swatches as swatch (swatch.id)}
 				<button
@@ -486,15 +492,34 @@
 	 * here switches to it rather than recolouring what is open, so a colour
 	 * that exists is one click away and a new one is the square above.
 	 */
-	.palette-label {
+	.palette-head {
 		position: absolute;
 		left: 18px;
+		right: 15px;
 		top: 394px;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+	.palette-label,
+	.reset {
+		font: inherit;
 		font-size: 10px;
 		line-height: 20px;
 		letter-spacing: 0.3px;
 		text-transform: uppercase;
 		color: var(--qb-line);
+	}
+	.reset {
+		padding: 0;
+		border: none;
+		background: none;
+		cursor: pointer;
+	}
+	.reset:hover {
+		color: #fff;
+		text-decoration: underline;
+		text-underline-offset: 0.2em;
 	}
 	.palette-row {
 		position: absolute;

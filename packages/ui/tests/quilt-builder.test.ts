@@ -1576,7 +1576,7 @@ test('the picker is a window: the bar drags it, escape closes it', async ({ page
 	await expect(win).toHaveCount(0);
 });
 
-test('a colour row opens the picker, and mixing there recolours that fabric', async ({ page }) => {
+test('mixing in a colour row forks a fabric for those pieces alone', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
 	await pickShape(page, 'Square');
 	await cell(page, 0).click();
@@ -1584,8 +1584,8 @@ test('a colour row opens the picker, and mixing there recolours that fabric', as
 	await tool(page, /^Mouse/).click();
 	await cell(page, 0).click();
 
-	// Straight to the picker, on the fabric the row names. No new fabric, and
-	// no popover in between.
+	// Straight to the picker, on the fabric the row names. No popover, and no
+	// new fabric until something is actually changed.
 	await page.locator('.colors .color').first().locator('.swatch').click();
 	await expect(page.locator('.picker-window')).toBeVisible();
 	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(1);
@@ -1596,9 +1596,46 @@ test('a colour row opens the picker, and mixing there recolours that fabric', as
 	await page.locator('.picker-window .close').click();
 	await parkMouse(page);
 
-	// The fabric changed, so every piece cut from it did, selected or not.
+	// The row is the pieces in front of you, not the fabric: the square that
+	// was selected takes a new colour and the one beside it keeps the old.
+	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(2);
 	expect((await cellFills(page, 0))[0]?.toUpperCase()).toBe(`#${picked}`);
-	expect((await cellFills(page, 1))[0]?.toUpperCase()).toBe(`#${picked}`);
+	expect(await cellFills(page, 1)).toEqual(['#4f7fe8']);
+});
+
+test('reset puts a colour row back to unset', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await pickShape(page, 'Square');
+	await cell(page, 0).click();
+	await parkMouse(page);
+	await selectCell(page, 0);
+
+	await page.locator('.colors .color').first().locator('.swatch').click();
+	await page.locator('.picker-window .reset').click();
+	await parkMouse(page);
+
+	// The shape stays; only its fabric goes.
+	expect(await cellFills(page, 0)).toEqual(['#4a4a4a']);
+	await expect(page.locator('.colors .color-label')).toHaveText(['Unset 1']);
+	// And the fabric is still in the palette for anything else using it.
+	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(1);
+});
+
+test('removing a fabric leaves the shapes cut from it, unset', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await pickShape(page, 'Half square triangle');
+	await cell(page, 0).click();
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toEqual(['#4f7fe8', '#d9d9d9']);
+
+	// No warning any more: nothing is lost but the colour.
+	await page.getByRole('button', { name: /^Paint with Blue/ }).click();
+	await page.keyboard.press('Delete');
+	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(0);
+	await parkMouse(page);
+
+	// The triangle is still a triangle, in the greys it started as.
+	expect(await cellFills(page, 0)).toEqual(['#4a4a4a', '#d9d9d9']);
 });
 
 test('alt while placing covers the whole square, however finely it is divided', async ({
@@ -1766,23 +1803,6 @@ test('R turns the shape about to be placed, not the whole palette', async ({ pag
 	// And the one that turned is the armed one.
 	const armed = await icons.evaluateAll((els) => els.map((el) => el.classList.contains('active')));
 	expect(armed[turned.indexOf(true)]).toBe(true);
-});
-
-test('removing a fabric leaves the shapes cut from it, unset', async ({ page }) => {
-	await addFabric(page, 'Blue', '4f7fe8');
-	await pickShape(page, 'Half square triangle');
-	await cell(page, 0).click();
-	await parkMouse(page);
-	expect(await cellFills(page, 0)).toEqual(['#4f7fe8', '#d9d9d9']);
-
-	// No warning any more: nothing is lost but the colour.
-	await page.getByRole('button', { name: /^Paint with Blue/ }).click();
-	await page.keyboard.press('Delete');
-	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(0);
-	await parkMouse(page);
-
-	// The triangle is still a triangle, in the greys it started as.
-	expect(await cellFills(page, 0)).toEqual(['#4a4a4a', '#d9d9d9']);
 });
 
 test('the unset slots print the grey they are drawn in', async ({ page }) => {

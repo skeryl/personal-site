@@ -62,17 +62,44 @@
 		/** The fabric the window is open on. */
 		id: string;
 		anchor: DOMRect;
+		/*
+		 * Bumped when the window should start over on a different colour, and
+		 * left alone when the same gesture carries on. Forking a fabric
+		 * mid-drag must not tear the window down under the pointer.
+		 */
+		token: number;
 		/** Made only to open this row, and dropped again if it ends up unused. */
 		created?: boolean;
 		/** What choosing from the window's palette means for the row it came from. */
 		apply: (from: string, to: string) => void;
+		/** What going back to no colour means for it. */
+		reset: (from: string) => void;
+		/*
+		 * What mixing a shade means. A palette swatch is the fabric itself, so
+		 * it changes wherever it is used; a row is the pieces in front of you,
+		 * so the first change forks a fabric of their own rather than
+		 * repainting every other piece cut from the same one.
+		 */
+		forks: boolean;
 	}
+
+	let token = 0;
 
 	let picking = $state<Picking | null>(null);
 
-	/** From the palette: the colour you pick is the one you paint with. */
+	/*
+	 * From the palette: the colour you pick is the one you paint with, and
+	 * resetting paints with none, so shapes go down in the greys again.
+	 */
 	const openPicker = (id: string, anchor: DOMRect) => {
-		picking = { id, anchor, apply: (_from, to) => store.selectMaterial(to) };
+		picking = {
+			id,
+			anchor,
+			token: ++token,
+			forks: false,
+			apply: (_from, to) => store.selectMaterial(to),
+			reset: () => (store.selectedMaterialId = null)
+		};
 	};
 
 	/*
@@ -86,26 +113,28 @@
 	 */
 	const openSlot = (slot: ColorSlot, anchor: DOMRect) => {
 		const apply = (from: string, to: string) => store.remapFabric(from, to);
+		const reset = (from: string) => store.remapFabric(from, null);
 		if (slot.kind === 'fabric') {
-			picking = { id: slot.id, anchor, apply };
+			picking = { id: slot.id, anchor, token: ++token, forks: true, apply, reset };
 			return;
 		}
 		const id = store.addMaterial().id;
 		store.fillUnset(slot.role, id);
-		picking = { id, anchor, created: true, apply };
+		picking = { id, anchor, token: ++token, created: true, forks: true, apply, reset };
 	};
 
 	/** From the one-piece row: the fabric that piece is cut from. */
 	const openPiece = (anchor: DOMRect) => {
 		const apply = (_from: string, to: string) => store.setPieceFabric(to);
+		const reset = () => store.setPieceFabric(null);
 		const current = store.selectedPieceFabric;
 		if (current) {
-			picking = { id: current, anchor, apply };
+			picking = { id: current, anchor, token: ++token, forks: true, apply, reset };
 			return;
 		}
 		const id = store.addMaterial().id;
 		store.setPieceFabric(id);
-		picking = { id, anchor, created: true, apply };
+		picking = { id, anchor, token: ++token, created: true, forks: true, apply, reset };
 	};
 
 	/*
@@ -250,7 +279,11 @@
 			</button>
 		</div>
 	{:else}
-		<p class="hint muted">No colors yet. Shapes you place stay gray until you add one.</p>
+		<p class="hint muted">
+			{store.materials.length
+				? 'No color chosen. Shapes you place stay gray.'
+				: 'No colors yet. Shapes you place stay gray until you add one.'}
+		</p>
 	{/if}
 
 	{#if store.cutting.length}
@@ -292,18 +325,39 @@
 <!-- Keyed on the fabric, so opening it on a second colour starts it over. -->
 {#if picking}
 	{@const target = picking}
-	{#key target.id}
+	{#key target.token}
 		<ColorPicker
 			hex={hexOf(target.id)}
 			anchor={target.anchor}
 			swatches={store.materials}
 			selectedId={target.id}
-			onpick={(next) => store.recolorMaterial(target.id, next)}
+			onpick={(next) => {
+				// A row's first change forks; from then on it is that fork being mixed.
+				if (!target.forks || target.created) {
+					store.recolorMaterial(target.id, next);
+					return;
+				}
+				const forked = store.addMaterial(next);
+				target.apply(target.id, forked.id);
+				picking = { ...target, id: forked.id, created: true };
+			}}
 			onselect={(id) => {
 				target.apply(target.id, id);
 				// A fabric made only to open the row goes again if nothing took it up.
 				if (target.created && !store.inUse.has(target.id)) store.deleteMaterial(target.id);
-				picking = { id, anchor: target.anchor, apply: target.apply };
+				picking = {
+					id,
+					anchor: target.anchor,
+					token: ++token,
+					forks: target.forks,
+					apply: target.apply,
+					reset: target.reset
+				};
+			}}
+			onreset={() => {
+				target.reset(target.id);
+				if (target.created && !store.inUse.has(target.id)) store.deleteMaterial(target.id);
+				picking = null;
 			}}
 			onclose={() => (picking = null)}
 		/>
