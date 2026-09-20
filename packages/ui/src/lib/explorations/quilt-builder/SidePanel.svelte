@@ -128,6 +128,8 @@
 					: `${selectedCount} blocks selected`}{store.selectedDivision === 0 ? ', mixed grids' : ''}
 			{:else if store.tool === 'grid'}
 				Click or drag on the quilt to paint this grid.
+			{:else if store.tool === 'place'}
+				Pieces you place land at this grid.
 			{:else}
 				Pick a grid to paint it on, or
 				<button class="link" onclick={() => (store.tool = 'mouse')}>select</button>

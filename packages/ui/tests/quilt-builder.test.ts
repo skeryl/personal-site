@@ -340,8 +340,11 @@ test('the Grid tool paints a grid onto blocks without selecting them', async ({ 
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#4f7fe8']);
 
-	// Choosing a grid with nothing selected arms the Grid tool.
+	// Choosing a grid while placing keeps Place, since the grid now says how
+	// fine a placed piece lands. The Grid tool is picked on its own.
 	await composition(page, /^2 by 2$/).click();
+	await expect(tool(page, /^Place/)).toHaveClass(/active/);
+	await tool(page, /^Grid/).click();
 	await expect(tool(page, /^Grid/)).toHaveClass(/active/);
 
 	await cell(page, 0).click();
@@ -586,9 +589,12 @@ test('a block type lands in the sub-block under the cursor, like a cut does', as
 	const plain = at(cols, 1, 1);
 	const quartered = at(cols, 1, 2);
 
-	// Give the second block a 2x2 grid.
+	// Give the second block a 2x2 grid, then disarm it again: the armed grid
+	// would otherwise subdivide the plain square as well.
 	await cell(page, quartered).click();
 	await page.getByRole('button', { name: '2 by 2', exact: true }).click();
+	await page.keyboard.press('Escape');
+	await page.getByRole('button', { name: 'One piece', exact: true }).click();
 
 	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
 	const box = await cell(page, plain).boundingBox();
@@ -1377,4 +1383,68 @@ test('escape during a drag drops nothing', async ({ page }) => {
 	// Nothing moved, and nothing was left behind at the target.
 	expect(await cellFills(page, from)).toEqual(['#4f7fe8']);
 	expect(await cellFills(page, to)).toEqual(['#ffffff']);
+});
+
+test('the grid sets how fine a placed piece lands, without leaving Place', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	const cols = await gridCols(page);
+	await pickShape(page, 'Square');
+
+	const placeAt = async (index: number, grid: string) => {
+		await page.getByRole('button', { name: grid, exact: true }).click();
+		// Choosing a grid while placing must not drop the Place tool.
+		await expect(tool(page, /^Place/)).toHaveClass(/active/);
+		const box = (await cell(page, index).boundingBox())!;
+		await page.mouse.click(box.x + box.width * 0.15, box.y + box.height * 0.15);
+		await parkMouse(page);
+	};
+
+	const whole = at(cols, 1, 1);
+	const quarter = at(cols, 1, 2);
+	const sixteenth = at(cols, 1, 3);
+
+	await placeAt(whole, 'One piece');
+	await placeAt(quarter, '2 by 2');
+	await placeAt(sixteenth, '4 by 4');
+
+	// The same cut, landing in a whole square, a quarter and a sixteenth.
+	expect(await cellFills(page, whole)).toEqual(['#4f7fe8']);
+	expect(await cellFills(page, quarter)).toHaveLength(4);
+	expect(await cellFills(page, sixteenth)).toHaveLength(16);
+
+	// Only one piece of each took the fabric.
+	for (const index of [quarter, sixteenth]) {
+		const fills = await cellFills(page, index);
+		expect(fills.filter((f) => f === '#4f7fe8')).toHaveLength(1);
+	}
+
+	// And it shows up in the cut list at three different sizes.
+	await page.locator('.cut-list summary').click();
+	const cuts = page.locator('.cut-group').first();
+	await expect(cuts).toContainText('8½” squares');
+	await expect(cuts).toContainText('4½” squares');
+	await expect(cuts).toContainText('2½” squares');
+});
+
+test('the armed grid is a minimum, so placing never flattens finer detail', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	const cols = await gridCols(page);
+	const target = at(cols, 2, 2);
+
+	// Give the square a 4x4 grid, then deselect it: a grid chip applies to the
+	// selection while there is one.
+	await cell(page, target).click();
+	await page.getByRole('button', { name: '4 by 4', exact: true }).click();
+	await page.keyboard.press('Escape');
+	await parkMouse(page);
+
+	// Then place with a coarser grid armed.
+	await pickShape(page, 'Square');
+	await page.getByRole('button', { name: '2 by 2', exact: true }).click();
+	const box = (await cell(page, target).boundingBox())!;
+	await page.mouse.click(box.x + box.width * 0.1, box.y + box.height * 0.1);
+	await parkMouse(page);
+
+	// Still sixteen: the coarser grid did not overwrite what was there.
+	expect(await cellFills(page, target)).toHaveLength(16);
 });

@@ -304,9 +304,8 @@ export class QuiltStore {
 		const { index, point } = this.hover;
 		const pending = this.pending;
 		if (pending.mode === 'pattern') return this.patternUpdates(index, pending.blocks);
-		return new Map([
-			[index, buildPlacement(this.cells[index], point, pending, this.selectedMaterialId)]
-		]);
+		const target = this.atArmedGrid(this.cells[index]);
+		return new Map([[index, buildPlacement(target, point, pending, this.selectedMaterialId)]]);
 	});
 
 	erasePreview = $derived.by(() => {
@@ -397,7 +396,8 @@ export class QuiltStore {
 			const updates = this.patternUpdates(index, pending.blocks);
 			return updates ? this.commit(updates) : false;
 		}
-		const block = buildPlacement(this.cells[index], point, pending, this.selectedMaterialId);
+		const target = this.atArmedGrid(this.cells[index]);
+		const block = buildPlacement(target, point, pending, this.selectedMaterialId);
 		return this.commit(new Map([[index, block]]));
 	}
 
@@ -815,8 +815,25 @@ export class QuiltStore {
 	 */
 	setGrid(division: number) {
 		this.gridDivision = division;
-		if (this.activeScope.length) this.applyGrid(division);
-		else this.tool = 'grid';
+		if (this.activeScope.length) {
+			this.applyGrid(division);
+			return;
+		}
+		/*
+		 * While placing, the grid says how fine the next piece lands, so
+		 * changing it must not drop you out of the Place tool.
+		 */
+		if (this.tool !== 'place') this.tool = 'grid';
+	}
+
+	/*
+	 * The square a placement lands in, subdivided to the armed grid when it is
+	 * coarser than that. A minimum rather than an override: a square already
+	 * finer keeps its detail instead of being flattened by a placement.
+	 */
+	private atArmedGrid(block: Block): Block {
+		if (this.gridDivision <= 1) return block;
+		return divisionOf(block) >= this.gridDivision ? block : recompose(block, this.gridDivision);
 	}
 
 	cycleGrid() {
