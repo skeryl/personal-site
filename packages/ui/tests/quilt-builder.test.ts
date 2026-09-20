@@ -102,11 +102,11 @@ test('shapes go down before any colour exists, in the palette greys', async ({ p
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#4a4a4a', '#d9d9d9']);
 
-	// A plain square has no second role to show, so it stays blank.
+	// A plain square has only the one role, and takes the first grey.
 	await pickShape(page, 'Square');
 	await cell(page, 1).click();
 	await parkMouse(page);
-	expect(await cellFills(page, 1)).toEqual(['#ffffff']);
+	expect(await cellFills(page, 1)).toEqual(['#4a4a4a']);
 
 	// Adding a colour is enough: it becomes active and placing works unnamed.
 	await setHex(page, page.locator('.palette .add'), '4f7fe8');
@@ -118,12 +118,10 @@ test('shapes go down before any colour exists, in the palette greys', async ({ p
 test('an uncoloured shape is on the quilt, and a blank square is not', async ({ page }) => {
 	await pickShape(page, 'Half square triangle');
 	await cell(page, 0).click();
-	await pickShape(page, 'Square');
-	await cell(page, 1).click();
 	await parkMouse(page);
 
-	// A sweep takes filled squares. The uncoloured triangle counts; the blank
-	// square it was dragged across does not.
+	// A sweep takes filled squares. The uncoloured triangle counts; the square
+	// beside it, which nothing was ever placed on, does not.
 	await tool(page, /^Mouse/).click();
 	const from = (await cell(page, 0).boundingBox())!;
 	const to = (await cell(page, 1).boundingBox())!;
@@ -1710,4 +1708,23 @@ test('the titlebar is name and size alone, and the bottom is two rows', async ({
 	}
 	expect(zoom.x).toBeLessThan(caption.x);
 	expect(caption.x).toBeLessThan(exported.x);
+});
+
+test('a square placed with no colour is a shape, and the eraser takes it', async ({ page }) => {
+	// A plain square is the same leaf as blank space until a placement marks
+	// it, so this is the case that needs saying.
+	await pickShape(page, 'Square');
+	await cell(page, 0).click();
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toEqual(['#4a4a4a']);
+	expect(await cellFills(page, 1)).toEqual(['#ffffff']);
+
+	await selectCell(page, 0);
+	await expect(page.locator('.colors .color-label')).toHaveText(['Unset 1']);
+
+	// It never held a colour, but it is still there to remove.
+	await tool(page, /^Erase/).click();
+	await cell(page, 0).click();
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toEqual(['#ffffff']);
 });

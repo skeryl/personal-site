@@ -101,12 +101,21 @@ export const recutLeaf = (leaf: LeafBlock, cut: string, rotation: number): LeafB
 	)
 });
 
+/*
+ * Mark a leaf as something somebody put here. A plain square carries no shape
+ * of its own, so without this a square placed before any colour was chosen
+ * would be indistinguishable from the blank it landed on, and would neither
+ * show as unset nor be listed in Attributes.
+ */
+const asShape = (leaf: LeafBlock): LeafBlock =>
+	leaf.roleOffset === undefined ? { ...leaf, roleOffset: 0 } : leaf;
+
 /** Set the fabric of just the piece under `point`, leaving the shape alone. */
 const paintPiece = (block: Block, point: Point, materialId: MaterialId | null): Block => {
 	const { leaf, rect, path } = leafAt(block, point);
 	const fabrics = [...leaf.fabrics];
 	fabrics[pieceAt(leaf.cut, leaf.rotation, localPoint(rect, point))] = materialId;
-	return setAt(block, path, { ...leaf, fabrics });
+	return setAt(block, path, asShape({ ...leaf, fabrics }));
 };
 
 export const buildPlacement = (
@@ -142,14 +151,19 @@ export const buildPlacement = (
 	}
 	const next: LeafBlock = recutLeaf(leaf, pending.cut, pending.rotation);
 	next.fabrics[pieceAt(next.cut, next.rotation, localPoint(rect, point))] = materialId;
-	return setAt(block, path, next);
+	return setAt(block, path, asShape(next));
 };
 
-/** The block after erasing the piece under `point`. */
+/*
+ * The block after erasing the piece under `point`.
+ *
+ * There is no early exit on an uncoloured piece: a shape placed before any
+ * colour was chosen has nothing to clear but is still there to remove. What
+ * counts as a change is left to the comparison at the end.
+ */
 export const buildErase = (block: Block, point: Point): Block | null => {
 	const { leaf, rect, path } = leafAt(block, point);
 	const index = pieceAt(leaf.cut, leaf.rotation, localPoint(rect, point));
-	if (leaf.fabrics[index] === null) return null;
 	const fabrics = leaf.fabrics.map((f, i) => (i === index ? null : f));
 	const next = fabrics.every((f) => f === null)
 		? (emptyBlock() as LeafBlock)

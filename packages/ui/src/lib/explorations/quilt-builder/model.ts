@@ -93,7 +93,8 @@ export const blocksEqual = (a: Block, b: Block): boolean => {
 		return (
 			a.cut === b.cut &&
 			a.rotation === b.rotation &&
-			(a.roleOffset ?? 0) === (b.roleOffset ?? 0) &&
+			// Strict: no role at all and role zero are the blank and the shape.
+			a.roleOffset === b.roleOffset &&
 			a.fabrics.length === b.fabrics.length &&
 			a.fabrics.every((f, i) => f === b.fabrics[i])
 		);
@@ -112,9 +113,7 @@ export const blocksEqual = (a: Block, b: Block): boolean => {
 export const sameStructure = (a: Block, b: Block): boolean => {
 	if (a.kind !== b.kind) return false;
 	if (a.kind === 'leaf' && b.kind === 'leaf') {
-		return (
-			a.cut === b.cut && a.rotation === b.rotation && (a.roleOffset ?? 0) === (b.roleOffset ?? 0)
-		);
+		return a.cut === b.cut && a.rotation === b.rotation && a.roleOffset === b.roleOffset;
 	}
 	const g = a as GridBlock;
 	const h = b as GridBlock;
