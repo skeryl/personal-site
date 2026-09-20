@@ -152,9 +152,7 @@
 	const addAndPick = (e: Event) => openPicker(store.addMaterial().id, rectOf(e));
 </script>
 
-<details class="attributes" data-panel="attributes" bind:open={store.panels.attributes}>
-	<summary class="label section">Attributes</summary>
-
+<div class="attributes" data-panel="attributes">
 	{#if store.selectedPiece}
 		<ul class="colors">
 			<li class="color">
@@ -320,7 +318,7 @@
 			{/each}
 		</details>
 	{/if}
-</details>
+</div>
 
 <!-- Keyed on the fabric, so opening it on a second colour starts it over. -->
 {#if picking}
@@ -366,30 +364,7 @@
 
 <style>
 	.attributes {
-		border-top: 1px solid var(--qb-line);
 		padding-bottom: 1.5rem;
-	}
-	.attributes > summary {
-		cursor: pointer;
-		list-style: none;
-		display: flex;
-		align-items: center;
-		gap: 0.4rem;
-	}
-	.attributes > summary::-webkit-details-marker {
-		display: none;
-	}
-	.attributes > summary::before {
-		content: '';
-		width: 0;
-		height: 0;
-		border-left: 4px solid currentColor;
-		border-top: 3.5px solid transparent;
-		border-bottom: 3.5px solid transparent;
-		transition: transform 120ms ease;
-	}
-	.attributes[open] > summary::before {
-		transform: rotate(90deg);
 	}
 	.label {
 		font-size: 0.75rem;

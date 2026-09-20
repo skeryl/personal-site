@@ -80,21 +80,99 @@
 		</select>
 	</label>
 
-	<details class="group" data-panel="grid" bind:open={store.panels.grid}>
-		<summary class="label section">Block grid <kbd>G</kbd></summary>
-		<div class="composition" role="group" aria-label="Block grid">
-			{#each DIVISIONS as division (division)}
-				{@const label = division === 1 ? 'One piece' : `${division} by ${division}`}
-				{@const weight = store.activeDivision === division ? 1.5 : 1}
-				<button
-					class="chip"
-					class:active={store.activeDivision === division}
-					aria-pressed={store.activeDivision === division}
-					aria-label={label}
-					title={`${label}, ${fmtInches(store.blockSize / division)}” pieces`}
-					onclick={() => store.setGrid(division)}
-				>
-					<!--
+	<div class="stack">
+		<details class="group" data-panel="type" bind:open={store.panels.type}>
+			<summary class="label section">Block type</summary>
+			<div class="types">
+				{#each cutEntries as entry (entry.cut.id)}
+					<button
+						class="type"
+						class:active={store.tab === 'piece' && store.pieceId === entry.cut.id}
+						aria-pressed={store.tab === 'piece' && store.pieceId === entry.cut.id}
+						aria-label={entry.cut.name}
+						title={entry.cut.name}
+						onclick={() => store.pickPiece(entry.cut.id)}
+					>
+						<BlockSvg block={entry.block} fills={roleFills(entry.block)} />
+					</button>
+				{/each}
+				{#each blockEntries as entry (entry.type.id)}
+					<button
+						class="type"
+						class:active={store.tab === 'block' && store.blockId === entry.type.id}
+						aria-pressed={store.tab === 'block' && store.blockId === entry.type.id}
+						aria-label={entry.type.name}
+						title={entry.type.name}
+						onclick={() => store.pickBlock(entry.type.id)}
+					>
+						<BlockSvg block={entry.block} fills={roleFills(entry.block)} />
+					</button>
+				{/each}
+			</div>
+		</details>
+
+		<details class="group" data-panel="patterns" bind:open={store.panels.patterns}>
+			<summary class="label section">Block patterns</summary>
+			{#if patternEntries.length}
+				<div class="types">
+					{#each patternEntries as entry (entry.saved.id)}
+						<div class="saved">
+							<button
+								class="type"
+								class:active={store.selectedPattern?.id === entry.saved.id}
+								aria-pressed={store.selectedPattern?.id === entry.saved.id}
+								aria-label={entry.saved.name}
+								title={entry.saved.name}
+								onclick={() => store.pickPattern(entry.saved.id)}
+							>
+								<PatternSvg blocks={entry.blocks} fillOf={hexOf} />
+							</button>
+							<span class="saved-name">
+								{entry.saved.name}{#if entry.size}<span class="saved-size">{entry.size}</span>{/if}
+							</span>
+							<button
+								class="saved-remove"
+								aria-label={`Remove ${entry.saved.name}`}
+								title="Remove"
+								onclick={() => store.deletePattern(entry.saved.id)}
+							>
+								×
+							</button>
+						</div>
+					{/each}
+				</div>
+			{/if}
+			<button class="add-new" disabled={!capturableCount} onclick={() => store.capturePattern()}>
+				+ Add selection as pattern
+			</button>
+			{#if !capturableCount}
+				<p class="hint">
+					{selectedCount
+						? 'Those blocks are empty; fill one to save it.'
+						: 'Select filled blocks on the quilt to save them as a pattern.'}
+				</p>
+			{/if}
+		</details>
+	</div>
+
+	<section class="pane">
+		<h2 class="label section">Attributes</h2>
+		<div class="pane-scroll">
+			<div class="grid-section" data-panel="grid">
+				<div class="label section">Block grid <kbd>G</kbd></div>
+				<div class="composition" role="group" aria-label="Block grid">
+					{#each DIVISIONS as division (division)}
+						{@const label = division === 1 ? 'One piece' : `${division} by ${division}`}
+						{@const weight = store.activeDivision === division ? 1.5 : 1}
+						<button
+							class="chip"
+							class:active={store.activeDivision === division}
+							aria-pressed={store.activeDivision === division}
+							aria-label={label}
+							title={`${label}, ${fmtInches(store.blockSize / division)}” pieces`}
+							onclick={() => store.setGrid(division)}
+						>
+							<!--
 						The tile IS the block, divided by dashed seams. The viewBox is
 						the design's own 102 x 103.378, and the panel renders it at
 						exactly that size, so stroke and dash values are literal pixels.
@@ -104,138 +182,133 @@
 						because browsers round border-width to whole pixels, which
 						flattened the chosen tile's 1.5px rule back to 1px.
 					-->
-					<svg
-						class="chip-grid"
-						viewBox="0 0 102 103.378"
-						preserveAspectRatio="none"
-						aria-hidden="true"
-					>
-						<rect
-							class="chip-frame"
-							x={weight / 2}
-							y={weight / 2}
-							width={102 - weight}
-							height={103.378 - weight}
-							stroke-width={weight}
-						/>
-						{#each { length: division - 1 } as _, i (i)}
-							{@const x = ((i + 1) * 102) / division}
-							{@const y = ((i + 1) * 103.378) / division}
-							<line x1={x} y1="0" x2={x} y2="103.378" stroke-width={weight} />
-							<line x1="0" y1={y} x2="102" y2={y} stroke-width={weight} />
-						{/each}
-					</svg>
-					<span class="chip-label">
-						{division === 1 ? '(1)' : `(${division}X${division})`}
-					</span>
-				</button>
-			{/each}
-		</div>
-
-		<p class="hint">
-			{#if selectedCount}
-				{selectedCount === 1
-					? '1 block selected'
-					: `${selectedCount} blocks selected`}{store.selectedDivision === 0 ? ', mixed grids' : ''}
-			{:else if store.tool === 'grid'}
-				Click or drag on the quilt to paint this grid.
-			{:else if store.tool === 'place'}
-				Pieces you place land at this grid. Hold alt to cover a whole square.
-			{:else}
-				Pick a grid to paint it on, or
-				<button class="link" onclick={() => (store.tool = 'mouse')}>select</button>
-				blocks to change theirs.
-			{/if}
-		</p>
-	</details>
-
-	<details class="group" data-panel="type" bind:open={store.panels.type}>
-		<summary class="label section">Block type</summary>
-		<div class="types">
-			{#each cutEntries as entry (entry.cut.id)}
-				<button
-					class="type"
-					class:active={store.tab === 'piece' && store.pieceId === entry.cut.id}
-					aria-pressed={store.tab === 'piece' && store.pieceId === entry.cut.id}
-					aria-label={entry.cut.name}
-					title={entry.cut.name}
-					onclick={() => store.pickPiece(entry.cut.id)}
-				>
-					<BlockSvg block={entry.block} fills={roleFills(entry.block)} />
-				</button>
-			{/each}
-			{#each blockEntries as entry (entry.type.id)}
-				<button
-					class="type"
-					class:active={store.tab === 'block' && store.blockId === entry.type.id}
-					aria-pressed={store.tab === 'block' && store.blockId === entry.type.id}
-					aria-label={entry.type.name}
-					title={entry.type.name}
-					onclick={() => store.pickBlock(entry.type.id)}
-				>
-					<BlockSvg block={entry.block} fills={roleFills(entry.block)} />
-				</button>
-			{/each}
-		</div>
-	</details>
-
-	<details class="group" data-panel="patterns" bind:open={store.panels.patterns}>
-		<summary class="label section">Block patterns</summary>
-		{#if patternEntries.length}
-			<div class="types">
-				{#each patternEntries as entry (entry.saved.id)}
-					<div class="saved">
-						<button
-							class="type"
-							class:active={store.selectedPattern?.id === entry.saved.id}
-							aria-pressed={store.selectedPattern?.id === entry.saved.id}
-							aria-label={entry.saved.name}
-							title={entry.saved.name}
-							onclick={() => store.pickPattern(entry.saved.id)}
-						>
-							<PatternSvg blocks={entry.blocks} fillOf={hexOf} />
+							<svg
+								class="chip-grid"
+								viewBox="0 0 102 103.378"
+								preserveAspectRatio="none"
+								aria-hidden="true"
+							>
+								<rect
+									class="chip-frame"
+									x={weight / 2}
+									y={weight / 2}
+									width={102 - weight}
+									height={103.378 - weight}
+									stroke-width={weight}
+								/>
+								{#each { length: division - 1 } as _, i (i)}
+									{@const x = ((i + 1) * 102) / division}
+									{@const y = ((i + 1) * 103.378) / division}
+									<line x1={x} y1="0" x2={x} y2="103.378" stroke-width={weight} />
+									<line x1="0" y1={y} x2="102" y2={y} stroke-width={weight} />
+								{/each}
+							</svg>
+							<span class="chip-label">
+								{division === 1 ? '(1)' : `(${division}X${division})`}
+							</span>
 						</button>
-						<span class="saved-name">
-							{entry.saved.name}{#if entry.size}<span class="saved-size">{entry.size}</span>{/if}
-						</span>
-						<button
-							class="saved-remove"
-							aria-label={`Remove ${entry.saved.name}`}
-							title="Remove"
-							onclick={() => store.deletePattern(entry.saved.id)}
-						>
-							×
-						</button>
-					</div>
-				{/each}
+					{/each}
+				</div>
+
+				<p class="hint">
+					{#if selectedCount}
+						{selectedCount === 1
+							? '1 block selected'
+							: `${selectedCount} blocks selected`}{store.selectedDivision === 0
+							? ', mixed grids'
+							: ''}
+					{:else if store.tool === 'grid'}
+						Click or drag on the quilt to paint this grid.
+					{:else if store.tool === 'place'}
+						Pieces you place land at this grid. Hold alt to cover a whole square.
+					{:else}
+						Pick a grid to paint it on, or
+						<button class="link" onclick={() => (store.tool = 'mouse')}>select</button>
+						blocks to change theirs.
+					{/if}
+				</p>
 			</div>
-		{/if}
-		<button class="add-new" disabled={!capturableCount} onclick={() => store.capturePattern()}>
-			+ Add selection as pattern
-		</button>
-		{#if !capturableCount}
-			<p class="hint">
-				{selectedCount
-					? 'Those blocks are empty; fill one to save it.'
-					: 'Select filled blocks on the quilt to save them as a pattern.'}
-			</p>
-		{/if}
-	</details>
 
-	<AttributesPanel {store} />
+			<AttributesPanel {store} />
+		</div>
+	</section>
+
+	<div class="trailer">
+		<button
+			class="export"
+			onclick={() => store.exportMaterialsList()}
+			disabled={!store.cutting.length}
+		>
+			Export materials list
+		</button>
+	</div>
 </aside>
 
 <style>
+	/*
+	 * Four bands: the dimensions, the shapes to choose from, what is selected,
+	 * and the export. Only the shapes scroll with the page; Attributes and the
+	 * export stay put at the foot of the panel, because they are what you
+	 * reach for while looking at the quilt rather than while browsing.
+	 */
 	.side {
-		display: flex;
-		flex-direction: column;
+		display: grid;
+		grid-template-rows: auto minmax(0, 1fr) auto auto;
 		background: var(--qb-panel);
 		border-right: 1px solid var(--qb-line);
 		font-family: var(--qb-mono);
-		/* Fills the shell and scrolls itself, rather than growing the page. */
+		min-height: 0;
+	}
+	.stack {
 		min-height: 0;
 		overflow-y: auto;
 		overscroll-behavior: contain;
+	}
+	/*
+	 * Given room to show its colours and no more: past that it scrolls inside
+	 * itself rather than pushing the export off the bottom of the panel.
+	 */
+	.pane {
+		display: flex;
+		flex-direction: column;
+		/*
+		 * Bounded in absolute units, not a share of the panel: a percentage
+		 * here resolves against the very row it is sizing, so the pane came
+		 * out shorter than its own track and left a gap above the export.
+		 */
+		min-height: 17rem;
+		max-height: 27rem;
+		border-top: 1px solid var(--qb-line);
+	}
+	.pane-scroll {
+		min-height: 0;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+	}
+	.trailer {
+		display: flex;
+		justify-content: center;
+		padding: 0.85rem var(--qb-pad);
+		border-top: 1px solid var(--qb-line);
+	}
+	.export {
+		border: none;
+		background: none;
+		font: inherit;
+		font-size: 0.7rem;
+		font-weight: 600;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: #1d4ed8;
+		cursor: pointer;
+	}
+	.export:hover:not(:disabled) {
+		text-decoration: underline;
+		text-underline-offset: 0.3em;
+	}
+	.export:disabled {
+		opacity: 0.35;
+		cursor: default;
 	}
 	.group {
 		border-top: 1px solid var(--qb-line);

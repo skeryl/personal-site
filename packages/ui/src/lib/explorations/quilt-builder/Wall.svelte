@@ -552,14 +552,14 @@
 				class:active={store.tool === 'place'}
 				onclick={() => (store.tool = 'place')}
 			>
-				Place <kbd>P</kbd>
+				Place block <kbd>P</kbd>
 			</button>
 			<button
 				class="action"
 				class:active={store.tool === 'mouse'}
 				onclick={() => (store.tool = 'mouse')}
 			>
-				Mouse <kbd>V</kbd>
+				Select <kbd>V</kbd>
 			</button>
 			<button
 				class="action"
@@ -589,17 +589,20 @@
 			<button class="action" onclick={() => store.redo()} disabled={!store.canRedo}>
 				Redo <kbd>⇧⌘Z</kbd>
 			</button>
+		</div>
+
+		<div class="wall-actions">
 			<button
 				class="action"
 				class:active={store.panels.centerGuides}
 				aria-pressed={store.panels.centerGuides}
 				onclick={() => (store.panels.centerGuides = !store.panels.centerGuides)}
 			>
-				Center
+				Show quilt center
 			</button>
-			<button class="action" onclick={() => store.clearAll()} disabled={store.filled === 0}
-				>Clear</button
-			>
+			<button class="action" onclick={() => store.clearAll()} disabled={store.filled === 0}>
+				Clear quilt wall
+			</button>
 		</div>
 
 		<div class="footer">
@@ -626,14 +629,6 @@
 				{store.dims.cols} × {store.dims.rows} blocks at {store.blockSize}” · {finishedW}” × {finishedH}”
 				finished
 			</p>
-
-			<button
-				class="export"
-				onclick={() => store.exportMaterialsList()}
-				disabled={!store.cutting.length}
-			>
-				Export materials list
-			</button>
 		</div>
 	</div>
 </section>
@@ -1013,9 +1008,16 @@
 	 * One row under the tools: zoom at one end, the export at the other, and
 	 * what the quilt comes to between them.
 	 */
+	/* Spelled out, on a line of their own: these act on the whole quilt. */
+	.wall-actions {
+		display: flex;
+		justify-content: center;
+		gap: 2rem;
+		margin-top: 0.4rem;
+	}
 	.footer {
 		width: 100%;
-		margin-top: 0.6rem;
+		margin-top: 0.4rem;
 		display: grid;
 		grid-template-columns: 1fr auto 1fr;
 		align-items: center;
@@ -1078,27 +1080,6 @@
 		text-underline-offset: 0.3em;
 	}
 	.action:disabled {
-		opacity: 0.35;
-		cursor: default;
-	}
-
-	.export {
-		justify-self: end;
-		border: none;
-		background: none;
-		font: inherit;
-		font-size: 0.7rem;
-		font-weight: 600;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-		color: #1d4ed8;
-		cursor: pointer;
-	}
-	.export:hover:not(:disabled) {
-		text-decoration: underline;
-		text-underline-offset: 0.3em;
-	}
-	.export:disabled {
 		opacity: 0.35;
 		cursor: default;
 	}
