@@ -1098,45 +1098,58 @@ test('a sweep takes filled squares, and a click takes whatever it names', async 
 const centerToggle = (page: Page) =>
 	page.locator('.actions').getByRole('button', { name: 'Center' });
 
-const markedCells = (page: Page) =>
-	page.$$eval('rect.center-mark', (marks) =>
-		marks
-			.map((mark) => Number(mark.closest('[data-cell-index]')!.getAttribute('data-cell-index')))
-			.sort((a, b) => a - b)
-	);
+/** Where a guide sits, against the squares it is supposed to bracket. */
+const guideBounds = (page: Page, axis: 'vertical' | 'horizontal') =>
+	page.locator(`.center-guide.${axis}`).boundingBox();
 
-test('centre markers are off until asked for, and remembered after that', async ({ page }) => {
-	await expect(page.locator('rect.center-mark')).toHaveCount(0);
+test('centre guides are off until asked for, and remembered after that', async ({ page }) => {
+	await expect(page.locator('.center-guide')).toHaveCount(0);
 	await expect(centerToggle(page)).not.toHaveClass(/active/);
 
 	await centerToggle(page).click();
 	await expect(centerToggle(page)).toHaveClass(/active/);
-	await expect(page.locator('rect.center-mark')).not.toHaveCount(0);
+	await expect(page.locator('.center-guide')).toHaveCount(2);
 
 	await page.waitForTimeout(AUTOSAVE_MS);
 	await page.reload();
 	await page.waitForSelector('[data-cell-index="0"]');
-	await expect(page.locator('rect.center-mark')).not.toHaveCount(0);
+	await expect(page.locator('.center-guide')).toHaveCount(2);
 });
 
-test('an even grid has no middle square, so the four around the centre are marked', async ({
-	page
-}) => {
+test('the guides run the whole width and height of the quilt', async ({ page }) => {
+	await page.selectOption('.size select', 'king');
+	await centerToggle(page).click();
+
+	const blanket = (await page.locator('.blanket').boundingBox())!;
+	const vertical = (await guideBounds(page, 'vertical'))!;
+	const horizontal = (await guideBounds(page, 'horizontal'))!;
+
+	// Not a box around the middle squares: lines across the whole quilt.
+	expect(vertical.height).toBeGreaterThan(blanket.height - 8);
+	expect(horizontal.width).toBeGreaterThan(blanket.width - 8);
+});
+
+test('an even grid brackets the two columns and rows either side of centre', async ({ page }) => {
 	await page.selectOption('.size select', 'king');
 	await centerToggle(page).click();
 
 	const cols = await gridCols(page);
 	expect(cols).toBe(14);
-	// Columns G and H, rows 7 and 8: the squares either side of the centre seam.
-	expect(await markedCells(page)).toEqual([
-		at(cols, 6, 6),
-		at(cols, 6, 7),
-		at(cols, 7, 6),
-		at(cols, 7, 7)
-	]);
+	// Columns G and H, rows 7 and 8: no middle square on an even grid.
+	const left = (await cell(page, at(cols, 0, 6)).boundingBox())!;
+	const right = (await cell(page, at(cols, 0, 7)).boundingBox())!;
+	const top = (await cell(page, at(cols, 6, 0)).boundingBox())!;
+	const bottom = (await cell(page, at(cols, 7, 0)).boundingBox())!;
+
+	const vertical = (await guideBounds(page, 'vertical'))!;
+	const horizontal = (await guideBounds(page, 'horizontal'))!;
+	expect(vertical.x).toBeCloseTo(left.x, 0);
+	expect(vertical.x + vertical.width).toBeCloseTo(right.x + right.width, 0);
+	expect(horizontal.y).toBeCloseTo(top.y, 0);
+	expect(horizontal.y + horizontal.height).toBeCloseTo(bottom.y + bottom.height, 0);
 });
 
-test('an odd grid has a real middle square, and marks only that one', async ({ page }) => {
+test('an odd grid brackets its one real middle square', async ({ page }) => {
 	// 40 inches of 8" blocks is five across and five down.
 	await page.selectOption('.size select', 'custom');
 	for (const box of [page.locator('.inches').first(), page.locator('.inches').last()]) {
@@ -1147,5 +1160,8 @@ test('an odd grid has a real middle square, and marks only that one', async ({ p
 
 	const cols = await gridCols(page);
 	expect(cols).toBe(5);
-	expect(await markedCells(page)).toEqual([at(cols, 2, 2)]);
+	const middle = (await cell(page, at(cols, 2, 2)).boundingBox())!;
+	const vertical = (await guideBounds(page, 'vertical'))!;
+	expect(vertical.x).toBeCloseTo(middle.x, 0);
+	expect(vertical.width).toBeCloseTo(middle.width, 0);
 });

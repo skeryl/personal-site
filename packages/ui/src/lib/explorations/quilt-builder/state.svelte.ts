@@ -582,18 +582,22 @@ export class QuiltStore {
 	});
 
 	/*
-	 * The squares at the middle of the quilt. On an even grid there is no
-	 * middle square, so the two either side of the centre seam both count,
-	 * which makes four in the general case.
+	 * The middle of the quilt, as column and row ranges. Drawn as lines across
+	 * the whole quilt rather than a box around the centre squares, so you can
+	 * line up anything against them, not just what sits in the middle. On an
+	 * even grid there is no middle square, so the range covers the two either
+	 * side of the centre seam.
 	 */
-	centerCells = $derived.by(() => {
-		if (!this.panels.centerGuides) return new Set<number>();
-		const { cols, rows } = this.dims;
-		const marked = new Set<number>();
-		for (const row of middleOf(rows)) {
-			for (const col of middleOf(cols)) marked.add(cellIndex(row, col, cols));
-		}
-		return marked;
+	centerLines = $derived.by(() => {
+		if (!this.panels.centerGuides) return null;
+		const cols = middleOf(this.dims.cols);
+		const rows = middleOf(this.dims.rows);
+		return {
+			c0: cols[0],
+			c1: cols[cols.length - 1],
+			r0: rows[0],
+			r1: rows[rows.length - 1]
+		};
 	});
 
 	/** The rectangle a marquee drag currently covers, in grid coordinates. */

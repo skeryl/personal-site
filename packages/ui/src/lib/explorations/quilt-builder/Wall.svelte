@@ -290,8 +290,22 @@
 						class:tool-grid={store.tool === 'grid'}
 						class:locked={store.tool === 'place' && !store.canPlace}
 						style="grid-template-columns: repeat({store.dims
-							.cols}, 1fr); width: {content.w}px; height: {content.h}px"
+							.cols}, 1fr); grid-template-rows: repeat({store.dims
+							.rows}, 1fr); width: {content.w}px; height: {content.h}px"
 					>
+						{#if store.centerLines}
+							{@const lines = store.centerLines}
+							<div
+								class="center-guide vertical"
+								aria-hidden="true"
+								style="grid-column: {lines.c0 + 1} / {lines.c1 + 2}; grid-row: 1 / -1"
+							></div>
+							<div
+								class="center-guide horizontal"
+								aria-hidden="true"
+								style="grid-row: {lines.r0 + 1} / {lines.r1 + 2}; grid-column: 1 / -1"
+							></div>
+						{/if}
 						{#if store.marqueeRect}
 							{@const rect = store.marqueeRect}
 							<div
@@ -346,9 +360,6 @@
 											vector-effect="non-scaling-stroke"
 										/>
 									{/each}
-									{#if store.centerCells.has(i)}
-										<rect class="center-mark" x="0" y="0" width={VB} height={VB} />
-									{/if}
 									{#if store.selectedNode?.cell === i}
 										{@const node = rectAt(display, store.selectedNode.path)}
 										<rect
@@ -621,6 +632,11 @@
 		padding-right: 0.45rem;
 	}
 
+	/*
+	 * Rows are templated, not left implicit. An absolutely positioned child
+	 * resolves -1 against the EXPLICIT grid, so a full-height guide collapsed
+	 * to the first row while only the columns were declared.
+	 */
 	.blanket {
 		position: relative;
 		display: grid;
@@ -748,16 +764,24 @@
 		vector-effect: non-scaling-stroke;
 	}
 	/*
-	 * The middle of the quilt. An even grid has no middle square, so this
-	 * marks the two or four squares around the centre seam instead.
+	 * The middle of the quilt, drawn the way the design does: dashed lines
+	 * running the full width and height. Placed by grid line rather than by
+	 * percentage, so they land exactly on the seams between squares despite
+	 * the blanket's gaps and border.
 	 */
-	rect.center-mark {
-		fill: none;
-		stroke: #e0584f;
-		stroke-width: 2;
-		stroke-dasharray: 6 4;
-		vector-effect: non-scaling-stroke;
+	.center-guide {
+		position: absolute;
+		inset: 0;
 		pointer-events: none;
+		z-index: 4;
+	}
+	.center-guide.vertical {
+		border-left: 2px dashed #e0584f;
+		border-right: 2px dashed #e0584f;
+	}
+	.center-guide.horizontal {
+		border-top: 2px dashed #e0584f;
+		border-bottom: 2px dashed #e0584f;
 	}
 
 	.readout {
