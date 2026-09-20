@@ -1082,7 +1082,12 @@ test('a sweep takes filled squares, and a click takes whatever it names', async 
 	await sweep(at(cols, 1, 1), at(cols, 3, 3));
 	await expect(page.locator('.readout')).toHaveText('B2, C3 squares selected');
 
-	// The same box with the modifier takes the empty ones too.
+	/*
+	 * The same box with the modifier takes the empty ones too. Clear first:
+	 * cmd on a square that is already selected picks the selection up and
+	 * moves it instead, which is the other job that modifier does.
+	 */
+	await page.keyboard.press('Escape');
 	await sweep(at(cols, 1, 1), at(cols, 3, 3), 'ControlOrMeta');
 	await expect(page.locator('.readout')).toHaveText('9 squares selected');
 
@@ -1289,4 +1294,87 @@ test('nothing is subdivided on load, so the one-piece tile is the armed one', as
 	await page.keyboard.press('g');
 	await expect(tiles.nth(1)).toHaveClass(/active/);
 	await expect(tiles.nth(0)).not.toHaveClass(/active/);
+});
+
+/** Cmd/ctrl-drag from a selected square, which moves the selection. */
+const moveDrag = async (page: Page, from: number, to: number, cancel = false) => {
+	const a = await cell(page, from).boundingBox();
+	const b = await cell(page, to).boundingBox();
+	if (!a || !b) throw new Error('cells not found');
+	await page.keyboard.down('ControlOrMeta');
+	await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 8 });
+	if (cancel) await page.keyboard.press('Escape');
+	await page.mouse.up();
+	await page.keyboard.up('ControlOrMeta');
+	await parkMouse(page);
+};
+
+test('cmd-drag moves the selection, leaving its old squares empty', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	const cols = await gridCols(page);
+	const from = at(cols, 1, 1);
+	const to = at(cols, 4, 3);
+
+	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	await cell(page, from).click();
+	await parkMouse(page);
+	const block = await cellFills(page, from);
+	expect(block).toHaveLength(8);
+
+	await tool(page, /^Mouse/).click();
+	await cell(page, from).click();
+	await moveDrag(page, from, to);
+
+	// Moved, not copied: the source is empty and the block is at the target.
+	expect(await cellFills(page, to)).toEqual(block);
+	expect(await cellFills(page, from)).toEqual(['#ffffff']);
+	await expect(page.locator('.readout')).toHaveText('D5 square selected');
+
+	// One undo puts it back where it was.
+	await page.keyboard.press('ControlOrMeta+z');
+	await parkMouse(page);
+	expect(await cellFills(page, from)).toEqual(block);
+	expect(await cellFills(page, to)).toEqual(['#ffffff']);
+});
+
+test('a move that overlaps its own source keeps every block', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	const cols = await gridCols(page);
+	const a = at(cols, 1, 1);
+	const b = at(cols, 1, 2);
+
+	await pickShape(page, 'Square');
+	for (const i of [a, b]) await cell(page, i).click();
+	await parkMouse(page);
+
+	await tool(page, /^Mouse/).click();
+	await cell(page, a).click();
+	await cell(page, b).click({ modifiers: ['Shift'] });
+
+	// Shift the pair one square right, so the target overlaps the source.
+	await moveDrag(page, a, b);
+	expect(await cellFills(page, a)).toEqual(['#ffffff']);
+	expect(await cellFills(page, b)).toEqual(['#4f7fe8']);
+	expect(await cellFills(page, at(cols, 1, 3))).toEqual(['#4f7fe8']);
+});
+
+test('escape during a drag drops nothing', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	const cols = await gridCols(page);
+	const from = at(cols, 1, 1);
+	const to = at(cols, 4, 3);
+
+	await pickShape(page, 'Square');
+	await cell(page, from).click();
+	await parkMouse(page);
+
+	await tool(page, /^Mouse/).click();
+	await cell(page, from).click();
+	await moveDrag(page, from, to, true);
+
+	// Nothing moved, and nothing was left behind at the target.
+	expect(await cellFills(page, from)).toEqual(['#4f7fe8']);
+	expect(await cellFills(page, to)).toEqual(['#ffffff']);
 });

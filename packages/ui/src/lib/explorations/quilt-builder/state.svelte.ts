@@ -140,9 +140,11 @@ interface Marquee {
 	includeEmpty: boolean;
 }
 
-/** An alt-drag: whole blocks being duplicated to wherever they are dropped. */
-interface CopyDrag {
+/** Whole blocks being carried to wherever they are dropped. */
+interface BlockDrag {
 	pointerId: number;
+	/** Alt duplicates; cmd or ctrl picks the blocks up and moves them. */
+	mode: 'copy' | 'move';
 	origin: number;
 	/** Where in the origin square the press landed, for an alt-click. */
 	point: Point;
@@ -163,7 +165,7 @@ export class QuiltStore {
 	/** Board indices the composition control and pattern capture act on. */
 	selection = $state<number[]>([]);
 	marquee = $state<Marquee | null>(null);
-	copyDrag = $state<CopyDrag | null>(null);
+	blockDrag = $state<BlockDrag | null>(null);
 	/** Set by alt-clicking: a single piece, the bottom rung. */
 	selectedPiece = $state<PieceRef | null>(null);
 	/** The middle rung: one block inside a composed square. */
@@ -565,18 +567,24 @@ export class QuiltStore {
 	}
 
 	/*
-	 * Where an alt-drag would drop. Whole blocks, so a pieced square duplicates
+	 * Where a drag would drop. Whole blocks, so a pieced square travels
 	 * complete rather than smearing one piece. All-or-nothing: if any part of
 	 * the group would land off the quilt, nothing does.
+	 *
+	 * A move empties its sources first and then writes the targets over them,
+	 * so a group shifted by one square does not erase the half it just wrote.
 	 */
-	copyPreview = $derived.by(() => {
-		const drag = this.copyDrag;
+	dragPreview = $derived.by(() => {
+		const drag = this.blockDrag;
 		if (!drag) return null;
 		const { cols, rows } = this.dims;
 		const dCol = colOf(drag.over, cols) - colOf(drag.origin, cols);
 		const dRow = rowOf(drag.over, cols) - rowOf(drag.origin, cols);
 		if (!dCol && !dRow) return null;
 		const updates = new Map<number, Block>();
+		if (drag.mode === 'move') {
+			for (const source of drag.sources) updates.set(source, emptyBlock());
+		}
 		for (const source of drag.sources) {
 			const col = colOf(source, cols) + dCol;
 			const row = rowOf(source, cols) + dRow;
@@ -585,6 +593,16 @@ export class QuiltStore {
 		}
 		return updates;
 	});
+
+	/** Just the squares a drag would land on, for selecting them afterwards. */
+	private dragTargets(drag: BlockDrag): number[] {
+		const { cols } = this.dims;
+		const dCol = colOf(drag.over, cols) - colOf(drag.origin, cols);
+		const dRow = rowOf(drag.over, cols) - rowOf(drag.origin, cols);
+		return drag.sources.map((source) =>
+			cellIndex(rowOf(source, cols) + dRow, colOf(source, cols) + dCol, cols)
+		);
+	}
 
 	/*
 	 * The middle of the quilt, as column and row ranges. Drawn as lines across
@@ -631,16 +649,19 @@ export class QuiltStore {
 	 * Alt does double duty, split by whether the pointer moved: a drag
 	 * duplicates, a click drills down to the piece under the cursor.
 	 */
-	private endCopyDrag() {
-		const drag = this.copyDrag;
-		const updates = this.copyPreview;
-		this.copyDrag = null;
-		if (updates && this.commit(updates)) {
+	private endDrag() {
+		const drag = this.blockDrag;
+		const updates = this.dragPreview;
+		this.blockDrag = null;
+		if (drag && updates && this.commit(updates)) {
 			this.selectedPiece = null;
-			this.selection = [...updates.keys()];
+			this.selectedNode = null;
+			this.selection = this.dragTargets(drag);
 			return;
 		}
-		if (drag && drag.over === drag.origin) this.selectPieceAt(drag.origin, drag.point);
+		if (drag && drag.mode === 'copy' && drag.over === drag.origin) {
+			this.selectPieceAt(drag.origin, drag.point);
+		}
 	}
 
 	/*
@@ -674,7 +695,7 @@ export class QuiltStore {
 	/** The piece alt-hovering would select, previewed before you commit. */
 	hoverPiece = $derived.by((): PieceRef | null => {
 		const hover = this.hover;
-		if (this.tool !== 'mouse' || !hover?.alt || this.copyDrag || this.marquee) return null;
+		if (this.tool !== 'mouse' || !hover?.alt || this.blockDrag || this.marquee) return null;
 		return this.pieceRefAt(hover.index, hover.point);
 	});
 
@@ -831,11 +852,20 @@ export class QuiltStore {
 			 * Alt-drag duplicates. Dragging any member of a multi-selection
 			 * carries the whole group; anything else carries just that block.
 			 */
-			if (e.altKey && !isEmpty(this.cells[index])) {
+			const filled = !isEmpty(this.cells[index]);
+			/*
+			 * Cmd or ctrl means two things on this tool, told apart by what is
+			 * under the pointer: grabbing a square that is already selected
+			 * picks the selection up and moves it, anything else sweeps and
+			 * takes the empty squares too.
+			 */
+			const moving = (e.metaKey || e.ctrlKey) && filled && this.selectionSet.has(index);
+			if ((e.altKey && filled) || moving) {
 				const grouped = this.selection.length > 1 && this.selectionSet.has(index);
 				const hit = this.resolve(e.clientX, e.clientY);
-				this.copyDrag = {
+				this.blockDrag = {
 					pointerId: e.pointerId,
+					mode: moving ? 'move' : 'copy',
 					origin: index,
 					point: hit?.point ?? [0.5, 0.5],
 					sources: grouped ? [...this.selection] : [index],
@@ -861,11 +891,11 @@ export class QuiltStore {
 	}
 
 	onPointerMove(e: PointerEvent) {
-		const copy = this.copyDrag;
-		if (copy) {
-			if (copy.pointerId !== e.pointerId) return;
+		const dragging = this.blockDrag;
+		if (dragging) {
+			if (dragging.pointerId !== e.pointerId) return;
 			const hit = this.resolve(e.clientX, e.clientY);
-			if (hit) this.copyDrag = { ...copy, over: hit.index };
+			if (hit) this.blockDrag = { ...dragging, over: hit.index };
 			return;
 		}
 		const m = this.marquee;
@@ -886,8 +916,8 @@ export class QuiltStore {
 	}
 
 	onPointerUp(e: PointerEvent) {
-		if (this.copyDrag?.pointerId === e.pointerId) {
-			this.endCopyDrag();
+		if (this.blockDrag?.pointerId === e.pointerId) {
+			this.endDrag();
 			return;
 		}
 		if (this.marquee?.pointerId === e.pointerId) {
@@ -929,7 +959,8 @@ export class QuiltStore {
 		}
 		if (e.key === 'Escape') {
 			if (this.gesture) this.cancelGesture();
-			else if (this.copyDrag) this.copyDrag = null;
+			// Escape abandons a drag in flight, dropping nothing.
+			else if (this.blockDrag) this.blockDrag = null;
 			else if (this.marquee) this.marquee = null;
 			// Escape climbs the ladder: piece, block, square, then back to placing.
 			else if (this.selectedPiece || this.selectedNode) this.selectParent();
