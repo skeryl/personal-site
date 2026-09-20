@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 /*
  * End-to-end coverage for the quilt builder's core loops: the fabric gate,
@@ -61,11 +61,21 @@ const pickShape = (page: Page, name: string) =>
 const parkMouse = (page: Page) => page.mouse.move(10, 10);
 
 /*
+ * Every way into a colour opens the app's own picker, so typing a hex means
+ * opening it, filling its chip, and closing it again.
+ */
+const setHex = async (page: Page, trigger: Locator, hex: string) => {
+	await trigger.click();
+	await page.locator('.picker-window .hex-chip').fill(hex);
+	await page.locator('.picker-window .close').click();
+};
+
+/*
  * Colour lives in the Attributes palette now: adding one through the "+"
  * swatch makes it the active fabric, and naming it is optional.
  */
 const addFabric = async (page: Page, name: string, hex: string) => {
-	await page.locator('.palette .add input[type="color"]').fill(`#${hex}`);
+	await setHex(page, page.locator('.palette .add'), hex);
 	await page.locator('.active .name').fill(name);
 };
 
@@ -91,7 +101,7 @@ test('nothing can be placed until a colour exists, and naming is optional', asyn
 	expect(await cellFills(page, 0)).toEqual(['#ffffff']);
 
 	// Adding a colour is enough: it becomes active and placing works unnamed.
-	await page.locator('.palette .add input[type="color"]').fill('#4f7fe8');
+	await setHex(page, page.locator('.palette .add'), '4f7fe8');
 	await expect(page.locator('.banner')).toHaveCount(0);
 	await cell(page, 0).click();
 	await parkMouse(page);
@@ -999,7 +1009,8 @@ test('double-clicking a palette colour repaints every piece cut from it', async 
 
 	// Double-click aims the picker at Blue, and editing it repaints both.
 	await page.getByRole('button', { name: /^Paint with Blue/ }).dblclick();
-	await page.locator('.recolor-picker').fill('#ff0000');
+	await page.locator('.picker-window .hex-chip').fill('FF0000');
+	await page.locator('.picker-window .close').click();
 	await parkMouse(page);
 
 	expect(await cellFills(page, a)).toEqual(['#ff0000']);
@@ -1447,4 +1458,124 @@ test('the armed grid is a minimum, so placing never flattens finer detail', asyn
 
 	// Still sixteen: the coarser grid did not overwrite what was there.
 	expect(await cellFills(page, target)).toHaveLength(16);
+});
+
+/*
+ * The colour picker is the app's own, not `<input type="color">`. That input
+ * opens an OS window wherever the browser feels like putting it, which on a
+ * wide display is often nowhere near the swatch you clicked.
+ */
+
+const channels = (hex: string) => [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
+
+test('the picker opens on screen and repaints the quilt as you drag', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await pickShape(page, 'Square');
+	await cell(page, 0).click();
+	await parkMouse(page);
+	expect(await cellFills(page, 0)).toEqual(['#4f7fe8']);
+
+	await page.locator('.palette .swatch:not(.add)').first().dblclick();
+	const win = page.locator('.picker-window');
+	await expect(win).toBeVisible();
+
+	// The design's frame, wholly inside the window.
+	const box = (await win.boundingBox())!;
+	const view = page.viewportSize()!;
+	expect([box.width, box.height]).toEqual([380, 410]);
+	expect(box.x).toBeGreaterThanOrEqual(0);
+	expect(box.y).toBeGreaterThanOrEqual(0);
+	expect(box.x + box.width).toBeLessThanOrEqual(view.width);
+	expect(box.y + box.height).toBeLessThanOrEqual(view.height);
+
+	// Blocks reference fabrics by id, so the square follows the drag.
+	const sv = (await page.locator('.picker-window .sv').boundingBox())!;
+	await page.mouse.move(sv.x + sv.width * 0.5, sv.y + sv.height * 0.5);
+	await page.mouse.down();
+	await page.mouse.move(sv.x + sv.width * 0.95, sv.y + sv.height * 0.05, { steps: 4 });
+	await page.mouse.up();
+	const picked = await page.locator('.picker-window .hex-chip').inputValue();
+	expect(picked).not.toBe('4F7FE8');
+
+	await page.locator('.picker-window .close').click();
+	await expect(win).toHaveCount(0);
+	await parkMouse(page);
+	expect((await cellFills(page, 0))[0]?.toUpperCase()).toBe(`#${picked}`);
+});
+
+test('the hue strip counts down from red at the top, and its marker follows', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await page.locator('.palette .swatch:not(.add)').first().dblclick();
+	const hue = (await page.locator('.picker-window .hue').boundingBox())!;
+	const chip = page.locator('.picker-window .hex-chip');
+	const marker = page.locator('.picker-window .hue-marker');
+
+	await page.mouse.click(hue.x + hue.width / 2, hue.y + 2);
+	const [r1, g1, b1] = channels(await chip.inputValue());
+	expect(r1).toBeGreaterThan(g1);
+	expect(r1).toBeGreaterThan(b1);
+	const top = (await marker.boundingBox())!.y;
+
+	// Two thirds down is hue 120: green, and the marker has moved with it.
+	await page.mouse.click(hue.x + hue.width / 2, hue.y + hue.height * (2 / 3));
+	const [r2, g2, b2] = channels(await chip.inputValue());
+	expect(g2).toBeGreaterThan(r2);
+	expect(g2).toBeGreaterThan(b2);
+	expect((await marker.boundingBox())!.y).toBeGreaterThan(top);
+});
+
+test('the picker is a window: the bar drags it, escape closes it', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await page.locator('.palette .swatch:not(.add)').first().dblclick();
+	const win = page.locator('.picker-window');
+	const before = (await win.boundingBox())!;
+
+	const bar = (await page.locator('.picker-window .bar').boundingBox())!;
+	await page.mouse.move(bar.x + 40, bar.y + 14);
+	await page.mouse.down();
+	await page.mouse.move(bar.x + 100, bar.y + 14, { steps: 5 });
+	await page.mouse.up();
+	expect((await win.boundingBox())!.x - before.x).toBe(60);
+
+	await page.keyboard.press('Escape');
+	await expect(win).toHaveCount(0);
+});
+
+test('new color in the attributes popover adds a fabric and picks it', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await pickShape(page, 'Square');
+	await cell(page, 0).click();
+	await tool(page, /^Mouse/).click();
+	await cell(page, 0).click();
+
+	await page.locator('.colors .color').first().locator('.swatch').click();
+	await page.locator('.colors .picker .new').click();
+	await expect(page.locator('.picker-window')).toBeVisible();
+	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(2);
+
+	// The square was remapped to the new fabric, so it tracks the picker.
+	const hue = (await page.locator('.picker-window .hue').boundingBox())!;
+	await page.mouse.click(hue.x + hue.width / 2, hue.y + hue.height * (2 / 3));
+	const picked = await page.locator('.picker-window .hex-chip').inputValue();
+	await page.locator('.picker-window .close').click();
+	await parkMouse(page);
+	expect((await cellFills(page, 0))[0]?.toUpperCase()).toBe(`#${picked}`);
+});
+
+test('picking a palette colour leaves the palette where it is', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await addFabric(page, 'Green', '38511f');
+	await tool(page, /^Mouse/).click();
+
+	const swatch = page.locator('.palette .swatch:not(.add)').first();
+	const before = (await swatch.boundingBox())!;
+	await swatch.click();
+	await expect(tool(page, /^Place/)).toHaveClass(/active/);
+
+	/*
+	 * The hint above the palette is reworded as the tool changes. If it
+	 * resizes with it, everything below shifts, and the second half of a
+	 * double-click lands on whatever slid into the swatch's place.
+	 */
+	expect((await swatch.boundingBox())!.y).toBe(before.y);
 });

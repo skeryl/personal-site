@@ -13,6 +13,7 @@
 
 	import { KIND_ICON_CUT, KIND_NOUN } from './cutting';
 	import BlockSvg from './BlockSvg.svelte';
+	import ColorPicker from './ColorPicker.svelte';
 	import { leafBlock, type Block } from './model';
 	import type { ShapeKind } from './geometry';
 	import type { QuiltStore } from './state.svelte';
@@ -50,31 +51,44 @@
 		editing = null;
 	};
 
-	const addAndRemap = (from: string, hex: string) => {
-		const material = store.addMaterial(hex);
+	const addAndRemap = (from: string, anchor: DOMRect) => {
+		const material = store.addMaterial();
 		store.remapFabric(from, material.id);
 		editing = null;
+		openPicker(material.id, anchor);
 	};
 
 	const activeMaterial = $derived(store.selectedMaterial);
 
 	/*
-	 * Double-clicking a palette swatch reopens the colour picker for that
-	 * fabric. Blocks reference fabrics by id, so changing the hex repaints
-	 * every piece cut from it, wherever it is on the quilt.
+	 * The picker edits a fabric in place, live. Blocks reference fabrics by id,
+	 * so dragging around the square repaints every piece cut from it, wherever
+	 * it is on the quilt.
 	 *
-	 * One shared input rather than one per swatch: it only has to be somewhere
-	 * a user gesture can reach to open it.
+	 * Adding a colour is the same act: the fabric joins the palette first, at
+	 * its starter hex, and the picker then recolours it. So there is one path
+	 * through here rather than an add path and an edit path, and a new colour
+	 * shows up in the palette while you are still choosing it.
 	 */
-	let recolorInput = $state<HTMLInputElement | null>(null);
-	let recolorId = $state<string | null>(null);
+	let picking = $state<{ id: string; anchor: DOMRect } | null>(null);
 
-	const openRecolor = (id: string, hex: string) => {
-		recolorId = id;
-		if (!recolorInput) return;
-		recolorInput.value = hex;
-		recolorInput.click();
+	const openPicker = (id: string, anchor: DOMRect) => {
+		picking = { id, anchor };
 	};
+
+	/*
+	 * The picker opens clear of the left panel rather than on top of it, so the
+	 * palette and the swatch you came from stay visible while you choose. It
+	 * still lines up with whatever was clicked, vertically.
+	 */
+	const rectOf = (e: Event) => {
+		const el = e.currentTarget as HTMLElement;
+		const own = el.getBoundingClientRect();
+		const panel = el.closest('.side')?.getBoundingClientRect();
+		return panel ? new DOMRect(panel.x, own.y, panel.width, own.height) : own;
+	};
+
+	const addAndPick = (e: Event) => openPicker(store.addMaterial().id, rectOf(e));
 </script>
 
 <details class="attributes" data-panel="attributes" bind:open={store.panels.attributes}>
@@ -117,17 +131,19 @@
 								></button>
 							{/each}
 						</div>
-						<label class="new">
+						<button
+							class="new"
+							onclick={(e) => {
+								const anchor = rectOf(e);
+								const material = store.addMaterial();
+								store.setPieceFabric(material.id);
+								editing = null;
+								openPicker(material.id, anchor);
+							}}
+						>
 							<span class="label">New color</span>
-							<input
-								type="color"
-								value={hexOf(store.selectedPieceFabric)}
-								onchange={(e) => {
-									store.setPieceFabric(store.addMaterial(e.currentTarget.value).id);
-									editing = null;
-								}}
-							/>
-						</label>
+							<span class="new-chip" aria-hidden="true">+</span>
+						</button>
 					</div>
 				{/if}
 			</li>
@@ -173,14 +189,10 @@
 									></button>
 								{/each}
 							</div>
-							<label class="new">
+							<button class="new" onclick={(e) => addAndRemap(fabric, rectOf(e))}>
 								<span class="label">New color</span>
-								<input
-									type="color"
-									value={hexOf(fabric)}
-									onchange={(e) => addAndRemap(fabric, e.currentTarget.value)}
-								/>
-							</label>
+								<span class="new-chip" aria-hidden="true">+</span>
+							</button>
 						</div>
 					{/if}
 				</li>
@@ -195,6 +207,7 @@
 	{/if}
 
 	<div class="label section">Palette</div>
+	<p class="hint muted">Click to paint with a color, double-click to edit it.</p>
 	<div class="swatches palette">
 		{#each store.materials as material (material.id)}
 			<button
@@ -204,25 +217,12 @@
 				title={`${material.name.trim() || material.hex.toUpperCase()} — double-click to edit`}
 				aria-label={`Paint with ${material.name.trim() || material.hex.toUpperCase()}. Double-click to edit it.`}
 				onclick={() => store.selectMaterial(material.id)}
-				ondblclick={() => openRecolor(material.id, material.hex)}
+				ondblclick={(e) => openPicker(material.id, rectOf(e))}
 			></button>
 		{/each}
-		<input
-			class="recolor-picker"
-			type="color"
-			tabindex="-1"
-			aria-hidden="true"
-			bind:this={recolorInput}
-			oninput={(e) => recolorId && store.recolorMaterial(recolorId, e.currentTarget.value)}
-		/>
-		<label class="swatch add" title="Add a color">
+		<button class="swatch add" title="Add a color" aria-label="Add a color" onclick={addAndPick}>
 			<span aria-hidden="true">+</span>
-			<input
-				type="color"
-				aria-label="Add a color"
-				onchange={(e) => store.addMaterial(e.currentTarget.value)}
-			/>
-		</label>
+		</button>
 	</div>
 
 	{#if activeMaterial}
@@ -299,6 +299,19 @@
 		</details>
 	{/if}
 </details>
+
+<!-- Keyed on the fabric, so opening it on a second colour starts it over. -->
+{#if picking}
+	{@const target = picking}
+	{#key target.id}
+		<ColorPicker
+			hex={hexOf(target.id)}
+			anchor={target.anchor}
+			onpick={(next) => store.recolorMaterial(target.id, next)}
+			onclose={() => (picking = null)}
+		/>
+	{/key}
+{/if}
 
 <style>
 	.attributes {
@@ -422,12 +435,6 @@
 		outline: 1.5px solid #000;
 		outline-offset: 0;
 	}
-	.swatch input[type='color'] {
-		position: absolute;
-		inset: 0;
-		opacity: 0;
-		cursor: pointer;
-	}
 	.swatch.add {
 		display: flex;
 		align-items: center;
@@ -442,14 +449,6 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.35rem;
-	}
-	/* Offscreen, but real: it is opened by the double-click, not clicked itself. */
-	.recolor-picker {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		opacity: 0;
-		pointer-events: none;
 	}
 	.palette {
 		position: relative;
@@ -475,14 +474,22 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
-	}
-	.new input[type='color'] {
-		width: 2rem;
-		height: 1.4rem;
 		padding: 0;
-		border: 1px solid var(--qb-line);
+		border: none;
 		background: none;
+		font: inherit;
+		text-align: left;
 		cursor: pointer;
+	}
+	.new-chip {
+		display: grid;
+		place-items: center;
+		width: 1.1rem;
+		height: 1.1rem;
+		border: 1px solid var(--qb-line);
+		color: var(--qb-ink);
+		font-size: 0.8rem;
+		line-height: 1;
 	}
 
 	.link {

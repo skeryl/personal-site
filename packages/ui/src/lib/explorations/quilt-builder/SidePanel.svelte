@@ -429,8 +429,15 @@
 		cursor: not-allowed;
 	}
 
+	/*
+	 * Held open to the tallest wording, three lines. These hints change as the
+	 * tool changes, and a hint that shrinks drags the palette up under the
+	 * pointer mid-gesture: the second half of a double-click then lands on
+	 * whatever slid into its place.
+	 */
 	.hint {
 		margin: 0.6rem var(--qb-pad) 0;
+		min-height: 3.375rem;
 		font-size: 0.75rem;
 		line-height: 1.5;
 		color: var(--color-text-secondary);
