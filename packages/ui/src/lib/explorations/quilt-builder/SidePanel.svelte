@@ -74,6 +74,7 @@
 		<div class="composition" role="group" aria-label="Block grid">
 			{#each DIVISIONS as division (division)}
 				{@const label = division === 1 ? 'One piece' : `${division} by ${division}`}
+				{@const weight = store.activeDivision === division ? 1.5 : 1}
 				<button
 					class="chip"
 					class:active={store.activeDivision === division}
@@ -82,12 +83,35 @@
 					title={`${label}, ${fmtInches(store.blockSize / division)}” pieces`}
 					onclick={() => store.setGrid(division)}
 				>
-					<!-- The tile IS the block: a square, divided by dashed seams. -->
-					<svg class="chip-grid" viewBox="0 0 48 48" aria-hidden="true">
+					<!--
+						The tile IS the block, divided by dashed seams. The viewBox is
+						the design's own 102 x 103.378, and the panel renders it at
+						exactly that size, so stroke and dash values are literal pixels.
+						Seams run edge to edge, as they do in the design.
+
+						The frame is drawn in the svg rather than as a CSS border
+						because browsers round border-width to whole pixels, which
+						flattened the chosen tile's 1.5px rule back to 1px.
+					-->
+					<svg
+						class="chip-grid"
+						viewBox="0 0 102 103.378"
+						preserveAspectRatio="none"
+						aria-hidden="true"
+					>
+						<rect
+							class="chip-frame"
+							x={weight / 2}
+							y={weight / 2}
+							width={102 - weight}
+							height={103.378 - weight}
+							stroke-width={weight}
+						/>
 						{#each { length: division - 1 } as _, i (i)}
-							{@const at = ((i + 1) * 48) / division}
-							<line x1={at} y1="3" x2={at} y2="45" />
-							<line x1="3" y1={at} x2="45" y2={at} />
+							{@const x = ((i + 1) * 102) / division}
+							{@const y = ((i + 1) * 103.378) / division}
+							<line x1={x} y1="0" x2={x} y2="103.378" stroke-width={weight} />
+							<line x1="0" y1={y} x2="102" y2={y} stroke-width={weight} />
 						{/each}
 					</svg>
 					<span class="chip-label">
@@ -291,23 +315,24 @@
 	.chip-grid {
 		display: block;
 		width: 100%;
-		aspect-ratio: 1;
+		aspect-ratio: 102 / 103.378;
 		background: #fff;
-		border: 1px solid var(--qb-ink);
 		color: var(--qb-ink);
 	}
 	.chip:hover .chip-grid {
-		border-color: #000;
+		color: #000;
 	}
 	/* The design marks the chosen tile with a heavier black rule, not colour. */
 	.chip.active .chip-grid {
-		border: 1.5px solid #000;
 		color: #000;
+	}
+	.chip-frame {
+		fill: none;
+		stroke: currentColor;
 	}
 	.chip-grid line {
 		stroke: currentColor;
-		stroke-width: 1.5;
-		stroke-dasharray: 4 3;
+		stroke-dasharray: 5 5;
 	}
 	.chip-label {
 		font-size: 0.75rem;

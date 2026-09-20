@@ -1198,15 +1198,45 @@ test('the block grid tiles are squares labelled by division', async ({ page }) =
 	const labels = await page.locator('.composition .chip-label').allInnerTexts();
 	expect(labels.map((t) => t.trim())).toEqual(['(1)', '(2X2)', '(4X4)']);
 
-	// Each tile is the block itself: a square, not an icon inside a button.
+	/*
+	 * Each tile is the block itself, at the design's own 102 x 103.378, so the
+	 * svg's units are literal pixels and its stroke values can be taken
+	 * verbatim.
+	 */
 	const tile = (await page.locator('.composition .chip-grid').first().boundingBox())!;
-	expect(tile.width).toBeCloseTo(tile.height, 0);
+	expect(tile.width).toBeCloseTo(102, -0.5);
+	expect(tile.width / tile.height).toBeCloseTo(102 / 103.378, 2);
 
 	// One piece has no seams; 2x2 has one each way; 4x4 has three.
 	const seams = await page.$$eval('.composition .chip-grid', (grids) =>
 		grids.map((g) => g.querySelectorAll('line').length)
 	);
 	expect(seams).toEqual([0, 2, 6]);
+
+	// Seams are hairlines that run edge to edge, and the chosen tile is ruled
+	// heavier: 1px and 1.5px, dashed 5 and 5, straight from the design.
+	const drawn = await page.$$eval('.composition .chip', (chips) =>
+		chips.map((chip) => {
+			const svg = chip.querySelector('svg')!;
+			const line = svg.querySelector('line');
+			return {
+				active: chip.classList.contains('active'),
+				frame: svg.querySelector('rect')!.getAttribute('stroke-width'),
+				stroke: line?.getAttribute('stroke-width') ?? null,
+				dash: line ? getComputedStyle(line).strokeDasharray : null,
+				spans: line ? [line.getAttribute('y1'), line.getAttribute('y2')].join('..') : null
+			};
+		})
+	);
+	for (const tileState of drawn) {
+		const weight = tileState.active ? '1.5' : '1';
+		expect(tileState.frame).toBe(weight);
+		if (tileState.stroke === null) continue;
+		expect(tileState.stroke).toBe(weight);
+		expect(tileState.dash).toBe('5px, 5px');
+		// Top edge to bottom edge, with no inset.
+		expect(tileState.spans).toBe('0..103.378');
+	}
 });
 
 test("the builder uses the design file's own colours and gutter", async ({ page }) => {
