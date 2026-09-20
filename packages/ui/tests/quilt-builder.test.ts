@@ -2025,3 +2025,31 @@ test('alt-click takes the square, cmd-click the piece inside it', async ({ page 
 	await expect(page.locator('.readout')).toHaveText('C2 square selected');
 	await expect(page.locator('polygon.piece-outline')).toHaveCount(0);
 });
+
+test('the quilt settles at every zoom instead of chasing its scrollbar', async ({ page }) => {
+	const quiltWidth = () =>
+		page.locator('.blanket').evaluate((el) => Math.round(el.getBoundingClientRect().width));
+
+	// Fully zoomed out nothing overflows, so fitting never raises a scrollbar.
+	const rest = await page.locator('.viewport').evaluate((el) => ({
+		x: el.scrollWidth - el.clientWidth,
+		y: el.scrollHeight - el.clientHeight
+	}));
+	expect(rest.x).toBeLessThanOrEqual(0);
+	expect(rest.y).toBeLessThanOrEqual(0);
+
+	/*
+	 * Past that, a scrollbar takes room from the visible area. The quilt is
+	 * sized against the scroller's own box instead, so it holds still rather
+	 * than shrinking to fit what the scrollbar left, losing the scrollbar,
+	 * growing again, and flickering at whatever zoom sits on the threshold.
+	 */
+	for (let step = 0; step < 4; step++) {
+		await page.locator('.zoom').getByLabel('Zoom in').click();
+		const settled = await quiltWidth();
+		for (let sample = 0; sample < 4; sample++) {
+			await page.waitForTimeout(60);
+			expect(await quiltWidth()).toBe(settled);
+		}
+	}
+});

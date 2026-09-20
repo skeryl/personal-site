@@ -72,8 +72,13 @@
 	// ── Zoom and pan ─────────────────────────────────────────────────
 
 	let viewport = $state<HTMLElement | null>(null);
+	/* The visible area: what the quilt is centred in and the minimap reports. */
 	let viewW = $state(0);
 	let viewH = $state(0);
+	/* The scroller's own box, which its scrollbars do not change. */
+	let boxW = $state(0);
+	let boxH = $state(0);
+	let gutter = $state(0);
 	let scrollX = $state(0);
 	let scrollY = $state(0);
 
@@ -84,11 +89,21 @@
 	 * sit in their own gutters outside the scroller, so the viewport's own
 	 * size is already the space available; the slack just keeps the border off
 	 * the edge so fitting never raises a scrollbar.
+	 *
+	 * Measured against the scroller's box rather than its visible area, and a
+	 * scrollbar's width held back from it. A scrollbar shrinks the visible
+	 * area, so sizing the quilt to that let the two chase each other: the
+	 * quilt grew past the viewport, a scrollbar appeared, the quilt shrank to
+	 * fit what was left, the scrollbar went away, and around again. It showed
+	 * as a flicker at whatever zoom sat on the threshold.
 	 */
 	const FIT_SLACK = 8;
 	const base = $derived.by(() => {
-		const availW = viewW - FIT_SLACK;
-		const availH = viewH - FIT_SLACK;
+		// The gutter comes off the width: a scrollbar down the side is the one
+		// that can be there at zoom 1, and nothing overflows sideways until
+		// the quilt is already taller than the viewport.
+		const availW = boxW - FIT_SLACK - gutter;
+		const availH = boxH - FIT_SLACK;
 		if (availW <= 0 || availH <= 0) return { w: 0, h: 0 };
 		const w = Math.max(Math.min(availW, availH * aspect), 80);
 		return { w, h: w / aspect };
@@ -110,6 +125,20 @@
 	/** Where the quilt's top-left corner sits: slack and scroll together. */
 	const offset = $derived({ x: slack.x - scrollX, y: slack.y - scrollY });
 
+	/*
+	 * How much room a scrollbar takes, measured once. Zero where scrollbars
+	 * overlay the content, as they do on a Mac, so nothing is held back there.
+	 */
+	const scrollbarSize = (el: HTMLElement): number => {
+		const probe = document.createElement('div');
+		probe.style.cssText = 'position:absolute;top:-9999px;width:100px;height:100px;overflow:scroll';
+		document.body.append(probe);
+		const size = probe.offsetWidth - probe.clientWidth;
+		probe.remove();
+		// Either the gutter already held open, or what one would take.
+		return Math.max(size, el.offsetWidth - el.clientWidth);
+	};
+
 	const readView = () => {
 		const el = viewport;
 		if (!el) return;
@@ -123,8 +152,11 @@
 		const measure = () => {
 			viewW = el.clientWidth;
 			viewH = el.clientHeight;
+			boxW = el.offsetWidth;
+			boxH = el.offsetHeight;
 			readView();
 		};
+		gutter = scrollbarSize(el);
 		measure();
 		const observer = new ResizeObserver(measure);
 		observer.observe(el);
@@ -717,6 +749,12 @@
 		grid-area: 2 / 2;
 		height: 100%;
 		overflow: auto;
+		/*
+		 * Hold the scrollbar's room open whether or not one is showing, so the
+		 * visible area stops changing under the quilt as it grows. Costs
+		 * nothing where scrollbars overlay the content, as on a Mac trackpad.
+		 */
+		scrollbar-gutter: stable;
 		/*
 		 * Scroll chaining stays on: the wall fills most of the window, so
 		 * trapping the wheel here would strand the toolbar below it.
