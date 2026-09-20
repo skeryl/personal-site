@@ -228,6 +228,18 @@
 	const zoomPercent = $derived(Math.round(store.zoom * 100));
 
 	/*
+	 * A click on the wall away from any square lets the selection go, the way
+	 * clicking off a shape does anywhere else. Only the wall: the palette acts
+	 * on the selection, so clearing it on the way to a control there would
+	 * undo the thing the click was for.
+	 */
+	const onWallDown = (e: PointerEvent) => {
+		if (e.button !== 0) return;
+		if ((e.target as HTMLElement).closest('[data-cell-index]')) return;
+		store.clearSelection();
+	};
+
+	/*
 	 * Seams and piece outlines are non-scaling strokes, a fixed weight in
 	 * device pixels. Against a 4x4 block zoomed out that weight swamps the
 	 * pieces themselves, and neighbouring leaves each draw their own seam, so
@@ -356,7 +368,15 @@
 					{/each}
 				</div>
 			</div>
-			<div class="viewport" class:panning bind:this={viewport} onscroll={readView}>
+			<!-- Presentational: Escape is the keyboard way to drop a selection. -->
+			<div
+				class="viewport"
+				class:panning
+				role="presentation"
+				bind:this={viewport}
+				onscroll={readView}
+				onpointerdown={onWallDown}
+			>
 				<div class="canvas">
 					<div
 						class="blanket"

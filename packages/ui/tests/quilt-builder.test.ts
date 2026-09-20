@@ -1781,3 +1781,19 @@ test('the colour picker closes on a click outside it', async ({ page }) => {
 	await page.locator('.quilt-name').click();
 	await expect(page.locator('.picker-window')).toHaveCount(0);
 });
+
+test('a click on the wall beside the quilt drops the selection', async ({ page }) => {
+	await pickShape(page, 'Half square triangle');
+	await cell(page, 0).click();
+	await selectCell(page, 0);
+	await expect(page.locator('.readout')).toHaveText('A1 square selected');
+
+	// The palette acts on the selection, so a click there must keep it.
+	await page.getByRole('button', { name: '2 by 2', exact: true }).click();
+	await expect(page.locator('.readout')).toHaveText('A1 square selected');
+
+	// The wall itself lets it go.
+	const view = (await page.locator('.viewport').boundingBox())!;
+	await page.mouse.click(view.x + 12, view.y + view.height - 12);
+	await expect(page.locator('.readout')).toHaveText('no squares selected');
+});
