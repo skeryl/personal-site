@@ -47,6 +47,7 @@
 	onpointermove={(e) => store.onPointerMove(e)}
 	onpointerup={(e) => store.onPointerUp(e)}
 	onkeydown={(e) => store.onKeyDown(e)}
+	onkeyup={(e) => store.onKeyUp(e)}
 />
 
 <div class="qb" bind:this={root} style="--qb-top: {top}px">

@@ -106,7 +106,10 @@ export const ZOOM_STEP = 1.25;
 export interface Hover {
 	index: number;
 	point: Point;
-	/** Alt drills into the piece under the cursor rather than the square. */
+	/**
+	 * Alt inverts the grain the tool works at: the Mouse tool drills down to
+	 * the piece under the cursor, Place breaks out to the whole square.
+	 */
 	alt: boolean;
 }
 
@@ -301,10 +304,10 @@ export class QuiltStore {
 	placePreview = $derived.by(() => {
 		if (this.tool !== 'place' || this.gesture || !this.hover) return null;
 		if (!this.canPlace || !this.selectedMaterialId) return null;
-		const { index, point } = this.hover;
+		const { index, point, alt } = this.hover;
 		const pending = this.pending;
 		if (pending.mode === 'pattern') return this.patternUpdates(index, pending.blocks);
-		const target = this.atArmedGrid(this.cells[index]);
+		const target = this.placementTarget(this.cells[index], alt);
 		return new Map([[index, buildPlacement(target, point, pending, this.selectedMaterialId)]]);
 	});
 
@@ -389,14 +392,14 @@ export class QuiltStore {
 
 	// ── Editing ──────────────────────────────────────────────────────
 
-	private placeAt(index: number, point: Point): boolean {
+	private placeAt(index: number, point: Point, whole = false): boolean {
 		if (!this.canPlace || !this.selectedMaterialId) return false;
 		const pending = this.pending;
 		if (pending.mode === 'pattern') {
 			const updates = this.patternUpdates(index, pending.blocks);
 			return updates ? this.commit(updates) : false;
 		}
-		const target = this.atArmedGrid(this.cells[index]);
+		const target = this.placementTarget(this.cells[index], whole);
 		const block = buildPlacement(target, point, pending, this.selectedMaterialId);
 		return this.commit(new Map([[index, block]]));
 	}
@@ -827,11 +830,19 @@ export class QuiltStore {
 	}
 
 	/*
-	 * The square a placement lands in, subdivided to the armed grid when it is
+	 * The square a placement lands in.
+	 *
+	 * Normally the square as it stands, subdivided to the armed grid when it is
 	 * coarser than that. A minimum rather than an override: a square already
 	 * finer keeps its detail instead of being flattened by a placement.
+	 *
+	 * Alt inverts that. It hands the placement a blank square, so the piece
+	 * lands across the whole thing however finely the square was divided,
+	 * saving the select, clear, regrid, place round trip. It is the mirror of
+	 * alt on the Mouse tool, which reaches the other way, down to a piece.
 	 */
-	private atArmedGrid(block: Block): Block {
+	private placementTarget(block: Block, whole: boolean): Block {
+		if (whole) return emptyBlock();
 		if (this.gridDivision <= 1) return block;
 		return divisionOf(block) >= this.gridDivision ? block : recompose(block, this.gridDivision);
 	}
@@ -904,7 +915,7 @@ export class QuiltStore {
 		this.beginGesture({ pointerId: e.pointerId, mode: this.tool });
 		if (this.tool === 'erase') this.eraseAt(index, hit.point);
 		else if (this.tool === 'grid') this.gridAt(index);
-		else this.placeAt(index, hit.point);
+		else this.placeAt(index, hit.point, e.altKey);
 	}
 
 	onPointerMove(e: PointerEvent) {
@@ -929,7 +940,7 @@ export class QuiltStore {
 		if (!g || !hit) return;
 		if (g.mode === 'erase') this.eraseAt(hit.index, hit.point);
 		else if (g.mode === 'grid') this.gridAt(hit.index);
-		else this.placeAt(hit.index, hit.point);
+		else this.placeAt(hit.index, hit.point, e.altKey);
 	}
 
 	onPointerUp(e: PointerEvent) {
@@ -965,6 +976,16 @@ export class QuiltStore {
 		this.placeAt(index, keyboardPoint(this.pending));
 	}
 
+	/** Alt held or released, with the pointer sitting still over a square. */
+	setAlt(down: boolean) {
+		if (!this.hover || this.hover.alt === down) return;
+		this.hover = { ...this.hover, alt: down };
+	}
+
+	onKeyUp(e: KeyboardEvent) {
+		if (e.key === 'Alt') this.setAlt(false);
+	}
+
 	onKeyDown(e: KeyboardEvent) {
 		// Typing in inputs must not trigger shortcuts.
 		if (
@@ -972,6 +993,15 @@ export class QuiltStore {
 			e.target instanceof HTMLTextAreaElement ||
 			e.target instanceof HTMLSelectElement
 		) {
+			return;
+		}
+		/*
+		 * Alt changes what a click would do, so the preview has to follow the
+		 * key as well as the pointer: held still over a square, it should
+		 * redraw the moment alt goes down.
+		 */
+		if (e.key === 'Alt') {
+			this.setAlt(true);
 			return;
 		}
 		if (e.key === 'Escape') {

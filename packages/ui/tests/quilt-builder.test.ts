@@ -1562,6 +1562,41 @@ test('new color in the attributes popover adds a fabric and picks it', async ({ 
 	expect((await cellFills(page, 0))[0]?.toUpperCase()).toBe(`#${picked}`);
 });
 
+test('alt while placing covers the whole square, however finely it is divided', async ({
+	page
+}) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	const cols = await gridCols(page);
+	const target = at(cols, 2, 2);
+
+	// A pinwheel dropped into one sixteenth of a 4x4 square.
+	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	await page.getByRole('button', { name: '4 by 4', exact: true }).click();
+	await cell(page, target).click();
+	await parkMouse(page);
+	expect((await cellFills(page, target)).length).toBeGreaterThan(8);
+
+	// Alt redraws the preview where the pointer already is, without moving it:
+	// one pinwheel across the whole square, the eight pieces it is made of.
+	const box = (await cell(page, target).boundingBox())!;
+	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+	await page.keyboard.down('Alt');
+	await expect.poll(async () => (await cellFills(page, target)).length).toBe(8);
+
+	// And the click commits exactly what was previewed.
+	await page.mouse.down();
+	await page.mouse.up();
+	await page.keyboard.up('Alt');
+	await parkMouse(page);
+	expect(await cellFills(page, target)).toHaveLength(8);
+
+	// Letting go of alt puts the finer grid back in charge.
+	const plain = at(cols, 2, 4);
+	await cell(page, plain).click();
+	await parkMouse(page);
+	expect((await cellFills(page, plain)).length).toBeGreaterThan(8);
+});
+
 test('picking a palette colour leaves the palette where it is', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
 	await addFabric(page, 'Green', '38511f');
