@@ -1614,3 +1614,27 @@ test('picking a palette colour leaves the palette where it is', async ({ page })
 	 */
 	expect((await swatch.boundingBox())!.y).toBe(before.y);
 });
+
+test('arming a placement drops the selection, so R turns what is being placed', async ({
+	page
+}) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await pickShape(page, 'Half square triangle');
+	await cell(page, 0).click();
+	await parkMouse(page);
+	const placed = await cellPoints(page, 0);
+
+	await selectCell(page, 0);
+	await expect(page.locator('.readout')).toHaveText('A1 square selected');
+
+	// Placing and selecting are separate modes.
+	await tool(page, /^Place/).click();
+	await expect(page.locator('.readout')).toHaveText('no squares selected');
+
+	// So R turns the shape waiting to go down, and leaves the quilt alone.
+	await page.keyboard.press('r');
+	await cell(page, 1).click();
+	await parkMouse(page);
+	expect(await cellPoints(page, 0)).toEqual(placed);
+	expect(await cellPoints(page, 1)).not.toEqual(placed);
+});

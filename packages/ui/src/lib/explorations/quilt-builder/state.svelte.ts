@@ -185,7 +185,23 @@ export class QuiltStore {
 	blockId = $state(BLOCK_TYPES[0].id);
 	rotation = $state(0);
 	/* Selecting is the resting state; picking a shape is what arms placing. */
-	tool = $state<Tool>('mouse');
+	#tool = $state<Tool>('mouse');
+
+	get tool(): Tool {
+		return this.#tool;
+	}
+
+	/*
+	 * Placing and selecting are separate modes, so arming placement drops the
+	 * selection. A selection carried in from the Mouse tool went on answering
+	 * for things aimed at the piece being placed: R turned the selected
+	 * squares instead of the block type waiting to go down.
+	 */
+	set tool(next: Tool) {
+		if (next === this.#tool) return;
+		this.#tool = next;
+		if (next === 'place') this.clearSelection();
+	}
 	/** 1 fits the whole quilt in the viewport; above that the wall scrolls. */
 	zoom = $state(1);
 	/*
