@@ -120,7 +120,26 @@
 
 	/* ── Dragging the window by its bar ───────────────────────────── */
 
+	let root = $state<HTMLDivElement | null>(null);
 	let grab = $state<{ x: number; y: number } | null>(null);
+
+	/*
+	 * A click anywhere else puts the picker away. It waits a frame first: the
+	 * pointerdown that opened the window is still travelling when the window
+	 * mounts, and would otherwise close it on the spot.
+	 */
+	$effect(() => {
+		let armed = false;
+		const frame = requestAnimationFrame(() => (armed = true));
+		const onDown = (e: PointerEvent) => {
+			if (armed && root && !root.contains(e.target as Node)) onclose();
+		};
+		window.addEventListener('pointerdown', onDown);
+		return () => {
+			cancelAnimationFrame(frame);
+			window.removeEventListener('pointerdown', onDown);
+		};
+	});
 
 	const onBarDown = (e: PointerEvent) => {
 		/*
@@ -177,7 +196,13 @@
 
 <svelte:window onkeydown={onKeydown} />
 
-<div class="picker-window" role="dialog" aria-label={title} style="left: {pos.x}px; top: {pos.y}px">
+<div
+	class="picker-window"
+	role="dialog"
+	aria-label={title}
+	bind:this={root}
+	style="left: {pos.x}px; top: {pos.y}px"
+>
 	<div
 		class="bar"
 		role="presentation"

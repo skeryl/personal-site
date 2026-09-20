@@ -179,7 +179,11 @@
 					></button>
 					<span class="hex-row">
 						<span class="hex-label">Hex code:</span>
-						<span class="hex-chip">{hexTextOf(fabric)}</span>
+						<span class="hex-chip">
+							{slot.kind === 'fabric'
+								? hexTextOf(slot.id)
+								: ROLE_FILL[slot.role].slice(1).toUpperCase()}
+						</span>
 					</span>
 					<span class="color-name">{fabric ? nameOf(fabric) : 'No color'}</span>
 
@@ -227,6 +231,13 @@
 				aria-label={`Paint with ${material.name.trim() || material.hex.toUpperCase()}. Double-click to edit it.`}
 				onclick={() => store.selectMaterial(material.id)}
 				ondblclick={(e) => openPicker(material.id, rectOf(e))}
+				onkeydown={(e) => {
+					// The swatch you are on is the one delete takes.
+					if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+					e.preventDefault();
+					e.stopPropagation();
+					store.deleteMaterial(material.id);
+				}}
 			></button>
 		{/each}
 		<button class="swatch add" title="Add a color" aria-label="Add a color" onclick={addAndPick}>

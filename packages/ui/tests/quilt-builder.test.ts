@@ -1748,3 +1748,36 @@ test('R turns the shape about to be placed, not the whole palette', async ({ pag
 	const armed = await icons.evaluateAll((els) => els.map((el) => el.classList.contains('active')));
 	expect(armed[turned.indexOf(true)]).toBe(true);
 });
+
+test('the unset slots print the grey they are drawn in', async ({ page }) => {
+	await pickShape(page, 'Half square triangle');
+	await cell(page, 0).click();
+	await parkMouse(page);
+	await selectCell(page, 0);
+
+	await expect(page.locator('.colors .color-label')).toHaveText(['Unset 1', 'Unset 2']);
+	const hexes = (await page.locator('.colors .hex-chip').allTextContents()).map((text) =>
+		text.trim()
+	);
+	expect(hexes).toEqual(['4A4A4A', 'D9D9D9']);
+});
+
+test('delete takes the palette swatch you are on out of the palette', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await addFabric(page, 'Green', '38511f');
+	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(2);
+
+	// Nothing is cut from it, so it goes without asking.
+	await page.getByRole('button', { name: /^Paint with Green/ }).click();
+	await page.keyboard.press('Delete');
+	await expect(page.locator('.palette .swatch:not(.add)')).toHaveCount(1);
+	await expect(page.getByRole('button', { name: /^Paint with Blue/ })).toBeVisible();
+});
+
+test('the colour picker closes on a click outside it', async ({ page }) => {
+	await page.locator('.palette .add').click();
+	await expect(page.locator('.picker-window')).toBeVisible();
+
+	await page.locator('.quilt-name').click();
+	await expect(page.locator('.picker-window')).toHaveCount(0);
+});
