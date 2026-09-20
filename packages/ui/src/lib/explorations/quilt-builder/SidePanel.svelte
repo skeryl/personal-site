@@ -381,6 +381,12 @@
 		outline-offset: 1px;
 	}
 
+	/* Pattern icons are fitted inside the square, so centre them in it. */
+	.saved .type {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
 	.saved {
 		position: relative;
 		display: flex;

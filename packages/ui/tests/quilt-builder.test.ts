@@ -1904,3 +1904,27 @@ test('a palette colour opens the picker, with the palette inside it', async ({ p
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#38511f']);
 });
+test('a pattern taller than it is wide fits the square its icon is given', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	const cols = await gridCols(page);
+	await pickShape(page, 'Half square triangle');
+	await cell(page, at(cols, 1, 0)).click();
+	await cell(page, at(cols, 2, 0)).click();
+	await parkMouse(page);
+
+	// One wide, two tall.
+	await selectCell(page, at(cols, 1, 0));
+	await cell(page, at(cols, 2, 0)).click({ modifiers: ['Shift'] });
+	page.once('dialog', (dialog) => dialog.accept('Tall one'));
+	await page.getByRole('button', { name: /Add selection as pattern/ }).click();
+
+	const icon = (await page.locator('.saved .type').first().boundingBox())!;
+	const art = (await page.locator('.saved .type .pattern').first().boundingBox())!;
+
+	// The button stays square, and the artwork fits inside it rather than
+	// running to twice its height and dwarfing the icons beside it.
+	expect(Math.round(icon.height)).toBe(Math.round(icon.width));
+	expect(art.height).toBeLessThanOrEqual(icon.height + 1);
+	expect(art.width).toBeLessThanOrEqual(icon.width + 1);
+	expect(Math.round(art.height / art.width)).toBe(2);
+});
