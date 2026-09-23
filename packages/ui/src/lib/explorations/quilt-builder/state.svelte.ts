@@ -1146,10 +1146,11 @@ export class QuiltStore {
 			// Escape abandons a drag in flight, dropping nothing.
 			else if (this.blockDrag) this.blockDrag = null;
 			else if (this.marquee) this.marquee = null;
-			// Escape climbs the ladder: piece, block, square, then back to placing.
+			// Escape climbs the ladder: piece, block, square, then back to the
+			// Select tool, which is where the builder starts and rests.
 			else if (this.selectedPiece || this.selectedNode) this.selectParent();
 			else if (this.selection.length) this.clearSelection();
-			else this.tool = 'place';
+			else this.tool = 'mouse';
 			return;
 		}
 		if (this.gesture) return;

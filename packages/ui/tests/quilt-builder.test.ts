@@ -2247,3 +2247,29 @@ test('a swatch with nothing in it still has an edge to aim at', async ({ page })
 		.evaluate((el) => getComputedStyle(el).borderTopWidth);
 	expect(chip).toBe('1px');
 });
+
+test('escape climbs back to the Select tool, where the builder rests', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await expect(tool(page, /^Select/)).toHaveClass(/active/);
+
+	await pickShape(page, 'Pinwheel');
+	await cell(page, 0).click();
+	await expect(tool(page, /^Place/)).toHaveClass(/active/);
+
+	// Down to a piece, then back up a rung at a time.
+	await tool(page, /^Select/).click();
+	await pieceClick(page, 0, 0.25, 0.12);
+	await expect(page.locator('.readout')).toHaveText('A1 piece selected');
+	// A pinwheel is composed, so the piece sits inside a block inside the square.
+	await page.keyboard.press('Escape');
+	await expect(page.locator('.readout')).toHaveText('A1 block selected');
+	await page.keyboard.press('Escape');
+	await expect(page.locator('.readout')).toHaveText('A1 square selected');
+	await page.keyboard.press('Escape');
+	await expect(page.locator('.readout')).toHaveText('no squares selected');
+
+	// And from there it arms nothing: Select is the ground to come back to.
+	await tool(page, /^Place/).click();
+	await page.keyboard.press('Escape');
+	await expect(tool(page, /^Select/)).toHaveClass(/active/);
+});
