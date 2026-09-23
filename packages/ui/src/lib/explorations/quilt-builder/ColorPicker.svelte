@@ -575,7 +575,8 @@
 		width: 30px;
 		height: 18px;
 		padding: 0;
-		border: 1px solid rgba(255, 255, 255, 0.25);
+		/* Light enough to hold its own against a white fabric. */
+		border: 1px solid rgba(255, 255, 255, 0.45);
 		cursor: pointer;
 	}
 	.pick.current {

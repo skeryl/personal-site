@@ -158,10 +158,11 @@
 	{#if store.selectedPiece}
 		<ul class="colors">
 			<li class="color">
-				<span class="color-label">Color 1</span>
+				<span class="color-label">{store.selectedPieceFabric ? 'Color 1' : 'Unset'}</span>
 				<button
 					class="swatch"
-					style="background: {hexOf(store.selectedPieceFabric)}"
+					class:bare={!store.selectedPieceFabric}
+					style={store.selectedPieceFabric ? `background: ${hexOf(store.selectedPieceFabric)}` : ''}
 					aria-label={`Piece colour: ${store.selectedPieceFabric ? nameOf(store.selectedPieceFabric) : 'empty'}. Change it.`}
 					onclick={(e) => openPiece(rectOf(e))}
 				></button>
@@ -361,12 +362,34 @@
 	 * it, and no label in between. The fabric's name belongs to the palette
 	 * below, where it is shown with how much of it the quilt uses.
 	 */
+	/*
+	 * A hairline on every swatch. The design draws them as flat fills, which
+	 * works until the fill is white or near it and the swatch disappears into
+	 * the panel with no edge to aim at.
+	 */
+	.color .swatch,
+	.chip {
+		border: 1px solid var(--qb-line);
+	}
 	.color .swatch {
 		width: 51px;
 		height: 37px;
 		padding: 0;
-		border: none;
 		cursor: pointer;
+	}
+	/*
+	 * Nothing at all, rather than a colour that happens to be white: the
+	 * checkerboard image editors use to mean the same thing.
+	 */
+	.bare {
+		background-color: #fff;
+		background-image:
+			linear-gradient(45deg, #d5d5d5 25%, transparent 25%, transparent 75%, #d5d5d5 75%),
+			linear-gradient(45deg, #d5d5d5 25%, transparent 25%, transparent 75%, #d5d5d5 75%);
+		background-size: 10px 10px;
+		background-position:
+			0 0,
+			5px 5px;
 	}
 	.hex-chip {
 		display: block;
@@ -397,7 +420,6 @@
 		width: 50px;
 		height: 43px;
 		padding: 0;
-		border: none;
 		cursor: pointer;
 	}
 	.chip.current {

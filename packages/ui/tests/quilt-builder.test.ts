@@ -924,9 +924,13 @@ test('column and row headers stay frozen when the wall scrolls', async ({ page }
 		});
 
 	const fit = await probe();
-	// Headers line up with the squares they label.
-	expect(fit.colLeft).toBe(fit.cellLeft);
-	expect(fit.rowTop).toBe(fit.cellTop);
+	/*
+	 * Headers line up with the squares they label, to the pixel. Not exactly:
+	 * the quilt is centred on a fractional offset, so the strip and the cell
+	 * can round to either side of the same position.
+	 */
+	expect(Math.abs(fit.colLeft - fit.cellLeft)).toBeLessThanOrEqual(1);
+	expect(Math.abs(fit.rowTop - fit.cellTop)).toBeLessThanOrEqual(1);
 	/*
 	 * And they sit beside the quilt, not at the far edge of the wall. Zoomed
 	 * out the quilt is centred, and the labels have to cross that slack with
@@ -956,8 +960,8 @@ test('column and row headers stay frozen when the wall scrolls', async ({ page }
 	expect(scrolled.stripTop).toBe(fit.stripTop);
 	expect(scrolled.stripLeft).toBe(fit.stripLeft);
 	// Their contents slid with the quilt, so labels still match their squares.
-	expect(scrolled.colLeft).toBe(scrolled.cellLeft);
-	expect(scrolled.rowTop).toBe(scrolled.cellTop);
+	expect(Math.abs(scrolled.colLeft - scrolled.cellLeft)).toBeLessThanOrEqual(1);
+	expect(Math.abs(scrolled.rowTop - scrolled.cellTop)).toBeLessThanOrEqual(1);
 	// And the quilt really did scroll away from the origin.
 	expect(scrolled.cellLeft).toBeLessThan(fit.cellLeft);
 });
@@ -2206,4 +2210,40 @@ test('a fabric is named in the picker, which the palette then shows', async ({ p
 	await page.locator('.picker-window .name').fill('Indigo');
 	await page.locator('.picker-window .close').click();
 	await expect(page.locator('.entry-name')).toHaveText(['Indigo (0)']);
+});
+
+test('a swatch with nothing in it still has an edge to aim at', async ({ page }) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await pickShape(page, 'Half square triangle');
+	await placeInto(page, 0);
+	await parkMouse(page);
+
+	// Drill to the half that was never coloured.
+	await tool(page, /^Select/).click();
+	await pieceClick(page, 0, 0.75, 0.25);
+	await expect(page.locator('.readout')).toHaveText('A1 piece selected');
+
+	/*
+	 * A white fill on a white panel leaves nothing to click. Nothing at all is
+	 * drawn as the checkerboard image editors use for it, inside a hairline.
+	 */
+	const swatch = page.locator('.colors .swatch').first();
+	await expect(swatch).toHaveClass(/bare/);
+	const drawn = await swatch.evaluate((el) => ({
+		image: getComputedStyle(el).backgroundImage,
+		border: getComputedStyle(el).borderTopWidth
+	}));
+	expect(drawn.image).toContain('linear-gradient');
+	expect(drawn.border).toBe('1px');
+	await expect(page.locator('.colors .color-label')).toHaveText('Unset');
+
+	// And a white fabric keeps its edge in the palette too.
+	await page.getByRole('button', { name: /^Paint with Blue/ }).click();
+	await page.locator('.picker-window .hex-chip').fill('FFFFFF');
+	await page.locator('.picker-window .close').click();
+	const chip = await page
+		.locator('.palette .chip')
+		.first()
+		.evaluate((el) => getComputedStyle(el).borderTopWidth);
+	expect(chip).toBe('1px');
 });
