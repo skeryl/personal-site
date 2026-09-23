@@ -59,9 +59,14 @@
 
 <style>
 	.qb {
-		--qb-mono: 'JetBrains Mono', 'Fira Mono', 'SF Mono', Menlo, Consolas, monospace;
-		/* The design sets its labels and lists in a sans; the values stay mono. */
-		--qb-sans: var(--font-sans, system-ui, -apple-system, 'Segoe UI', sans-serif);
+		/*
+		 * The design's two voices, both loaded from Google Fonts in app.html.
+		 * Mono is the app's own writing — what it is called, what a shape is
+		 * named, what a value reads. Sans is the labelling around it: the
+		 * headings, the field names, the quilt's own ruler marks.
+		 */
+		--qb-mono: 'Spline Sans Mono', 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+		--qb-sans: 'Cabin', var(--font-sans, system-ui, -apple-system, 'Segoe UI', sans-serif);
 
 		/* Read from the design file rather than eyeballed. */
 		--qb-accent: #763edf;
@@ -73,6 +78,11 @@
 		--qb-tile: #d9d9d9;
 		--qb-ink: #525252;
 		--qb-guide: #ff8585;
+		/* The blue every link in the design is set in. */
+		--qb-link: #0011cf;
+		/* The quilt's ruler marks, and the tool names under it. */
+		--qb-rule: #7a7a7a;
+		--qb-tool: #9b9b9b;
 		/* The panel's 40px gutter, in a 426px panel. */
 		--qb-pad: 2.5rem;
 

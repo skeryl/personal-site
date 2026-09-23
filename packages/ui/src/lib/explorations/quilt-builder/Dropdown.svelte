@@ -206,29 +206,32 @@
 		white-space: nowrap;
 	}
 
-	/* Boxed: a field of its own, as the quilt size has over the wall. */
+	/*
+	 * Boxed: the quilt size over the wall. The design drops the field's border
+	 * here and lets the size sit as plain text beside its caret, at the weight
+	 * of the quilt's own name across from it.
+	 */
 	.boxed {
 		display: block;
 	}
 	.boxed .trigger {
-		width: 172px;
 		height: 25px;
-		justify-content: center;
-		position: relative;
-		background: #fff;
-		border: 0.5px solid #000;
+		gap: 10px;
+		justify-content: flex-end;
+		background: none;
+		border: none;
 	}
 	.boxed .display {
 		font-family: var(--qb-sans);
-		font-size: 10px;
-		line-height: 24px;
+		font-size: 16px;
+		line-height: 18px;
 		text-transform: uppercase;
+		color: var(--qb-ink);
 	}
 	.boxed .caret {
-		position: absolute;
-		right: 17px;
-		width: 8px;
-		height: 8px;
+		width: 13px;
+		height: 13px;
+		color: var(--qb-ink);
 	}
 
 	.menu {
@@ -244,7 +247,9 @@
 		font-size: 10px;
 		color: #000;
 	}
-	.inline .menu {
+	/* Both triggers sit at the right of their row, so the list hangs from it. */
+	.inline .menu,
+	.boxed .menu {
 		left: auto;
 		right: 0;
 	}

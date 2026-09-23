@@ -318,8 +318,11 @@
 	.attributes {
 		padding-bottom: 1.5rem;
 	}
+	/* The same 12px Cabin heading the rest of the palette uses. */
 	.label {
-		font-size: 0.75rem;
+		font-family: var(--qb-sans);
+		font-size: 12px;
+		line-height: 18px;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
 		color: #000;
@@ -329,8 +332,10 @@
 	}
 	.hint {
 		margin: 0 var(--qb-pad) 0.5rem;
-		font-size: 0.75rem;
-		color: var(--qb-ink);
+		font-family: var(--qb-sans);
+		font-size: 12px;
+		letter-spacing: 0.36px;
+		color: var(--qb-tool);
 	}
 	.muted {
 		font-style: italic;
@@ -426,12 +431,15 @@
 		outline: 1.5px solid #000;
 		outline-offset: 0;
 	}
+	/* 8px, centred under its swatch: small enough that the name and its
+	   share of the quilt fit the 50px the swatch is wide. */
 	.entry-name {
-		font-size: 10px;
+		font-size: 8px;
 		line-height: 18px;
 		letter-spacing: 0.3px;
+		text-align: center;
 		text-transform: uppercase;
-		color: var(--qb-ink);
+		color: #000;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -445,7 +453,7 @@
 		font-size: 10px;
 		letter-spacing: 0.3px;
 		text-transform: uppercase;
-		color: #1d4ed8;
+		color: var(--qb-link);
 		cursor: pointer;
 	}
 	.add-color:hover {

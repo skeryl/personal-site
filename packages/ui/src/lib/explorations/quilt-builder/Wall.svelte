@@ -333,6 +333,7 @@
 				display={sizeLabel}
 				value={store.sizeId}
 				headings={['Size:', '(W)', '(H)']}
+				width={172}
 				choices={QUILT_SIZES.map((size) => ({
 					value: size.id,
 					label: size.name,
@@ -626,20 +627,31 @@
 </section>
 
 <style>
+	/*
+	 * Held to a fixed height rather than sized by its text. The name and the
+	 * quilt size are set in webfonts, which arrive after the first paint: left
+	 * to size itself, this row changes height as they swap in, and the wall
+	 * below it re-fits the quilt to the fraction of a pixel that frees up.
+	 */
 	.titlebar {
 		flex-shrink: 0;
 		display: flex;
-		align-items: baseline;
+		align-items: center;
 		justify-content: space-between;
 		gap: 2rem;
-		padding: 0.7rem 2rem 0.6rem;
+		box-sizing: border-box;
+		height: 3rem;
+		padding: 0 2rem;
 	}
+	/* The quilt's own name, in the app's writing at the design's 17.75px. */
 	.quilt-name {
 		flex: 1;
 		min-width: 0;
 		font: inherit;
-		font-size: 1.05rem;
-		color: var(--color-text-strong);
+		font-family: var(--qb-mono);
+		font-size: 17.75px;
+		line-height: 18px;
+		color: var(--qb-ink);
 		background: none;
 		border: none;
 		border-bottom: 1px solid transparent;
@@ -689,11 +701,14 @@
 		display: flex;
 		align-items: center;
 	}
+	/* Instructional prose, so it takes the same voice as the tool names. */
 	.banner {
-		font-size: 0.7rem;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
-		color: var(--color-text-secondary);
+		font-family: var(--qb-sans);
+		font-style: italic;
+		font-size: 12px;
+		line-height: 20px;
+		letter-spacing: 0.36px;
+		color: var(--qb-tool);
 	}
 
 	.stage {
@@ -789,13 +804,19 @@
 		box-sizing: border-box;
 		will-change: transform;
 	}
+	/*
+	 * The letters and numbers ruling the quilt's edges. The design sets these
+	 * in the sans, larger and lighter than the app's own writing, so they read
+	 * as marks on a ruler rather than as labels you could click.
+	 */
 	.head {
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		height: var(--head-h);
-		font-size: 0.8rem;
-		color: var(--qb-ink);
+		font-family: var(--qb-sans);
+		font-size: 17.75px;
+		color: var(--qb-rule);
 		line-height: 1;
 	}
 	.row-headers {
@@ -1007,6 +1028,12 @@
 		justify-self: start;
 		gap: 0.4rem;
 	}
+	/* Chrome rather than design: kept quieter than the two rows above it. */
+	.zoom .action {
+		font-size: 0.7rem;
+		letter-spacing: 0.1em;
+		color: var(--color-text-secondary);
+	}
 	.zoom-level {
 		min-width: 3.5rem;
 	}
@@ -1024,24 +1051,49 @@
 		margin-top: 0.75rem;
 	}
 
+	/*
+	 * Two rows under the quilt, in two voices, as the design sets them. The
+	 * tools are named in the sans, italic and grey, because they describe what
+	 * the mouse is about to do. What acts on the quilt itself — centre it,
+	 * clear it — is the app's own writing: mono, uppercase, black.
+	 */
 	.action {
 		border: none;
 		background: none;
 		padding: 0.2rem 0;
 		font: inherit;
-		font-size: 0.7rem;
-		letter-spacing: 0.1em;
+		font-size: 12px;
+		line-height: 20px;
+		letter-spacing: 0.36px;
 		text-transform: uppercase;
-		color: var(--color-text-secondary);
+		color: #000;
 		cursor: pointer;
+	}
+	.actions .action {
+		font-family: var(--qb-sans);
+		font-style: italic;
+		text-transform: none;
+		color: var(--qb-tool);
 	}
 	.action kbd {
 		font: inherit;
 		opacity: 0.6;
 	}
+	/* The design writes the shortcut in brackets, beside the tool's name. */
+	.actions .action kbd {
+		opacity: 1;
+	}
+	.actions .action kbd::before {
+		content: '(';
+	}
+	.actions .action kbd::after {
+		content: ')';
+	}
 	.action:hover:not(:disabled),
-	.action.active {
-		color: var(--color-text-strong);
+	.action.active,
+	.actions .action:hover:not(:disabled),
+	.actions .action.active {
+		color: #000;
 	}
 	.action.active {
 		text-decoration: underline;

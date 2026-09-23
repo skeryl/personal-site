@@ -41,8 +41,7 @@ export type OperatorCategory = 'logic' | 'compare' | 'arithmetic' | 'aggregate' 
 export type ParamType = ValueType | 'numeric';
 
 export type Arity =
-	| { kind: 'fixed'; params: ParamType[] }
-	| { kind: 'variadic'; param: ParamType; min: number };
+	{ kind: 'fixed'; params: ParamType[] } | { kind: 'variadic'; param: ParamType; min: number };
 
 export interface ApplyError {
 	error: 'div-by-zero' | 'empty-array' | 'no-match' | 'unknown-field' | 'type-mismatch';

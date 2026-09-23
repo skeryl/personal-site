@@ -315,11 +315,11 @@
 		border: none;
 		background: none;
 		font: inherit;
-		font-size: 0.7rem;
-		font-weight: 600;
-		letter-spacing: 0.12em;
+		font-size: 10px;
+		line-height: 10px;
+		letter-spacing: 0.3px;
 		text-transform: uppercase;
-		color: #1d4ed8;
+		color: var(--qb-link);
 		cursor: pointer;
 	}
 	.export:hover:not(:disabled) {
@@ -374,11 +374,17 @@
 		border-bottom: 1px solid var(--qb-line);
 	}
 	.label {
-		/* 12px uppercase, in black: the design's section heading. */
-		font-size: 0.75rem;
+		/* 12px uppercase Cabin, in black: the design's section heading. */
+		font-family: var(--qb-sans);
+		font-size: 12px;
+		line-height: 18px;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
 		color: #000;
+	}
+	/* Attributes heads a whole pane rather than a list, and is set larger. */
+	.pane > .label {
+		font-size: 16px;
 	}
 	.section {
 		padding: 1.5rem var(--qb-pad) 0.55rem;
@@ -430,8 +436,12 @@
 		stroke: currentColor;
 		stroke-dasharray: 5 5;
 	}
+	/* The count under each tile is a label, so it is set in the sans. */
 	.chip-label {
-		font-size: 0.75rem;
+		font-family: var(--qb-sans);
+		font-size: 11px;
+		line-height: 18px;
+		text-transform: uppercase;
 		color: var(--qb-ink);
 	}
 	.chip.active .chip-label {
@@ -476,9 +486,12 @@
 		flex-direction: column;
 		gap: 0.2rem;
 	}
+	/* A pattern's name is the app's own writing, so it stays mono. */
 	.saved-name {
-		font-size: 0.7rem;
-		color: var(--qb-ink);
+		font-size: 12px;
+		line-height: 18px;
+		text-transform: uppercase;
+		color: #000;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -507,14 +520,16 @@
 		opacity: 1;
 	}
 
+	/* The design's other "+ add" link, in the same blue and the same size. */
 	.add-new {
 		display: block;
 		margin: 0.9rem var(--qb-pad) 0;
 		font: inherit;
-		font-size: 0.7rem;
-		letter-spacing: 0.06em;
+		font-size: 10px;
+		line-height: 18px;
+		letter-spacing: 0.3px;
 		text-transform: uppercase;
-		color: var(--color-text-secondary);
+		color: var(--qb-link);
 		background: none;
 		border: none;
 		padding: 0;
@@ -522,7 +537,8 @@
 		text-align: left;
 	}
 	.add-new:hover:not(:disabled) {
-		color: var(--color-text-strong);
+		text-decoration: underline;
+		text-underline-offset: 0.25em;
 	}
 	.add-new:disabled {
 		opacity: 0.5;
@@ -535,12 +551,15 @@
 	 * pointer mid-gesture: the second half of a double-click then lands on
 	 * whatever slid into its place.
 	 */
+	/* Prose about what to do next, so it takes the sans the design labels in. */
 	.hint {
 		margin: 0.6rem var(--qb-pad) 0;
 		min-height: 3.375rem;
-		font-size: 0.75rem;
+		font-family: var(--qb-sans);
+		font-size: 12px;
 		line-height: 1.5;
-		color: var(--color-text-secondary);
+		letter-spacing: 0.36px;
+		color: var(--qb-tool);
 	}
 	.link {
 		font: inherit;
