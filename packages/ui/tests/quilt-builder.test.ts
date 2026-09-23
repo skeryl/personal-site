@@ -41,14 +41,13 @@ const selectCell = async (page: Page, index: number) => {
 
 /*
  * Board indices depend on the quilt size, which is a product decision that
- * moves. Read the grid width off the caption and address cells by row and
- * column so these tests survive the next size change.
+ * moves. Count the column headers and address cells by row and column so
+ * these tests survive the next size change.
  */
 const gridCols = async (page: Page) => {
-	const caption = await page.locator('.caption').innerText();
-	const match = caption.match(/(\d+)\s*×\s*(\d+)/);
-	if (!match) throw new Error(`could not read grid size from caption: ${caption}`);
-	return Number(match[1]);
+	const cols = await page.locator('.col-headers .head').count();
+	if (!cols) throw new Error('could not read grid size: no column headers');
+	return cols;
 };
 
 const at = (cols: number, row: number, col: number) => row * cols + col;
@@ -546,7 +545,9 @@ test('the app fits the window: only the wall and the palette scroll', async ({ p
 			wallOverflowsAtFit:
 				viewport.scrollHeight > viewport.clientHeight + 1 ||
 				viewport.scrollWidth > viewport.clientWidth + 1,
-			stackOverflowY: getComputedStyle(document.querySelector('.stack')!).overflowY,
+			sectionOverflowY: Array.from(document.querySelectorAll('.group, .pane-scroll')).map(
+				(el) => getComputedStyle(el).overflowY
+			),
 			sideOverflowsShell: side.clientHeight > body.clientHeight + 1
 		};
 	});
@@ -555,9 +556,9 @@ test('the app fits the window: only the wall and the palette scroll', async ({ p
 	expect(state.pageOverflow).toBeLessThanOrEqual(0);
 	// At 100% the whole quilt fits, so the wall has nothing to scroll.
 	expect(state.wallOverflowsAtFit).toBe(false);
-	// However long the shape list gets, it scrolls inside the shell rather
-	// than stretching it.
-	expect(state.stackOverflowY).toBe('auto');
+	// However long a list gets, it scrolls inside its own section rather than
+	// stretching the panel: block type, block patterns and attributes.
+	expect(state.sectionOverflowY).toEqual(['auto', 'auto', 'auto']);
 	expect(state.sideOverflowsShell).toBe(false);
 
 	// Every header is drawn, none clipped off the top or left.
@@ -1819,12 +1820,8 @@ test('the titlebar is name and size alone, and the bottom is two rows', async ({
 	expect(actions.y + actions.height).toBeLessThanOrEqual(wallActions.y + 1);
 	expect(wallActions.y + wallActions.height).toBeLessThanOrEqual(footer.y + 1);
 	const zoom = await boxOf('.zoom');
-	const caption = await boxOf('.caption');
-	for (const part of [zoom, caption]) {
-		expect(part.y).toBeGreaterThanOrEqual(footer.y - 1);
-		expect(part.y + part.height).toBeLessThanOrEqual(footer.y + footer.height + 1);
-	}
-	expect(zoom.x).toBeLessThan(caption.x);
+	expect(zoom.y).toBeGreaterThanOrEqual(footer.y - 1);
+	expect(zoom.y + zoom.height).toBeLessThanOrEqual(footer.y + footer.height + 1);
 });
 
 test('a square placed with no colour is a shape, and the eraser takes it', async ({ page }) => {

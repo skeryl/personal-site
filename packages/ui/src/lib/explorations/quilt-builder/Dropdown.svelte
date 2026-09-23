@@ -199,10 +199,11 @@
 	.inline .trigger {
 		border-bottom: 1px solid #000;
 	}
+	/* Set at the size of the label it answers, so the pair reads as one line. */
 	.inline .display {
 		font-family: var(--qb-mono);
-		font-size: 10px;
-		line-height: 18px;
+		font-size: 12px;
+		line-height: 20px;
 		white-space: nowrap;
 	}
 

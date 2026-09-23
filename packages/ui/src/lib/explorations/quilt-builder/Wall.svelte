@@ -80,9 +80,6 @@
 		return size ? `${size.name} (${size.width}”x${size.height}”)` : 'Custom';
 	});
 
-	const finishedW = $derived(store.dims.cols * store.blockSize);
-	const finishedH = $derived(store.dims.rows * store.blockSize);
-
 	// ── Zoom and pan ─────────────────────────────────────────────────
 
 	let viewport = $state<HTMLElement | null>(null);
@@ -617,11 +614,6 @@
 				>
 				<span class="zoom-hint">⌃scroll</span>
 			</div>
-
-			<p class="caption">
-				{store.dims.cols} × {store.dims.rows} blocks at {store.blockSize}” · {finishedW}” × {finishedH}”
-				finished
-			</p>
 		</div>
 	</div>
 </section>
@@ -1011,16 +1003,6 @@
 		grid-template-columns: 1fr auto 1fr;
 		align-items: center;
 		gap: 1rem;
-	}
-	/* The site gives every <p> vertical padding; this one sets its own room. */
-	.caption {
-		margin: 0;
-		padding: 0;
-		text-align: center;
-		font-size: 0.7rem;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: var(--color-text-secondary);
 	}
 	.zoom {
 		display: flex;

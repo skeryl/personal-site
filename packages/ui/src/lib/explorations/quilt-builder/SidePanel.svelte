@@ -100,9 +100,9 @@
 		/>
 	</div>
 
-	<div class="stack">
-		<details class="group" data-panel="type" bind:open={store.panels.type}>
-			<summary class="label section">Block type</summary>
+	<details class="group" data-panel="type" bind:open={store.panels.type}>
+		<summary class="label section">Block type</summary>
+		<div class="group-scroll">
 			<div class="types">
 				{#each cutEntries as entry (entry.cut.id)}
 					<button
@@ -129,10 +129,12 @@
 					</button>
 				{/each}
 			</div>
-		</details>
+		</div>
+	</details>
 
-		<details class="group" data-panel="patterns" bind:open={store.panels.patterns}>
-			<summary class="label section">Block patterns</summary>
+	<details class="group" data-panel="patterns" bind:open={store.panels.patterns}>
+		<summary class="label section">Block patterns</summary>
+		<div class="group-scroll">
 			{#if patternEntries.length}
 				<div class="types">
 					{#each patternEntries as entry (entry.saved.id)}
@@ -172,8 +174,8 @@
 						: 'Select filled blocks on the quilt to save them as a pattern.'}
 				</p>
 			{/if}
-		</details>
-	</div>
+		</div>
+	</details>
 
 	<section class="pane">
 		<h2 class="label section">Attributes</h2>
@@ -272,14 +274,61 @@
 	 * reach for while looking at the quilt rather than while browsing.
 	 */
 	.side {
-		display: grid;
-		grid-template-rows: auto minmax(0, 1fr) auto auto;
+		display: flex;
+		flex-direction: column;
 		background: var(--qb-panel);
 		border-right: 1px solid var(--qb-line);
 		font-family: var(--qb-mono);
 		min-height: 0;
 	}
-	.stack {
+	/* The dimensions and the export hold their own height at either end. */
+	.dimensions,
+	.trailer {
+		flex: none;
+	}
+	/*
+	 * Three sections of equal height, each scrolling inside itself. The
+	 * headings stay where they are however long the lists get, so the panel
+	 * as a whole never scrolls and nothing you are reaching for moves.
+	 */
+	.group,
+	.pane {
+		flex: 1 1 0;
+		min-height: 0;
+	}
+	/* Collapsed, a section is its heading and nothing else. */
+	.group:not([open]) {
+		flex: none;
+	}
+	/*
+	 * The disclosure scrolls as a whole with its heading pinned to the top,
+	 * rather than holding a scrolling box inside itself: a <details> wraps
+	 * everything below the summary in a box of its own making, which will not
+	 * take a height from us, so an inner scroller just overflows the section.
+	 */
+	.group {
+		overflow-y: auto;
+		overscroll-behavior: contain;
+	}
+	.group > summary {
+		position: sticky;
+		top: 0;
+		z-index: 1;
+		background: var(--qb-panel);
+	}
+	.group-scroll {
+		padding-bottom: 0.9rem;
+	}
+	/* Attributes is a plain section, so its heading and body can sit apart. */
+	.pane {
+		display: flex;
+		flex-direction: column;
+	}
+	.pane > .label {
+		flex: none;
+	}
+	.pane-scroll {
+		flex: 1;
 		min-height: 0;
 		overflow-y: auto;
 		overscroll-behavior: contain;
@@ -289,21 +338,7 @@
 	 * itself rather than pushing the export off the bottom of the panel.
 	 */
 	.pane {
-		display: flex;
-		flex-direction: column;
-		/*
-		 * Bounded in absolute units, not a share of the panel: a percentage
-		 * here resolves against the very row it is sizing, so the pane came
-		 * out shorter than its own track and left a gap above the export.
-		 */
-		min-height: 17rem;
-		max-height: 27rem;
 		border-top: 1px solid var(--qb-line);
-	}
-	.pane-scroll {
-		min-height: 0;
-		overflow-y: auto;
-		overscroll-behavior: contain;
 	}
 	.trailer {
 		display: flex;
@@ -332,7 +367,6 @@
 	}
 	.group {
 		border-top: 1px solid var(--qb-line);
-		padding-bottom: 0.9rem;
 	}
 	/*
 	 * Native disclosures, so keyboard and screen readers get the behaviour for
