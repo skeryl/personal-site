@@ -52,6 +52,12 @@ const gridCols = async (page: Page) => {
 
 const at = (cols: number, row: number, col: number) => row * cols + col;
 
+/** The palette's names are editable fields, so read their values. */
+const paletteNames = (page: Page) =>
+	page
+		.locator('.entry-label')
+		.evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value));
+
 /** The palette has no tabs: cuts and block types sit in one Block type list. */
 const pickShape = (page: Page, name: string) =>
 	page.getByRole('button', { name, exact: true }).click();
@@ -2174,14 +2180,16 @@ test('the palette names each fabric and how much of it the quilt uses', async ({
 	await addFabric(page, 'Peach', 'f4a6a6');
 
 	// Nothing cut yet, so nothing used.
-	await expect(page.locator('.entry-name')).toHaveText(['Denim (0)', 'Peach (0)']);
+	expect(await paletteNames(page)).toEqual(['Denim', 'Peach']);
+	await expect(page.locator('.entry-count')).toHaveText(['(0)', '(0)']);
 
 	await page.getByRole('button', { name: /^Paint with Denim/ }).click();
 	await page.locator('.picker-window .close').click();
 	await pickShape(page, 'Square');
 	for (const index of [0, 1, 2]) await cell(page, index).click();
 	await parkMouse(page);
-	await expect(page.locator('.entry-name')).toHaveText(['Denim (3)', 'Peach (0)']);
+	expect(await paletteNames(page)).toEqual(['Denim', 'Peach']);
+	await expect(page.locator('.entry-count')).toHaveText(['(3)', '(0)']);
 
 	// The design's own sizes: 50 by 43 in the palette, 51 by 37 in the
 	// selection, with the hex directly under it and no label between.
@@ -2200,13 +2208,50 @@ test('the palette names each fabric and how much of it the quilt uses', async ({
 
 test('a fabric is named in the picker, which the palette then shows', async ({ page }) => {
 	await addFabric(page, 'Denim', '4f7fe8');
-	await expect(page.locator('.entry-name')).toHaveText(['Denim (0)']);
+	expect(await paletteNames(page)).toEqual(['Denim']);
+	await expect(page.locator('.entry-count')).toHaveText(['(0)']);
 
 	// Renaming there reaches the palette, which is the only place it shows.
 	await page.getByRole('button', { name: /^Paint with Denim/ }).click();
 	await page.locator('.picker-window .name').fill('Indigo');
 	await page.locator('.picker-window .close').click();
-	await expect(page.locator('.entry-name')).toHaveText(['Indigo (0)']);
+	expect(await paletteNames(page)).toEqual(['Indigo']);
+	await expect(page.locator('.entry-count')).toHaveText(['(0)']);
+});
+
+test('a palette name is edited where it is read, and never hides its count', async ({ page }) => {
+	await addFabric(page, 'Denim', '3244b3');
+
+	// The name is a field under its swatch, and typing in it renames the
+	// fabric everywhere.
+	const name = page.locator('.entry-label').first();
+	await name.fill('Flamingo');
+	await expect(page.getByRole('button', { name: /^Paint with Flamingo/ })).toBeVisible();
+
+	/*
+	 * However long the name, the count keeps its own room at the end of the
+	 * row: it is the name that gives way, so you can always read how much of
+	 * a fabric the quilt uses.
+	 */
+	const room = await page
+		.locator('.entry-name')
+		.first()
+		.evaluate((row) => {
+			const field = row.querySelector('.entry-label') as HTMLElement;
+			const count = row.querySelector('.entry-count') as HTMLElement;
+			return {
+				clipped: field.scrollWidth > field.clientWidth + 1,
+				countFits: count.getBoundingClientRect().right <= row.getBoundingClientRect().right + 1
+			};
+		});
+	expect(room.clipped).toBe(true);
+	expect(room.countFits).toBe(true);
+	await expect(page.locator('.entry-count')).toHaveText(['(0)']);
+
+	// Emptied, it falls back to the fabric's own hex rather than going blank.
+	await name.fill('');
+	await expect(name).toHaveAttribute('placeholder', '3244B3');
+	expect(await paletteNames(page)).toEqual(['']);
 });
 
 test('a swatch with nothing in it still has an edge to aim at', async ({ page }) => {

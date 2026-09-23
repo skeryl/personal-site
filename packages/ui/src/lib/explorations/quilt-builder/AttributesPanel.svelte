@@ -228,7 +228,24 @@
 						store.deleteMaterial(material.id);
 					}}
 				></button>
-				<span class="entry-name" title={name}>{name} ({store.usage.get(material.id) ?? 0})</span>
+				<!--
+					The name is editable where it is read, and falls back to the
+					fabric's hex until it is given one. Its count of pieces on the
+					quilt sits outside the field, so a long name is shortened
+					against it rather than pushing it out of sight.
+				-->
+				<span class="entry-name" title={name}>
+					<input
+						class="entry-label"
+						type="text"
+						maxlength="40"
+						aria-label={`Name for ${name}`}
+						value={material.name}
+						placeholder={material.hex.slice(1).toUpperCase()}
+						oninput={(e) => store.renameMaterial(material.id, e.currentTarget.value)}
+					/>
+					<span class="entry-count">({store.usage.get(material.id) ?? 0})</span>
+				</span>
 			</div>
 		{/each}
 		<button class="add-color" onclick={addAndPick}>+ Add color</button>
@@ -372,9 +389,15 @@
 	 * works until the fill is white or near it and the swatch disappears into
 	 * the panel with no edge to aim at.
 	 */
+	/*
+	 * Square, as the design cuts them. The corners have to be said out loud:
+	 * "chip" is also a Tailwind class the site generates, and it rounds
+	 * anything wearing the name.
+	 */
 	.color .swatch,
 	.chip {
 		border: 1px solid var(--qb-line);
+		border-radius: 0;
 	}
 	.color .swatch {
 		width: 51px;
@@ -427,22 +450,55 @@
 		padding: 0;
 		cursor: pointer;
 	}
+	/* The fabric you are painting with, ringed in black. */
 	.chip.current {
-		outline: 1.5px solid #000;
+		outline: 2px solid #000;
 		outline-offset: 0;
+		border-color: #000;
 	}
-	/* 8px, centred under its swatch: small enough that the name and its
-	   share of the quilt fit the 50px the swatch is wide. */
+	/*
+	 * 8px under its swatch: small enough that a name and its share of the
+	 * quilt fit the 50px the swatch is wide. The count holds its own width at
+	 * the end of the row and the name takes what is left, so it is the name
+	 * that shortens — FLA...(10) rather than a count run off the edge.
+	 */
 	.entry-name {
+		display: flex;
+		align-items: baseline;
+		width: 50px;
 		font-size: 8px;
 		line-height: 18px;
 		letter-spacing: 0.3px;
-		text-align: center;
 		text-transform: uppercase;
 		color: #000;
+	}
+	.entry-label {
+		flex: 1;
+		min-width: 0;
+		font: inherit;
+		letter-spacing: inherit;
+		text-transform: inherit;
+		color: inherit;
+		background: none;
+		border: none;
+		border-radius: 0;
+		padding: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+	/* Unnamed, a fabric reads as its hex, in the same ink as any other name. */
+	.entry-label::placeholder {
+		color: inherit;
+		opacity: 1;
+	}
+	.entry-label:focus {
+		outline: none;
+		box-shadow: 0 1px 0 0 #000;
+	}
+	.entry-count {
+		flex: none;
+		padding-left: 0.25em;
 	}
 	.add-color {
 		align-self: center;
