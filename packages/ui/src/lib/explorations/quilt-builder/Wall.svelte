@@ -890,10 +890,17 @@
 	.tool-mouse .cell.hovered {
 		outline-color: rgba(199, 102, 228, 0.7);
 	}
+	/*
+	 * Marked the way everything picked in the builder is marked: a black
+	 * hairline held off the square. It stands outside the cell rather than
+	 * inside it, so it crosses the hairline gap into the neighbour — which is
+	 * what lets a run of selected squares read as one shape with a line round
+	 * it instead of a grid of separate boxes.
+	 */
 	.cell.selected,
 	.tool-mouse .cell.selected {
-		outline: 3px solid var(--qb-accent);
-		outline-offset: -3px;
+		outline: var(--qb-picked);
+		outline-offset: var(--qb-picked-gap);
 		z-index: 2;
 	}
 	/* The square holding a drilled-in selection, so you keep your bearings. */

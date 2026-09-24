@@ -89,6 +89,8 @@
 	 */
 	const TILE_W = 55.2;
 	const TILE_H = 55.9;
+	/* Every rule inside the tile, chosen or not: the ring says which is which. */
+	const RULE = 1;
 
 	const selectedCount = $derived(store.selection.length);
 	const capturableCount = $derived(store.capturable.length);
@@ -234,7 +236,6 @@
 				<div class="composition" role="group" aria-label="Block grid">
 					{#each DIVISIONS as division (division)}
 						{@const label = division === 1 ? 'One piece' : `${division} by ${division}`}
-						{@const weight = store.activeDivision === division ? 1.5 : 1}
 						<button
 							class="chip"
 							class:active={store.activeDivision === division}
@@ -261,17 +262,17 @@
 							>
 								<rect
 									class="chip-frame"
-									x={weight / 2}
-									y={weight / 2}
-									width={TILE_W - weight}
-									height={TILE_H - weight}
-									stroke-width={weight}
+									x={RULE / 2}
+									y={RULE / 2}
+									width={TILE_W - RULE}
+									height={TILE_H - RULE}
+									stroke-width={RULE}
 								/>
 								{#each { length: division - 1 } as _, i (i)}
 									{@const x = ((i + 1) * TILE_W) / division}
 									{@const y = ((i + 1) * TILE_H) / division}
-									<line x1={x} y1="0" x2={x} y2={TILE_H} stroke-width={weight} />
-									<line x1="0" y1={y} x2={TILE_W} y2={y} stroke-width={weight} />
+									<line x1={x} y1="0" x2={x} y2={TILE_H} stroke-width={RULE} />
+									<line x1="0" y1={y} x2={TILE_W} y2={y} stroke-width={RULE} />
 								{/each}
 							</svg>
 							<span class="chip-label">
@@ -537,9 +538,12 @@
 	.chip:hover .chip-grid {
 		color: #000;
 	}
-	/* The design marks the chosen tile with a heavier black rule, not colour. */
+	/* The box says which tile is chosen, so the tile is drawn the same either
+	   way and only goes black to match its ring. */
 	.chip.active .chip-grid {
 		color: #000;
+		outline: var(--qb-picked);
+		outline-offset: var(--qb-picked-gap);
 	}
 	.chip-frame {
 		fill: none;
@@ -579,8 +583,10 @@
 	.type:hover {
 		border-color: var(--qb-ink);
 	}
+	/* Ringed, not bordered: a heavier edge would shift what is inside it. */
 	.type.active {
-		border: 1.5px solid #000;
+		outline: var(--qb-picked);
+		outline-offset: var(--qb-picked-gap);
 	}
 	.type:focus-visible {
 		outline: 2px solid var(--qb-accent);

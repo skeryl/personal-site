@@ -657,13 +657,19 @@ test('selected blocks are outlined, not just labelled', async ({ page }) => {
 	await parkMouse(page);
 	await expect(page.locator('.readout')).toHaveText('C3 square selected');
 
+	// The ring every picked thing in the builder wears.
 	const outline = await outlineOf(page, target);
 	expect(outline.style).toBe('solid');
-	expect(parseFloat(outline.width)).toBeGreaterThanOrEqual(3);
+	expect(parseFloat(outline.width)).toBeGreaterThan(0);
+	expect(outline.color).toBe('rgb(0, 0, 0)');
 
-	// An unselected neighbour has no outline at all.
+	/*
+	 * An unselected neighbour has no outline at all. The style is what says
+	 * so: Chrome goes on reporting a width for an outline it is not drawing,
+	 * so reading the width alone finds one where nothing is painted.
+	 */
 	const other = await outlineOf(page, at(cols, 2, 3));
-	expect(parseFloat(other.width) || 0).toBe(0);
+	expect(other.style).toBe('none');
 });
 
 test('dragging a block type stamps each square once, without painting a trail', async ({
@@ -1378,8 +1384,9 @@ test('the block grid tiles are squares labelled by division', async ({ page }) =
 	);
 	expect(seams).toEqual([0, 2, 6]);
 
-	// Seams are hairlines that run edge to edge, and the chosen tile is ruled
-	// heavier: 1px and 1.5px, dashed 5 and 5, straight from the design.
+	// Seams are hairlines that run edge to edge, dashed 5 and 5, straight from
+	// the design — the same in every tile, chosen or not. What marks the
+	// chosen one is the ring around it, not a heavier rule inside it.
 	const drawn = await page.$$eval('.composition .chip', (chips) =>
 		chips.map((chip) => {
 			const svg = chip.querySelector('svg')!;
@@ -1394,10 +1401,9 @@ test('the block grid tiles are squares labelled by division', async ({ page }) =
 		})
 	);
 	for (const tileState of drawn) {
-		const weight = tileState.active ? '1.5' : '1';
-		expect(tileState.frame).toBe(weight);
+		expect(tileState.frame).toBe('1');
 		if (tileState.stroke === null) continue;
-		expect(tileState.stroke).toBe(weight);
+		expect(tileState.stroke).toBe('1');
 		expect(tileState.dash).toBe('5px, 5px');
 		// Top edge to bottom edge, with no inset.
 		expect(tileState.spans).toBe('0..55.9');
@@ -2425,6 +2431,36 @@ test('in and mm is one switch, and it reaches every measurement', async ({ page 
 		'aria-pressed',
 		'true'
 	);
+});
+
+test('everything picked in the builder is marked the same way', async ({ page }) => {
+	await addFabric(page, 'Denim', '3244b3');
+	await pickShape(page, 'Pinwheel');
+	await cell(page, 0).click();
+	await tool(page, /^Select/).click();
+	await cell(page, 0).click();
+	await parkMouse(page);
+
+	/*
+	 * A shape in the palette, a grid tile, a colour, and a square on the wall
+	 * are four different things to pick, and used to be marked four different
+	 * ways — a border here, a heavier rule there, a purple ring on the quilt.
+	 * They take one treatment now: a black hairline held off the thing.
+	 */
+	const ring = async (selector: string) =>
+		page
+			.locator(selector)
+			.first()
+			.evaluate((el) => {
+				const cs = getComputedStyle(el);
+				return [cs.outlineWidth, cs.outlineStyle, cs.outlineColor, cs.outlineOffset].join(' ');
+			});
+
+	const shape = await ring('.types .type.active');
+	expect(shape).toBe('1px solid rgb(0, 0, 0) 2px');
+	expect(await ring('.composition .chip.active .chip-grid')).toBe(shape);
+	expect(await ring('.palette .chip.current')).toBe(shape);
+	expect(await ring('.cell.selected')).toBe(shape);
 });
 
 test('a swatch with nothing in it still has an edge to aim at', async ({ page }) => {

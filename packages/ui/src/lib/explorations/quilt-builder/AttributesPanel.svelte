@@ -444,8 +444,8 @@
 	 * colour with a dark edge.
 	 */
 	.chip.current {
-		outline: 1.5px solid #000;
-		outline-offset: 1.5px;
+		outline: var(--qb-picked);
+		outline-offset: var(--qb-picked-gap);
 	}
 	/*
 	 * 8px under its swatch: small enough that a name and its share of the

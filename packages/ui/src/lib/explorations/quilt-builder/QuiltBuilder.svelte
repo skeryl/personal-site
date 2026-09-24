@@ -80,6 +80,13 @@
 		--qb-guide: #ff8585;
 		/* The blue every link in the design is set in. */
 		--qb-link: #0011cf;
+		/*
+		 * How anything picked is marked, wherever it is picked: a hairline of
+		 * black held off the thing itself, so what you chose still reads as
+		 * the colour or the shape it is rather than as one with a dark edge.
+		 */
+		--qb-picked: 1px solid #000;
+		--qb-picked-gap: 2px;
 		/* The quilt's ruler marks, and the tool names under it. */
 		--qb-rule: #7a7a7a;
 		--qb-tool: #9b9b9b;
