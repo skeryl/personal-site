@@ -119,7 +119,7 @@
 >
 	<div class="sheet-frame" role="dialog" aria-modal="true" aria-label="Materials list">
 		<div class="controls">
-			<button class="act" onclick={savePdf}>Save as PDF</button>
+			<button class="act" onclick={savePdf}>Print / Save as PDF</button>
 			<button class="act" onclick={() => store.exportMaterialsList()}>Download text</button>
 			<button class="act" onclick={onclose}>Close</button>
 		</div>
