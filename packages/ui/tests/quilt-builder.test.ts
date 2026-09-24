@@ -2254,6 +2254,35 @@ test('a palette name is edited where it is read, and never hides its count', asy
 	expect(await paletteNames(page)).toEqual(['']);
 });
 
+test('the chosen swatch is boxed clear of its colour', async ({ page }) => {
+	await addFabric(page, 'Denim', '3244b3');
+	await page.getByRole('button', { name: /^Paint with Denim/ }).click();
+	await page.locator('.picker-window .close').click();
+
+	/*
+	 * The design marks a chosen tile with a rule that stands off it, so the
+	 * swatch still reads as the colour it is rather than as a colour with a
+	 * dark edge. An outline drawn at an offset is that gap.
+	 */
+	const mark = await page
+		.locator('.palette .chip.current')
+		.first()
+		.evaluate((el) => {
+			const cs = getComputedStyle(el);
+			return { width: cs.outlineWidth, offset: cs.outlineOffset, style: cs.outlineStyle };
+		});
+	expect(mark.style).toBe('solid');
+	expect(parseFloat(mark.offset)).toBeGreaterThan(0);
+	expect(parseFloat(mark.width)).toBeGreaterThan(0);
+
+	// And the name below is set at a size meant to be read.
+	const size = await page
+		.locator('.entry-label')
+		.first()
+		.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+	expect(size).toBeGreaterThanOrEqual(10);
+});
+
 test('a swatch with nothing in it still has an edge to aim at', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
 	await pickShape(page, 'Half square triangle');

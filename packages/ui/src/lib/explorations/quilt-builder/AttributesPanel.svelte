@@ -239,6 +239,7 @@
 						class="entry-label"
 						type="text"
 						maxlength="40"
+						size={Math.max(name.length, 1)}
 						aria-label={`Name for ${name}`}
 						value={material.name}
 						placeholder={material.hex.slice(1).toUpperCase()}
@@ -431,18 +432,30 @@
 	}
 
 	/* Swatches 50 by 43, each over its name and its share of the quilt. */
+	/*
+	 * Rows sit far enough apart that a chosen swatch's box has room to stand
+	 * clear of the name under it. Across, the gap is small because the names
+	 * already carry room of their own: it is the space between the swatches
+	 * that should read as the design's, not the space between the columns.
+	 */
 	.palette {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: flex-start;
-		gap: 0.75rem 19px;
+		gap: 1.25rem 10px;
 		padding: 0 var(--qb-pad);
 	}
+	/*
+	 * Wider than the swatch it belongs to. The design sizes the name to the
+	 * swatch, which only works at the 8px it sets them in; at a size that can
+	 * actually be read, the name needs the extra room or it would shorten to
+	 * a few letters.
+	 */
 	.entry {
 		display: flex;
 		flex-direction: column;
 		gap: 0;
-		width: 50px;
+		width: 70px;
 	}
 	.chip {
 		width: 50px;
@@ -450,11 +463,15 @@
 		padding: 0;
 		cursor: pointer;
 	}
-	/* The fabric you are painting with, ringed in black. */
+	/*
+	 * The fabric you are painting with, boxed in black the way the design
+	 * marks a chosen tile: the rule stands off the colour rather than sitting
+	 * on it, so the swatch is still read as the colour it is and not as a
+	 * colour with a dark edge.
+	 */
 	.chip.current {
-		outline: 2px solid #000;
-		outline-offset: 0;
-		border-color: #000;
+		outline: 1.5px solid #000;
+		outline-offset: 3px;
 	}
 	/*
 	 * 8px under its swatch: small enough that a name and its share of the
@@ -465,15 +482,22 @@
 	.entry-name {
 		display: flex;
 		align-items: baseline;
-		width: 50px;
-		font-size: 8px;
+		width: 70px;
+		/* Clears the box drawn around a chosen swatch. */
+		margin-top: 4px;
+		font-size: 10px;
 		line-height: 18px;
 		letter-spacing: 0.3px;
 		text-transform: uppercase;
 		color: #000;
 	}
+	/*
+	 * Only as wide as the name needs. Stretched to fill the row instead, the
+	 * count was thrown out to the far edge and each entry's number ended up
+	 * closer to the next fabric's name than to its own.
+	 */
 	.entry-label {
-		flex: 1;
+		flex: 0 1 auto;
 		min-width: 0;
 		font: inherit;
 		letter-spacing: inherit;
