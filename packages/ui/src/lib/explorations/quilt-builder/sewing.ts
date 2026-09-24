@@ -84,7 +84,11 @@ const nameOf = (block: Block, patterns: readonly Pattern[]): string => {
 	if (pattern) return pattern.name.trim() || 'Block';
 	const type = BLOCK_TYPES.find((t) => sameStructure(t.block, block));
 	if (type) return type.name;
-	if (block.kind === 'leaf') return CUTS[block.cut]?.name ?? block.cut;
+	// A pattern names a half square triangle an HST, and has the room for it.
+	if (block.kind === 'leaf') {
+		const cut = CUTS[block.cut];
+		return cut?.abbr ?? cut?.name ?? block.cut;
+	}
 	return 'Block';
 };
 

@@ -2346,10 +2346,7 @@ test("the materials list is the design's three sections, off the panel", async (
 	 * pinwheel is not sewn as a pinwheel.
 	 */
 	const sew = page.locator('.sheet .row').last().locator('.caption');
-	await expect(sew).toHaveText([
-		/^Pinwheel - 8 x 8” \(2\)$/,
-		/^Half square triangle - 4 x 4” \(8\)$/
-	]);
+	await expect(sew).toHaveText([/^Pinwheel - 8 x 8” \(2\)$/, /^HST - 4 x 4” \(8\)$/]);
 
 	await closeMaterials(page);
 	await expect(page.locator('.sheet')).toHaveCount(0);

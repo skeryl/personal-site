@@ -38,6 +38,11 @@ export type CutGroup = 'piece' | 'block' | 'legacy';
 export interface Cut {
 	id: string;
 	name: string;
+	/*
+	 * What a quilter calls it in a pattern, where the full name would run on.
+	 * Only the ones with a shorthand in the trade carry this.
+	 */
+	abbr?: string;
 	group: CutGroup;
 	pieces: PieceShape[];
 }
@@ -118,6 +123,7 @@ const PIECES: Cut[] = [
 	{
 		id: 'hst',
 		name: 'Half square triangle',
+		abbr: 'HST',
 		group: 'piece',
 		pieces: [piece('hst', 1, 0, [TL, BR, BL]), piece('hst', 1, 1, [TL, TR, BR])]
 	},

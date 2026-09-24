@@ -20,7 +20,7 @@ describe('sewListFor', () => {
 		const list = sewListFor(Array(4).fill(pinwheel()), 8);
 		expect(list.map((u) => [u.name, u.inches, u.count])).toEqual([
 			['Pinwheel', 8, 4],
-			['Half square triangle', 4, 16]
+			['HST', 4, 16]
 		]);
 	});
 
