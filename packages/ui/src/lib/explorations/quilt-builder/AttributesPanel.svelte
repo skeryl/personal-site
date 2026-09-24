@@ -310,8 +310,20 @@
 		letter-spacing: 0.36px;
 		color: var(--qb-tool);
 	}
+	/*
+	 * With nothing selected the note sits straight under the heading, as the
+	 * design draws it: the heading's own bottom padding is taken back, and
+	 * then the few pixels the design laps the two lines by. There are no
+	 * swatches between them to separate, and the gap only read as something
+	 * missing.
+	 */
 	.muted {
 		font-style: italic;
+		/* The site gives every <p> its own vertical padding; this one is a
+		   single line and sets its own room. */
+		padding: 0;
+		margin-top: calc(-0.55rem - 3px);
+		line-height: 20px;
 	}
 
 	/* Two 107px columns, 33px apart: the design's attributes block. */
