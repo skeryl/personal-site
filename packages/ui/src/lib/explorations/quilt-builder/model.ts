@@ -113,7 +113,17 @@ export const blocksEqual = (a: Block, b: Block): boolean => {
 export const sameStructure = (a: Block, b: Block): boolean => {
 	if (a.kind !== b.kind) return false;
 	if (a.kind === 'leaf' && b.kind === 'leaf') {
-		return a.cut === b.cut && a.rotation === b.rotation && a.roleOffset === b.roleOffset;
+		return (
+			a.cut === b.cut &&
+			a.rotation === b.rotation &&
+			/*
+			 * Absent and zero are the same offset. Which of the two a leaf
+			 * carries says whether somebody placed it or it is blank space —
+			 * that is what is in the block, not the shape of it, and blocksEqual
+			 * is where the difference belongs.
+			 */
+			(a.roleOffset ?? 0) === (b.roleOffset ?? 0)
+		);
 	}
 	const g = a as GridBlock;
 	const h = b as GridBlock;

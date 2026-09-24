@@ -185,3 +185,32 @@ describe('a block type lands in the sub-block under the cursor', () => {
 		expect(quarter.some((p) => p.fabric === 'navy')).toBe(true);
 	});
 });
+
+describe('stamping the same block onto itself', () => {
+	/*
+	 * Clicking a block type onto a square it already fills recolours the piece
+	 * under the cursor. It must keep doing that however many times you click:
+	 * painting marks the leaf it touched as placed, and the guard has to go on
+	 * recognising its own work through that mark, or the third click starts
+	 * nesting pinwheels inside pinwheels.
+	 */
+	it('recolours rather than nesting, however many times it is stamped', () => {
+		const pending = { mode: 'stamp' as const, block: BLOCK_TYPE_BY_ID.pinwheel.block };
+		let block: Block = emptyBlock();
+		for (let i = 0; i < 6; i++) {
+			block = buildPlacement(block, [0.3, 0.3], pending, `m${i}`);
+			expect(divisionOf(block)).toBe(2);
+			expect(flatten(block)).toHaveLength(8);
+		}
+		// And the clicks land somewhere: the piece under the cursor is repainted.
+		expect(fabrics(block)).toContain('m5');
+	});
+
+	it('still nests a different block type into the square under the cursor', () => {
+		const pinwheel = { mode: 'stamp' as const, block: BLOCK_TYPE_BY_ID.pinwheel.block };
+		const hourglass = { mode: 'stamp' as const, block: BLOCK_TYPE_BY_ID.hourglass.block };
+		const first = buildPlacement(emptyBlock(), [0.3, 0.3], pinwheel, 'a');
+		const second = buildPlacement(first, [0.3, 0.3], hourglass, 'b');
+		expect(flatten(second).length).toBeGreaterThan(flatten(first).length);
+	});
+});
