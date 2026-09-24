@@ -47,9 +47,18 @@
 		return Math.ceil((inches / 36) * 8) / 8;
 	};
 
-	/* Written the way a bolt is cut: in eighths, not in decimals. */
-	const fmtYards = (yards: number): string =>
-		yards === 0 ? '—' : `${fmtInches(yards)} ${yards <= 1 ? 'yard' : 'yards'}`;
+	/*
+	 * Written the way a bolt is cut: in eighths, not in decimals — or in
+	 * metres to a tenth, where fabric is sold by the metre instead.
+	 */
+	const fmtYards = (yards: number): string => {
+		if (yards === 0) return '—';
+		if (store.metric) {
+			const metres = Math.ceil(yards * 0.9144 * 10) / 10;
+			return `${metres} ${metres === 1 ? 'metre' : 'metres'}`;
+		}
+		return `${fmtInches(yards)} ${yards <= 1 ? 'yard' : 'yards'}`;
+	};
 
 	/* Fabrics the quilt actually uses, in the order the palette holds them. */
 	const fabrics = $derived(

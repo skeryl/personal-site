@@ -7,7 +7,7 @@
  * block, so a pinwheel's small triangles come from half-block blanks.
  */
 
-import { DEFAULT_SEAM_INCHES, fmtInches, type Material } from './data';
+import { DEFAULT_SEAM_INCHES, fmtInches, fmtLengthPair, type Material } from './data';
 import { type ShapeKind } from './geometry';
 import { flatten, type Block } from './model';
 
@@ -161,7 +161,7 @@ export interface CutPiece {
 	label: string;
 }
 
-const dims = (w: number, h: number): string => `${fmtInches(w)}x${fmtInches(h)}â€`;
+const dims = fmtLengthPair;
 
 /*
  * A blank is a square, except for a rectangle, which is the square cut in
@@ -173,7 +173,7 @@ const dims = (w: number, h: number): string => `${fmtInches(w)}x${fmtInches(h)}â
  * to be used: at the cutting table they are the same cut, and listing them
  * apart would ask for the same square twice.
  */
-export const cutPiecesFor = (groups: readonly CutGroup[]): CutPiece[] => {
+export const cutPiecesFor = (groups: readonly CutGroup[], metric = false): CutPiece[] => {
 	const merged = new Map<string, CutPiece>();
 	groups.forEach((group) =>
 		group.rows.forEach((row) =>
@@ -191,6 +191,6 @@ export const cutPiecesFor = (groups: readonly CutGroup[]): CutPiece[] => {
 	);
 	return [...merged.values()].map((piece) => ({
 		...piece,
-		label: `${plural(piece.count, piece.kind === 'rect' ? 'rectangle' : 'square')} - ${dims(piece.w, piece.h)} (${piece.count})`
+		label: `${plural(piece.count, piece.kind === 'rect' ? 'rectangle' : 'square')} - ${dims(piece.w, piece.h, metric)} (${piece.count})`
 	}));
 };

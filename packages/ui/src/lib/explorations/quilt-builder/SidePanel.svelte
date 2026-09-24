@@ -10,7 +10,14 @@
 	 * the store works it out.
 	 */
 
-	import { BINDINGS, BLOCK_SIZES, SEAM_ALLOWANCES, fmtFraction, fmtInches } from './data';
+	import {
+		BINDINGS,
+		BLOCK_SIZES,
+		SEAM_ALLOWANCES,
+		fmtFraction,
+		fmtInches,
+		fmtLength
+	} from './data';
 	import Dropdown from './Dropdown.svelte';
 	import { BLOCK_TYPES } from './blocks';
 	import { PIECE_CUTS, ROLE_FILL } from './geometry';
@@ -67,38 +74,69 @@
 		})
 	);
 
+	/*
+	 * Inches are written the way the design writes them — 1/4, 5/8 — rather
+	 * than as the eighths glyphs, so the dimensions read as a pattern does.
+	 * Millimetres have no such convention and are just numbers.
+	 */
+	const metric = $derived(store.metric);
+	const fraction = (inches: number) => (metric ? fmtLength(inches, true) : fmtFraction(inches));
+	const length = (inches: number) => (metric ? fmtLength(inches, true) : `${fmtInches(inches)}”`);
+
 	const selectedCount = $derived(store.selection.length);
 	const capturableCount = $derived(store.capturable.length);
 </script>
 
 <aside class="side">
+	<!--
+		Which unit every measurement is written in. A two-part track rather than
+		a pair of buttons: the design marks the chosen half of the rule, so the
+		control reads as one switch with a side thrown, not two things to press.
+	-->
+	<div class="units" role="group" aria-label="Units">
+		<button
+			class="unit"
+			class:on={!metric}
+			aria-pressed={!metric}
+			onclick={() => (store.panels.metric = false)}>in</button
+		>
+		<button
+			class="unit"
+			class:on={metric}
+			aria-pressed={metric}
+			onclick={() => (store.panels.metric = true)}>mm</button
+		>
+	</div>
+
 	<!-- The dimensions the whole design is cut to, along the top. -->
 	<div class="dimensions">
 		<Dropdown
 			label="Block size:"
-			display={`${store.blockSize}”`}
+			display={length(store.blockSize)}
 			value={String(store.blockSize)}
-			choices={BLOCK_SIZES.map((size) => ({ value: String(size), label: `${size}”` }))}
+			choices={BLOCK_SIZES.map((size) => ({ value: String(size), label: length(size) }))}
 			onpick={(next) => store.setBlockSize(Number(next))}
 		/>
 		<Dropdown
 			label="Seam allowance:"
-			display={fmtFraction(store.seamInches)}
+			display={fraction(store.seamInches)}
 			value={String(store.seamInches)}
 			title="Added to every side of every blank in the cutting list"
 			choices={SEAM_ALLOWANCES.map((inches) => ({
 				value: String(inches),
-				label: `${fmtFraction(inches)}”`
+				label: metric ? fmtLength(inches, true) : `${fmtFraction(inches)}”`
 			}))}
 			onpick={(next) => (store.seamInches = Number(next))}
 		/>
 		<Dropdown
 			label="Binding"
-			display={`${fmtFraction(store.bindingInches)}”`}
+			display={metric
+				? fmtLength(store.bindingInches, true)
+				: `${fmtFraction(store.bindingInches)}”`}
 			value={String(store.bindingInches)}
 			choices={BINDINGS.map((inches) => ({
 				value: String(inches),
-				label: `${fmtFraction(inches)}”`
+				label: metric ? fmtLength(inches, true) : `${fmtFraction(inches)}”`
 			}))}
 			onpick={(next) => (store.bindingInches = Number(next))}
 		/>
@@ -195,7 +233,7 @@
 							class:active={store.activeDivision === division}
 							aria-pressed={store.activeDivision === division}
 							aria-label={label}
-							title={`${label}, ${fmtInches(store.blockSize / division)}” pieces`}
+							title={`${label}, ${length(store.blockSize / division)} pieces`}
 							onclick={() => store.setGrid(division)}
 						>
 							<!--
@@ -400,6 +438,35 @@
 	}
 	summary:hover {
 		color: var(--color-text-strong);
+	}
+
+	/*
+	 * Two 22px halves of one 44px rule. The chosen half is drawn black and
+	 * heavier over a light track, which is what says which unit is in force.
+	 */
+	.units {
+		display: flex;
+		width: 44px;
+		margin: 10px 0 0 10px;
+	}
+	.unit {
+		flex: 1;
+		padding: 0 0 1px;
+		border: none;
+		border-bottom: 1px solid var(--qb-line);
+		background: none;
+		font-family: var(--qb-mono);
+		font-size: 10px;
+		font-weight: 300;
+		line-height: 18px;
+		text-transform: uppercase;
+		color: var(--qb-tool);
+		cursor: pointer;
+	}
+	.unit.on {
+		border-bottom: 2px solid #000;
+		font-weight: 700;
+		color: #000;
 	}
 
 	/* Three dimensions on one line, at the design's 10px gutter. */

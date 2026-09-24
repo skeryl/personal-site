@@ -105,7 +105,9 @@ export const DEFAULT_PANELS: Panels = {
 	type: true,
 	patterns: true,
 	attributes: true,
-	centerGuides: false
+	centerGuides: false,
+	/* Inches unless asked otherwise, which is what the design opens on. */
+	metric: false
 };
 
 /** Keys that change what the pointer would do, so the preview must follow. */
@@ -304,8 +306,9 @@ export class QuiltStore {
 	canRedo = $derived(this.history.future.length > 0);
 	cutting = $derived(cuttingListFor(this.cells, this.materials, this.blockSize, this.seamInches));
 	/* What the materials list shows: the shapes to cut, and the units to sew. */
-	cutPieces = $derived(cutPiecesFor(this.cutting));
-	sewList = $derived(sewListFor(this.cells, this.blockSize, this.patterns));
+	metric = $derived(this.panels.metric === true);
+	cutPieces = $derived(cutPiecesFor(this.cutting, this.metric));
+	sewList = $derived(sewListFor(this.cells, this.blockSize, this.patterns, this.metric));
 
 	selectedPattern = $derived(
 		this.blockId.startsWith(PATTERN_PREFIX)

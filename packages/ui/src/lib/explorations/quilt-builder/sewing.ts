@@ -9,6 +9,7 @@
  */
 
 import { BLOCK_TYPES } from './blocks';
+import { fmtLengthPair } from './data';
 import { CUTS } from './geometry';
 import { isEmpty, sameStructure, type Block } from './model';
 import { cellsOf, type Pattern } from './pattern';
@@ -53,7 +54,8 @@ const nameOf = (block: Block, patterns: readonly Pattern[]): string => {
 export const sewListFor = (
 	blocks: readonly Block[],
 	blockSize: number,
-	patterns: readonly Pattern[] = []
+	patterns: readonly Pattern[] = [],
+	metric = false
 ): SewUnit[] => {
 	const tally = new Map<string, { block: Block; count: number }>();
 	blocks.forEach((block) => {
@@ -73,7 +75,7 @@ export const sewListFor = (
 				name,
 				inches: blockSize,
 				count,
-				label: `${name} - ${blockSize}x${blockSize}” (${count})`
+				label: `${name} - ${fmtLengthPair(blockSize, blockSize, metric)} (${count})`
 			};
 		});
 };

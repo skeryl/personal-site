@@ -2375,6 +2375,42 @@ test('the materials list saves as a letter page of its own', async ({ page }) =>
 	await expect(page).not.toHaveTitle(/Materials List/);
 });
 
+test('in and mm is one switch, and it reaches every measurement', async ({ page }) => {
+	await addFabric(page, 'Denim', '3244b3');
+	await pickShape(page, 'Pinwheel');
+	await cell(page, 0).click();
+	await parkMouse(page);
+
+	// Inches to start with, written as the design writes them.
+	const unit = (name: string) => page.locator('.units .unit', { hasText: name });
+	await expect(unit('in')).toHaveAttribute('aria-pressed', 'true');
+	await expect(page.locator('.dimensions .display')).toHaveText(['8”', '1/4', '5/8”']);
+	await expect(page.locator('.size .display')).toContainText('48”x64”');
+
+	await unit('mm').click();
+
+	// The switch throws, and the whole builder changes its mind with it.
+	await expect(unit('mm')).toHaveAttribute('aria-pressed', 'true');
+	await expect(unit('in')).toHaveAttribute('aria-pressed', 'false');
+	await expect(page.locator('.dimensions .display')).toHaveText(['203mm', '6mm', '16mm']);
+	await expect(page.locator('.size .display')).toContainText('1219mmx1626mm');
+
+	// Including the sheet you take to the shop, yardage and all.
+	await openMaterials(page);
+	await expect(page.locator('.sheet .caption').first()).toContainText('mm');
+	await expect(page.locator('.sheet .fabric-yards').first()).toContainText('metre');
+	await closeMaterials(page);
+
+	// And it is remembered, like the other small choices.
+	await page.waitForTimeout(AUTOSAVE_MS);
+	await page.reload();
+	await page.waitForSelector('[data-cell-index="0"]');
+	await expect(page.locator('.units .unit', { hasText: 'mm' })).toHaveAttribute(
+		'aria-pressed',
+		'true'
+	);
+});
+
 test('a swatch with nothing in it still has an edge to aim at', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
 	await pickShape(page, 'Half square triangle');

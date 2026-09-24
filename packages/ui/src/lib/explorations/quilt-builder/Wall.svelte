@@ -7,6 +7,7 @@
 		QUILT_SIZE_BY_ID,
 		QUILT_SIZES
 	} from './data';
+	import { fmtLength } from './data';
 	import Dropdown from './Dropdown.svelte';
 	import Minimap from './Minimap.svelte';
 	import { ROLE_FILL, toPolygonPoints } from './geometry';
@@ -75,9 +76,10 @@
 
 	/** What the size field shows: the preset's name and its finished inches. */
 	const sizeLabel = $derived.by(() => {
-		if (store.isCustomSize) return `Custom (${store.customWidth}”x${store.customHeight}”)`;
+		const w = (inches: number) => fmtLength(inches, store.metric);
+		if (store.isCustomSize) return `Custom (${w(store.customWidth)}x${w(store.customHeight)})`;
 		const size = QUILT_SIZE_BY_ID[store.sizeId];
-		return size ? `${size.name} (${size.width}”x${size.height}”)` : 'Custom';
+		return size ? `${size.name} (${w(size.width)}x${w(size.height)})` : 'Custom';
 	});
 
 	// ── Zoom and pan ─────────────────────────────────────────────────
@@ -334,7 +336,7 @@
 				choices={QUILT_SIZES.map((size) => ({
 					value: size.id,
 					label: size.name,
-					cols: [`${size.width}”`, `${size.height}”`]
+					cols: [fmtLength(size.width, store.metric), fmtLength(size.height, store.metric)]
 				}))}
 				custom={{
 					value: CUSTOM_SIZE_ID,
