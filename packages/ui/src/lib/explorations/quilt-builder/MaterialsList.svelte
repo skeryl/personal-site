@@ -78,7 +78,7 @@
 	 * One scale per row, taken from its largest shape, so the pieces read
 	 * against each other. The design draws each row to fit the same band.
 	 */
-	const BAND = 156;
+	const BAND = 100;
 	const cutScale = $derived(
 		BAND / Math.max(1, ...store.cutPieces.map((piece) => Math.max(piece.w, piece.h)))
 	);
@@ -139,9 +139,9 @@
 
 			<h2 class="section">Fabric</h2>
 			{#if fabrics.length}
-				<ul class="fabrics">
+				<ul class="band fabrics">
 					{#each fabrics as material (material.id)}
-						<li class="fabric">
+						<li class="cell fabric">
 							<span
 								class="fabric-swatch"
 								style="background: {material.hex}"
@@ -157,7 +157,7 @@
 
 			<h2 class="section">Cut List</h2>
 			{#if store.cutPieces.length}
-				<ul class="row cut">
+				<ul class="band row cut">
 					{#each store.cutPieces as piece, i (`${piece.material.id}-${piece.kind}-${piece.w}-${piece.h}-${i}`)}
 						<li class="cell">
 							<span class="art">
@@ -177,7 +177,7 @@
 
 			<h2 class="section">Sew List</h2>
 			{#if store.sewList.length}
-				<ul class="row">
+				<ul class="band row sew">
 					{#each store.sewList as unit, i (`${unit.name}-${i}`)}
 						<li class="cell">
 							<span class="art">
@@ -264,7 +264,7 @@
 		padding: 30px 0 40px;
 		background: #fff;
 		color: #000;
-		--sheet-indent: 61px;
+		--sheet-indent: 10px;
 	}
 	.quilt {
 		margin: 0;
@@ -284,8 +284,9 @@
 		color: var(--qb-ink);
 	}
 	.section {
-		margin: 26px 0 0;
-		padding: 0 0 9px var(--sheet-indent);
+		margin: 0;
+		padding: 5px 0 6px var(--sheet-indent);
+		border-top: 0.5px solid var(--qb-line);
 		border-bottom: 0.5px solid var(--qb-line);
 		font-family: var(--qb-sans);
 		font-size: 12px;
@@ -304,18 +305,34 @@
 	}
 
 	/* Fabric: a 48px swatch, its name, and what to buy. */
+	/*
+	 * Each section's contents sit in a band ruled down both sides, held in
+	 * from the page edge the rules above and below it run to.
+	 */
+	.band {
+		box-sizing: border-box;
+		margin: 0 10px;
+		border-left: 0.5px solid var(--qb-line);
+		border-right: 0.5px solid var(--qb-line);
+	}
 	.fabrics {
 		list-style: none;
-		margin: 0;
-		padding: 10px 0 0 var(--sheet-indent);
+		padding: 0;
 		display: flex;
-		flex-direction: column;
-		gap: 10px;
+		flex-wrap: wrap;
+		align-items: stretch;
+		min-height: 141px;
 	}
-	.fabric {
-		display: flex;
+	/*
+	 * A swatch and what to buy, reading across rather than down the page.
+	 * Named past .cell, which stacks what it holds and centres it.
+	 */
+	.fabrics .cell {
+		flex-direction: row;
 		align-items: center;
+		justify-content: flex-start;
 		gap: 12px;
+		padding: 0 10px 0 51px;
 	}
 	.fabric-swatch {
 		flex: none;
@@ -334,18 +351,19 @@
 	 * Cut and sew both lay their shapes out in a row of columns ruled apart,
 	 * each shape sitting on the row's own baseline so the sizes compare.
 	 */
+	/* The bands keep the depth the design gives them, however little is in. */
 	.row {
 		list-style: none;
-		margin: 0;
-		padding: 8px 0 0;
+		padding: 26px 0 24px;
 		display: flex;
 		flex-wrap: wrap;
 		align-items: stretch;
 	}
-	/* The cut list is closed off before the sew list is announced. */
 	.row.cut {
-		padding-bottom: 8px;
-		border-bottom: 0.5px solid var(--qb-line);
+		min-height: 227px;
+	}
+	.row.sew {
+		min-height: 244px;
 	}
 	.cell {
 		flex: 1 1 0;
@@ -365,7 +383,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		min-height: 180px;
+		min-height: 120px;
 	}
 	.cut-shape {
 		display: block;
