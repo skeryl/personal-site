@@ -17,11 +17,15 @@
 	import { flatten, leafBlock, rotateBlock, type Block } from './model';
 	import { boundsOf, rotatePattern } from './pattern';
 	import AttributesPanel from './AttributesPanel.svelte';
+	import MaterialsList from './MaterialsList.svelte';
 	import BlockSvg from './BlockSvg.svelte';
 	import PatternSvg from './PatternSvg.svelte';
 	import { DIVISIONS, PATTERN_PREFIX, type QuiltStore } from './state.svelte';
 
 	let { store }: { store: QuiltStore } = $props();
+
+	/* The materials list opens over the builder rather than downloading. */
+	let showMaterials = $state(false);
 
 	/** Icon fills: dark for the fabric role, light for background, white for empty. */
 	const roleFills = (block: Block): string[] =>
@@ -256,15 +260,15 @@
 	</section>
 
 	<div class="trailer">
-		<button
-			class="export"
-			onclick={() => store.exportMaterialsList()}
-			disabled={!store.cutting.length}
-		>
+		<button class="export" onclick={() => (showMaterials = true)} disabled={!store.cutting.length}>
 			Export materials list
 		</button>
 	</div>
 </aside>
+
+{#if showMaterials}
+	<MaterialsList {store} onclose={() => (showMaterials = false)} />
+{/if}
 
 <style>
 	/*

@@ -141,3 +141,56 @@ export const materialsListText = (info: ExportInfo, groups: readonly CutGroup[])
 	});
 	return lines.join('\n');
 };
+
+/*
+ * The materials list, as the design lays it out.
+ *
+ * The cutting list above answers "how many blanks", which is what the quilt
+ * costs in fabric. These two answer what you actually do at the table: what
+ * shapes to cut out, and what units to sew from them.
+ */
+
+/** One shape to cut, at the size it is cut to. */
+export interface CutPiece {
+	material: Material;
+	kind: ShapeKind;
+	/** Cut size in inches, seam allowance included. */
+	w: number;
+	h: number;
+	count: number;
+	label: string;
+}
+
+const dims = (w: number, h: number): string => `${fmtInches(w)}x${fmtInches(h)}”`;
+
+/*
+ * A blank is a square, except for a rectangle, which is the square cut in
+ * half — so that is the shape you lay on the fabric, and there are two of
+ * them per blank. Triangles are sub-cut after piecing, so what you cut is
+ * still the square.
+ *
+ * Shapes of the same size in the same fabric are one entry however they go on
+ * to be used: at the cutting table they are the same cut, and listing them
+ * apart would ask for the same square twice.
+ */
+export const cutPiecesFor = (groups: readonly CutGroup[]): CutPiece[] => {
+	const merged = new Map<string, CutPiece>();
+	groups.forEach((group) =>
+		group.rows.forEach((row) =>
+			row.kinds.forEach((k) => {
+				const rect = k.kind === 'rect';
+				const w = rect ? row.inches / 2 : row.inches;
+				const h = row.inches;
+				const count = rect ? k.pieces : k.blanks;
+				const key = `${group.material.id}|${w}|${h}`;
+				const seen = merged.get(key);
+				if (seen) seen.count += count;
+				else merged.set(key, { material: group.material, kind: k.kind, w, h, count, label: '' });
+			})
+		)
+	);
+	return [...merged.values()].map((piece) => ({
+		...piece,
+		label: `${plural(piece.count, piece.kind === 'rect' ? 'rectangle' : 'square')} - ${dims(piece.w, piece.h)} (${piece.count})`
+	}));
+};

@@ -52,6 +52,15 @@ const gridCols = async (page: Page) => {
 
 const at = (cols: number, row: number, col: number) => row * cols + col;
 
+/** The cutting figures live in the materials list now, not in the panel. */
+const openMaterials = async (page: Page) => {
+	await page.locator('.side .export').click();
+	await page.waitForSelector('.sheet');
+};
+
+const closeMaterials = (page: Page) =>
+	page.locator('.sheet-frame .act', { hasText: 'Close' }).click();
+
 /** The palette's names are editable fields, so read their values. */
 const paletteNames = (page: Page) =>
 	page
@@ -198,9 +207,9 @@ test('stamping a block keeps the fabric underneath in the background slots', asy
 	await parkMouse(page);
 
 	expect(await cellFills(page, 5)).toEqual(['#38511f', '#4f7fe8', '#4f7fe8', '#4f7fe8', '#4f7fe8']);
-	await page.locator('.cut-list summary').click();
-	await expect(page.locator('.cut-group').first()).toContainText('4½” squares: (2)');
-	await expect(page.locator('.cut-group').last()).toContainText('6⅛” squares: (1)');
+	await openMaterials(page);
+	await expect(page.locator('.sheet .caption').first()).toContainText('4½x4½” (2)');
+	await expect(page.locator('.sheet .caption').nth(1)).toContainText('6⅛x6⅛” (1)');
 });
 
 test('the design, fabrics, and size survive a reload', async ({ page }) => {
@@ -226,8 +235,9 @@ test('composition subdivides a block without changing how it looks', async ({ pa
 	await cell(page, 0).click();
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#4f7fe8']);
-	await page.locator('.cut-list summary').click();
-	await expect(page.locator('.cut-group').first()).toContainText('8½” squares: (1)');
+	await openMaterials(page);
+	await expect(page.locator('.sheet .caption').first()).toContainText('8½x8½” (1)');
+	await closeMaterials(page);
 
 	await selectCell(page, 0);
 
@@ -236,12 +246,16 @@ test('composition subdivides a block without changing how it looks', async ({ pa
 	await composition(page, /^2 by 2$/).click();
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(Array(4).fill('#4f7fe8'));
-	await expect(page.locator('.cut-group').first()).toContainText('4½” squares: (4)');
+	await openMaterials(page);
+	await expect(page.locator('.sheet .caption').first()).toContainText('4½x4½” (4)');
+	await closeMaterials(page);
 
 	await composition(page, /^4 by 4$/).click();
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(Array(16).fill('#4f7fe8'));
-	await expect(page.locator('.cut-group').first()).toContainText('2½” squares: (16)');
+	await openMaterials(page);
+	await expect(page.locator('.sheet .caption').first()).toContainText('2½x2½” (16)');
+	await closeMaterials(page);
 
 	// Coarsening keeps each group's top-left piece, and undo restores the 4x4.
 	await composition(page, /^One piece$/).click();
@@ -680,9 +694,10 @@ test('a block type lands in the sub-block under the cursor, like a cut does', as
 	expect(await cellFills(page, quartered)).toHaveLength(11);
 
 	// And it is cut smaller, because it finished at a quarter of the block.
-	await page.locator('.cut-list summary').click();
-	await expect(page.locator('.cut-group').first()).toContainText('4½” squares');
-	await expect(page.locator('.cut-group').first()).toContainText('2½” squares');
+	await openMaterials(page);
+	const captions = page.locator('.sheet .caption');
+	await expect(captions.filter({ hasText: '4½x4½”' })).not.toHaveCount(0);
+	await expect(captions.filter({ hasText: '2½x2½”' })).not.toHaveCount(0);
 });
 
 /** Alt-drag from one cell to another, which duplicates rather than moves. */
@@ -1532,11 +1547,11 @@ test('the grid sets how fine a placed piece lands, without leaving Place', async
 	}
 
 	// And it shows up in the cut list at three different sizes.
-	await page.locator('.cut-list summary').click();
-	const cuts = page.locator('.cut-group').first();
-	await expect(cuts).toContainText('8½” squares');
-	await expect(cuts).toContainText('4½” squares');
-	await expect(cuts).toContainText('2½” squares');
+	await openMaterials(page);
+	const cuts = page.locator('.sheet .caption');
+	await expect(cuts.filter({ hasText: '8½x8½”' })).not.toHaveCount(0);
+	await expect(cuts.filter({ hasText: '4½x4½”' })).not.toHaveCount(0);
+	await expect(cuts.filter({ hasText: '2½x2½”' })).not.toHaveCount(0);
 });
 
 test('the armed grid is a minimum, so placing never flattens finer detail', async ({ page }) => {
@@ -2134,13 +2149,16 @@ test('the dimensions are the design dropdowns, and the seam allowance is real', 
 	await pickShape(page, 'Square');
 	await cell(page, 0).click();
 	await parkMouse(page);
-	await page.locator('.cut-list summary').click();
-	await expect(page.locator('.cut-row .label').first()).toContainText('8½” squares');
+	await openMaterials(page);
+	await expect(page.locator('.sheet .caption').first()).toContainText('8½x8½”');
+	await closeMaterials(page);
 
 	const seam = page.locator('.dimensions .dropdown').nth(1);
 	await seam.locator('.trigger').click();
 	await seam.getByRole('option', { name: '1/2”' }).click();
-	await expect(page.locator('.cut-row .label').first()).toContainText('9” squares');
+	await openMaterials(page);
+	await expect(page.locator('.sheet .caption').first()).toContainText('9x9”');
+	await closeMaterials(page);
 	await expect(seam.locator('.display')).toHaveText('1/2');
 });
 
@@ -2225,8 +2243,8 @@ test('a palette name is edited where it is read, and never hides its count', asy
 	// The name is a field under its swatch, and typing in it renames the
 	// fabric everywhere.
 	const name = page.locator('.entry-label').first();
-	await name.fill('Flamingo');
-	await expect(page.getByRole('button', { name: /^Paint with Flamingo/ })).toBeVisible();
+	await name.fill('Flamingo Sateen');
+	await expect(page.getByRole('button', { name: /^Paint with Flamingo Sateen/ })).toBeVisible();
 
 	/*
 	 * However long the name, the count keeps its own room at the end of the
@@ -2281,6 +2299,37 @@ test('the chosen swatch is boxed clear of its colour', async ({ page }) => {
 		.first()
 		.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
 	expect(size).toBeGreaterThanOrEqual(10);
+});
+
+test("the materials list is the design's three sections, off the panel", async ({ page }) => {
+	await addFabric(page, 'Denim', '3244b3');
+	await pickShape(page, 'Pinwheel');
+	await cell(page, 0).click();
+	await cell(page, 1).click();
+	await parkMouse(page);
+
+	// It is not in the palette any more; it comes up with the export.
+	await expect(page.locator('.cut-list')).toHaveCount(0);
+	await openMaterials(page);
+
+	await expect(page.locator('.sheet .section')).toHaveText(['Fabric', 'Cut List', 'Sew List']);
+	await expect(page.locator('.sheet .title')).toHaveText('Materials List');
+
+	// Fabric: what to buy, in the eighths a bolt is cut in.
+	await expect(page.locator('.sheet .fabric-name')).toHaveText(['Denim']);
+	await expect(page.locator('.sheet .fabric-yards')).toContainText('yard');
+
+	/*
+	 * Sew list: the quilt is two of the same pinwheel, so it asks for that
+	 * block once with a two against it rather than listing it twice.
+	 */
+	const sew = page.locator('.sheet .row').last().locator('.caption');
+	await expect(sew).toHaveCount(1);
+	await expect(sew).toContainText('Pinwheel');
+	await expect(sew).toContainText('(2)');
+
+	await closeMaterials(page);
+	await expect(page.locator('.sheet')).toHaveCount(0);
 });
 
 test('a swatch with nothing in it still has an edge to aim at', async ({ page }) => {

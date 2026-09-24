@@ -87,7 +87,8 @@ import {
 	type Panels,
 	type SavedState
 } from './persistence';
-import { cuttingListFor, materialsListText } from './cutting';
+import { cutPiecesFor, cuttingListFor, materialsListText } from './cutting';
+import { sewListFor } from './sewing';
 
 export type Tab = 'block' | 'piece';
 export type Tool = 'place' | 'paint' | 'erase' | 'mouse' | 'grid';
@@ -302,6 +303,9 @@ export class QuiltStore {
 	canUndo = $derived(this.history.past.length > 0);
 	canRedo = $derived(this.history.future.length > 0);
 	cutting = $derived(cuttingListFor(this.cells, this.materials, this.blockSize, this.seamInches));
+	/* What the materials list shows: the shapes to cut, and the units to sew. */
+	cutPieces = $derived(cutPiecesFor(this.cutting));
+	sewList = $derived(sewListFor(this.cells, this.blockSize, this.patterns));
 
 	selectedPattern = $derived(
 		this.blockId.startsWith(PATTERN_PREFIX)

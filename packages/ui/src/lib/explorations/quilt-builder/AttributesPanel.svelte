@@ -8,24 +8,14 @@
 	 * selection, and picking a different one remaps every piece using it.
 	 *
 	 * Materials still exist behind the scenes, unchanged, because the cutting
-	 * list and the export are built from them.
+	 * list and the materials list are built from them.
 	 */
 
-	import { KIND_ICON_CUT, KIND_NOUN } from './cutting';
 	import { ROLE_FILL } from './geometry';
-	import BlockSvg from './BlockSvg.svelte';
 	import ColorPicker from './ColorPicker.svelte';
-	import { leafBlock, type Block } from './model';
-	import type { ShapeKind } from './geometry';
 	import type { ColorSlot, QuiltStore } from './state.svelte';
 
 	let { store }: { store: QuiltStore } = $props();
-
-	const LIGHT = '#e4e4e4';
-
-	const KIND_ICON: Record<ShapeKind, Block> = Object.fromEntries(
-		Object.entries(KIND_ICON_CUT).map(([kind, cut]) => [kind, leafBlock(cut)])
-	) as Record<ShapeKind, Block>;
 
 	/** Which row of the Attributes list a slot is, for keying the list. */
 	const slotKey = (slot: ColorSlot) =>
@@ -251,41 +241,6 @@
 		{/each}
 		<button class="add-color" onclick={addAndPick}>+ Add color</button>
 	</div>
-
-	{#if store.cutting.length}
-		<details class="cut-list">
-			<summary>Cutting list</summary>
-			{#each store.cutting as group (group.material.id)}
-				<div class="cut-group">
-					<span class="cut-name">
-						<span class="dot" style="background: {group.material.hex}"></span>
-						{group.material.name.trim() || group.material.hex.toUpperCase()}
-					</span>
-					{#each group.rows as row (row.frac)}
-						<div class="cut-row">
-							<span class="label">{row.label} squares: ({row.blanks})</span>
-							<span class="kinds">
-								{#each row.kinds as k (k.kind)}
-									<span
-										class="kind"
-										title={`${k.pieces} ${KIND_NOUN[k.kind]}${k.pieces === 1 ? '' : 's'}`}
-									>
-										<span class="kind-icon">
-											<BlockSvg
-												block={KIND_ICON[k.kind]}
-												fills={[group.material.hex, LIGHT, group.material.hex, LIGHT]}
-											/>
-										</span>
-										<span class="kind-count">×{k.pieces}</span>
-									</span>
-								{/each}
-							</span>
-						</div>
-					{/each}
-				</div>
-			{/each}
-		</details>
-	{/if}
 </div>
 
 <!-- Keyed on the fabric, so opening it on a second colour starts it over. -->
@@ -562,52 +517,5 @@
 		color: var(--color-text-strong);
 		text-decoration: underline;
 		cursor: pointer;
-	}
-
-	.cut-list {
-		margin: 1rem var(--qb-pad) 0;
-		font-size: 0.75rem;
-	}
-	.cut-list summary {
-		font-size: 0.65rem;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: var(--color-text-secondary);
-		cursor: pointer;
-	}
-	.cut-group {
-		margin-top: 0.6rem;
-	}
-	.cut-name {
-		display: flex;
-		align-items: center;
-		gap: 0.35rem;
-		color: var(--color-text-strong);
-	}
-	.dot {
-		width: 0.7rem;
-		height: 0.7rem;
-		border: 1px solid var(--qb-line);
-	}
-	.cut-row {
-		margin-top: 0.25rem;
-	}
-	.kinds {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.5rem;
-		margin-top: 0.15rem;
-	}
-	.kind {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.2rem;
-	}
-	.kind-icon {
-		width: 0.9rem;
-		height: 0.9rem;
-	}
-	.kind-count {
-		color: var(--color-text-secondary);
 	}
 </style>
