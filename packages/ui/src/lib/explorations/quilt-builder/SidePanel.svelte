@@ -83,6 +83,13 @@
 	const fraction = (inches: number) => (metric ? fmtLength(inches, true) : fmtFraction(inches));
 	const length = (inches: number) => (metric ? fmtLength(inches, true) : `${fmtInches(inches)}”`);
 
+	/*
+	 * The design's own block-grid tile. The panel renders it at exactly this
+	 * size, so the stroke and dash values inside stay literal pixels.
+	 */
+	const TILE_W = 55.2;
+	const TILE_H = 55.9;
+
 	const selectedCount = $derived(store.selection.length);
 	const capturableCount = $derived(store.capturable.length);
 </script>
@@ -238,9 +245,9 @@
 						>
 							<!--
 						The tile IS the block, divided by dashed seams. The viewBox is
-						the design's own 102 x 103.378, and the panel renders it at
-						exactly that size, so stroke and dash values are literal pixels.
-						Seams run edge to edge, as they do in the design.
+						the design's own tile, and the panel renders it at exactly that
+						size, so stroke and dash values are literal pixels. Seams run
+						edge to edge, as they do in the design.
 
 						The frame is drawn in the svg rather than as a CSS border
 						because browsers round border-width to whole pixels, which
@@ -248,7 +255,7 @@
 					-->
 							<svg
 								class="chip-grid"
-								viewBox="0 0 102 103.378"
+								viewBox="0 0 {TILE_W} {TILE_H}"
 								preserveAspectRatio="none"
 								aria-hidden="true"
 							>
@@ -256,15 +263,15 @@
 									class="chip-frame"
 									x={weight / 2}
 									y={weight / 2}
-									width={102 - weight}
-									height={103.378 - weight}
+									width={TILE_W - weight}
+									height={TILE_H - weight}
 									stroke-width={weight}
 								/>
 								{#each { length: division - 1 } as _, i (i)}
-									{@const x = ((i + 1) * 102) / division}
-									{@const y = ((i + 1) * 103.378) / division}
-									<line x1={x} y1="0" x2={x} y2="103.378" stroke-width={weight} />
-									<line x1="0" y1={y} x2="102" y2={y} stroke-width={weight} />
+									{@const x = ((i + 1) * TILE_W) / division}
+									{@const y = ((i + 1) * TILE_H) / division}
+									<line x1={x} y1="0" x2={x} y2={TILE_H} stroke-width={weight} />
+									<line x1="0" y1={y} x2={TILE_W} y2={y} stroke-width={weight} />
 								{/each}
 							</svg>
 							<span class="chip-label">
@@ -273,20 +280,6 @@
 						</button>
 					{/each}
 				</div>
-
-				<p class="hint">
-					{#if selectedCount}
-						{selectedCount === 1
-							? '1 block selected'
-							: `${selectedCount} blocks selected`}{store.selectedDivision === 0
-							? ', mixed grids'
-							: ''}
-					{:else if store.tool === 'grid'}
-						Click or drag on the quilt to paint this grid.
-					{:else if store.tool === 'place'}
-						Pieces you place land at this grid. Hold alt to cover a whole square.
-					{/if}
-				</p>
 			</div>
 
 			<AttributesPanel {store} />
@@ -490,6 +483,19 @@
 	.section {
 		padding: 1.5rem var(--qb-pad) 0.55rem;
 	}
+	/*
+	 * Down the Attributes pane the design spaces things differently from the
+	 * lists above: a heading sits right on top of what it names, and the room
+	 * is between the groups rather than inside them.
+	 */
+	.pane > .label.section {
+		/* The site gives every h2 a margin of its own; this one sets its room. */
+		margin: 0;
+		padding: 15px var(--qb-pad) 3px;
+	}
+	.grid-section > .label.section {
+		padding: 0 var(--qb-pad) 5px;
+	}
 	.section kbd {
 		font: inherit;
 		font-size: 0.85em;
@@ -497,10 +503,16 @@
 		margin-left: 0.25rem;
 	}
 
+	/*
+	 * Three 55px tiles spread across the panel, as the design now draws them
+	 * — small squares with air between, rather than three wide ones filling
+	 * the width. Their height is what sets the rhythm of the pane below.
+	 */
 	.composition {
 		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 1.25rem;
+		grid-template-columns: repeat(3, 55.2px);
+		justify-content: space-between;
+		gap: 0;
 		padding: 0 var(--qb-pad);
 	}
 	.chip {
@@ -518,7 +530,7 @@
 	.chip-grid {
 		display: block;
 		width: 100%;
-		aspect-ratio: 102 / 103.378;
+		aspect-ratio: 55.2 / 55.9;
 		background: #fff;
 		color: var(--qb-ink);
 	}

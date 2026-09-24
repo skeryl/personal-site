@@ -143,6 +143,8 @@
 </script>
 
 <div class="attributes" data-panel="attributes">
+	<!-- The design rules the block grid off from the colours below it. -->
+	<hr class="rule" />
 	<div class="label section">Color selection</div>
 
 	{#if store.selectedPiece}
@@ -300,8 +302,13 @@
 		text-transform: uppercase;
 		color: #000;
 	}
+	.rule {
+		margin: 16px var(--qb-pad) 0;
+		border: none;
+		border-top: 1px solid var(--qb-line);
+	}
 	.section {
-		padding: 1.5rem var(--qb-pad) 0.55rem;
+		padding: 16px var(--qb-pad) 4px;
 	}
 	.hint {
 		margin: 0 var(--qb-pad) 0.5rem;
@@ -322,7 +329,7 @@
 		/* The site gives every <p> its own vertical padding; this one is a
 		   single line and sets its own room. */
 		padding: 0;
-		margin-top: calc(-0.55rem - 3px);
+		margin-top: calc(-4px - 3px);
 		line-height: 20px;
 	}
 

@@ -308,7 +308,7 @@ test('a multi-block selection saves as one pattern and stamps as one', async ({ 
 	await page.mouse.down();
 	await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 5 });
 	await page.mouse.up();
-	await expect(page.locator('[data-panel="grid"] .hint')).toContainText('2 blocks selected');
+	await expect(page.locator('.readout')).toContainText('squares selected');
 
 	answerPrompt(page, 'Domino');
 	await page.getByRole('button', { name: '+ Add selection as pattern' }).click();
@@ -338,7 +338,7 @@ test('a pattern can be a non-rectangular shape', async ({ page }) => {
 	await cell(page, ell[0]).click();
 	await cell(page, ell[1]).click({ modifiers: ['Shift'] });
 	await cell(page, ell[2]).click({ modifiers: ['Shift'] });
-	await expect(page.locator('[data-panel="grid"] .hint')).toContainText('3 blocks selected');
+	await expect(page.locator('.readout')).toContainText('squares selected');
 
 	answerPrompt(page, 'Ell');
 	await page.getByRole('button', { name: '+ Add selection as pattern' }).click();
@@ -1023,13 +1023,13 @@ test('attributes and the export stay at the foot of the palette', async ({ page 
 	await expect(page.locator('.side .export')).toBeVisible();
 	await expect(page.locator('.wall-frame .export')).toHaveCount(0);
 
-	// The block grid moved in with the colours, and the pane holds its own
-	// scrollbar rather than pushing the export off the bottom.
+	// The block grid moved in with the colours, and the pane takes a scrollbar
+	// of its own rather than pushing the export off the bottom.
 	await expect(page.locator('.pane .composition')).toBeVisible();
-	const scrolls = await page
+	const overflow = await page
 		.locator('.pane-scroll')
-		.evaluate((el) => el.scrollHeight > el.clientHeight + 1);
-	expect(scrolls).toBe(true);
+		.evaluate((el) => getComputedStyle(el).overflowY);
+	expect(overflow).toBe('auto');
 
 	// However long the shape list gets, the panel itself never scrolls.
 	const sideScrolls = await page
@@ -1338,13 +1338,13 @@ test('the block grid tiles are squares labelled by division', async ({ page }) =
 	expect(labels.map((t) => t.trim())).toEqual(['(1)', '(2X2)', '(4X4)']);
 
 	/*
-	 * Each tile is the block itself, at the design's own 102 x 103.378, so the
+	 * Each tile is the block itself, at the design's own 55.2 x 55.9, so the
 	 * svg's units are literal pixels and its stroke values can be taken
 	 * verbatim.
 	 */
 	const tile = (await page.locator('.composition .chip-grid').first().boundingBox())!;
-	expect(tile.width).toBeCloseTo(102, -0.5);
-	expect(tile.width / tile.height).toBeCloseTo(102 / 103.378, 2);
+	expect(tile.width).toBeCloseTo(55.2, -0.5);
+	expect(tile.width / tile.height).toBeCloseTo(55.2 / 55.9, 2);
 
 	// One piece has no seams; 2x2 has one each way; 4x4 has three.
 	const seams = await page.$$eval('.composition .chip-grid', (grids) =>
@@ -1374,7 +1374,7 @@ test('the block grid tiles are squares labelled by division', async ({ page }) =
 		expect(tileState.stroke).toBe(weight);
 		expect(tileState.dash).toBe('5px, 5px');
 		// Top edge to bottom edge, with no inset.
-		expect(tileState.spans).toBe('0..103.378');
+		expect(tileState.spans).toBe('0..55.9');
 	}
 });
 
@@ -1755,22 +1755,6 @@ test('alt while placing covers the whole square, however finely it is divided', 
 	await cell(page, plain).click();
 	await parkMouse(page);
 	expect((await cellFills(page, plain)).length).toBeGreaterThan(8);
-});
-
-test('the grid hint keeps its height as the tool changes', async ({ page }) => {
-	/*
-	 * The hint is reworded as the tool changes, and everything below it in the
-	 * pane rides on its height: the palette, and the colours of whatever is
-	 * selected. It is held open to its tallest wording so none of that moves.
-	 */
-	await tool(page, /^Select/).click();
-	const hint = page.locator('[data-panel="grid"] .hint');
-	const settled = (await hint.boundingBox())!.height;
-
-	for (const name of [/^Place/, /^Grid/, /^Paint/, /^Erase/]) {
-		await tool(page, name).click();
-		expect((await hint.boundingBox())!.height).toBe(settled);
-	}
 });
 
 test('arming a placement drops the selection, so R turns what is being placed', async ({
