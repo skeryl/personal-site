@@ -2336,6 +2336,45 @@ test("the materials list is the design's three sections, off the panel", async (
 	await expect(page.locator('.sheet')).toHaveCount(0);
 });
 
+test('the materials list saves as a letter page of its own', async ({ page }) => {
+	await addFabric(page, 'Denim', '3244b3');
+	await pickShape(page, 'Pinwheel');
+	await cell(page, 0).click();
+	await parkMouse(page);
+	await page.getByLabel('Quilt name').fill('Stars');
+	await openMaterials(page);
+
+	// The quilt names the file the print dialog offers to save.
+	await expect(page).toHaveTitle(/^Stars — Materials List$/);
+
+	/*
+	 * The sheet sits at the top of the document rather than inside the
+	 * builder, which is what lets printing take the builder off the page
+	 * without taking the sheet with it.
+	 */
+	const placed = await page
+		.locator('.backdrop')
+		.evaluate((el) => el.parentElement === document.body);
+	expect(placed).toBe(true);
+
+	// In print the builder is gone, and the sheet is all that is left.
+	await page.emulateMedia({ media: 'print' });
+	const printed = await page.evaluate(() => {
+		const hidden = (el: Element) => getComputedStyle(el).display === 'none';
+		return {
+			builder: hidden(document.querySelector('.qb')!.closest('body > *')!),
+			sheet: getComputedStyle(document.querySelector('.sheet')!).display
+		};
+	});
+	expect(printed.builder).toBe(true);
+	expect(printed.sheet).not.toBe('none');
+	await page.emulateMedia({ media: 'screen' });
+
+	// Closing puts the page's own title back.
+	await closeMaterials(page);
+	await expect(page).not.toHaveTitle(/Materials List/);
+});
+
 test('a swatch with nothing in it still has an edge to aim at', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
 	await pickShape(page, 'Half square triangle');

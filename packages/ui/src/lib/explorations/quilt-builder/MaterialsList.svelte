@@ -66,18 +66,51 @@
 	);
 	const sewScale = $derived(BAND / Math.max(1, ...store.sewList.map((unit) => unit.inches)));
 
-	const print = () => window.print();
+	/*
+	 * Saving as PDF is the browser's own print, which is why it is worth
+	 * going through: the page comes out as real letter-sized vector text in
+	 * the design's own typefaces, rather than a picture of it.
+	 *
+	 * The document's title is what the dialog offers as the file name, so the
+	 * quilt lends its name to the file for as long as the sheet is open.
+	 */
+	const fileName = $derived(`${store.name.trim() || 'Untitled'} — Materials List`);
+
+	$effect(() => {
+		const previous = document.title;
+		document.title = fileName;
+		return () => {
+			document.title = previous;
+		};
+	});
+
+	const savePdf = () => window.print();
+
+	/*
+	 * The sheet is moved to the end of the document rather than left where it
+	 * is written. Printing has to hide the builder to leave the page alone on
+	 * the paper, and the builder is this component's own ancestor — hiding it
+	 * from inside would take the sheet with it.
+	 */
+	let root = $state<HTMLElement | null>(null);
+	$effect(() => {
+		const el = root;
+		if (!el) return;
+		document.body.append(el);
+		return () => el.remove();
+	});
 </script>
 
 <!-- Presentational: the sheet itself is what takes focus. -->
 <div
 	class="backdrop"
 	role="presentation"
+	bind:this={root}
 	onclick={(e) => e.target === e.currentTarget && onclose()}
 >
 	<div class="sheet-frame" role="dialog" aria-modal="true" aria-label="Materials list">
 		<div class="controls">
-			<button class="act" onclick={print}>Print</button>
+			<button class="act" onclick={savePdf}>Save as PDF</button>
 			<button class="act" onclick={() => store.exportMaterialsList()}>Download text</button>
 			<button class="act" onclick={onclose}>Close</button>
 		</div>
@@ -146,7 +179,19 @@
 </div>
 
 <style>
+	/* The design's page is the whole of a letter sheet, rules included. */
+	@page {
+		size: letter portrait;
+		margin: 0;
+	}
+
 	.backdrop {
+		/* Set here rather than inherited: the sheet now stands outside .qb. */
+		--qb-mono: 'Spline Sans Mono', 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+		--qb-sans: 'Cabin', system-ui, -apple-system, 'Segoe UI', sans-serif;
+		--qb-ink: #525252;
+		--qb-line: #cacaca;
+		--qb-tool: #9b9b9b;
 		position: fixed;
 		inset: 0;
 		z-index: 50;
@@ -320,10 +365,26 @@
 		text-transform: uppercase;
 	}
 
-	/* On paper the sheet is the whole document, and the chrome goes away. */
+	/*
+	 * On paper the sheet is the whole document. The builder is still mounted
+	 * behind it, so everything is hidden and only this subtree brought back —
+	 * hiding rather than unmounting, so the page you were working on is
+	 * exactly where you left it when the dialog closes.
+	 */
 	@media print {
+		/* Everything but the sheet is taken off the page, not merely hidden:
+		   a hidden element still holds its room, and its room is more paper. */
+		:global(body > *:not(.backdrop)) {
+			display: none !important;
+		}
+		/* The site's own paper colour is not this document's. */
+		:global(html),
+		:global(body) {
+			background: #fff !important;
+		}
 		.backdrop {
 			position: static;
+			display: block;
 			padding: 0;
 			overflow: visible;
 			background: none;
@@ -331,10 +392,13 @@
 		.controls {
 			display: none;
 		}
-		.sheet {
+		.sheet-frame {
 			width: auto;
+			gap: 0;
+		}
+		.sheet {
+			width: 100%;
 			min-height: 0;
-			padding: 0;
 		}
 	}
 </style>
