@@ -348,9 +348,16 @@
 		height: 48px;
 		border: 1px solid var(--qb-line);
 	}
-	/* 12px, a short step from the swatch it belongs to, as the design sets it. */
+	/*
+	 * 12px, a short step from the swatch it belongs to, as the design sets it
+	 * — but in the mono face rather than the sans the design gives it. It is a
+	 * measurement, and the two faces draw a fraction differently: the sans
+	 * lays the halves diagonally where the mono stacks them, so an eighth of a
+	 * yard here read as a different notation from the inches in the lists
+	 * below. Set in the face those are, it matches them.
+	 */
 	.fabric-yards {
-		font-family: var(--qb-sans);
+		font-family: var(--qb-mono);
 		font-size: 12px;
 		line-height: 18px;
 	}

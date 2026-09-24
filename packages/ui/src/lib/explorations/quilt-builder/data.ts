@@ -59,15 +59,15 @@ export const DEFAULT_SEAM_INCHES = 0.25;
 export const BINDINGS = [0.5, 0.625, 1, 2] as const;
 export const DEFAULT_BINDING_INCHES = 0.625;
 
-/** Inches as the design writes them: halves, thirds, quarters and eighths. */
+/** Inches in proper fractions, the same ones the rest of the app sets. */
 const FRACTIONS: [number, string][] = [
-	[0.125, '1/8'],
-	[0.25, '1/4'],
-	[0.375, '3/8'],
-	[0.5, '1/2'],
-	[0.625, '5/8'],
-	[0.75, '3/4'],
-	[0.875, '7/8']
+	[0.125, '⅛'],
+	[0.25, '¼'],
+	[0.375, '⅜'],
+	[0.5, '½'],
+	[0.625, '⅝'],
+	[0.75, '¾'],
+	[0.875, '⅞']
 ];
 
 export const fmtFraction = (inches: number): string => {
@@ -95,22 +95,15 @@ export const normalizeHex = (raw: string): string | null => {
 	return null;
 };
 
-/*
- * Written out rather than set in the ready-made fraction glyphs. The page
- * carries two typefaces, and each draws those glyphs its own way — one lays
- * the halves diagonally, the other stacks them — so the same measurement came
- * out looking like two different notations depending on the section it was
- * in. Spelled in plain figures it reads the same in either.
- */
-const EIGHTHS = ['', '1/8', '1/4', '3/8', '1/2', '5/8', '3/4', '7/8'];
+const EIGHTHS = ['', '⅛', '¼', '⅜', '½', '⅝', '¾', '⅞'];
 
-/** Inches to the nearest eighth, as a pattern writes them: 8.5 -> 8 1/2. */
+/** Inches to the nearest eighth, as quilters write them: 8.5 -> 8½. */
 export const fmtInches = (inches: number): string => {
 	const eighths = Math.round(inches * 8);
 	const whole = Math.floor(eighths / 8);
 	const rem = eighths % 8;
 	if (rem === 0) return String(whole);
-	return whole === 0 ? EIGHTHS[rem] : `${whole} ${EIGHTHS[rem]}`;
+	return whole === 0 ? EIGHTHS[rem] : `${whole}${EIGHTHS[rem]}`;
 };
 
 export const MM_PER_INCH = 25.4;
