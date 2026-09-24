@@ -11,6 +11,17 @@ import { DEFAULT_SEAM_INCHES, fmtInches, fmtLengthPair, type Material } from './
 import { type ShapeKind } from './geometry';
 import { flatten, type Block } from './model';
 
+/*
+ * Fabric not chosen yet. A shape can be placed before it has any colour, and
+ * those pieces still cost cloth — so they are bought and cut like any other
+ * fabric, under the grey they are drawn in, rather than left off the list.
+ */
+export const UNSET_MATERIAL: Material = {
+	id: '\u0000unset',
+	name: 'Unset',
+	hex: '#d9d9d9'
+};
+
 /** Pieces cut from one blank, per kind. */
 export const CUT_YIELD: Record<ShapeKind, number> = { square: 1, rect: 2, hst: 2, qst: 4 };
 
@@ -75,17 +86,20 @@ export const cuttingListFor = (
 	blocks.forEach((block) => {
 		// `frac` arrives already scaled by the composition, so a pinwheel inside
 		// a 2x2 grid tallies at half the blank size of a plain one.
-		flatten(block).forEach(({ fabric, frac, kind }) => {
-			if (!fabric) return;
-			const byFrac = tally.get(fabric) ?? new Map<number, Map<ShapeKind, number>>();
+		flatten(block).forEach(({ fabric, frac, kind, shaped }) => {
+			// Blank space costs nothing; a placed shape does, coloured or not.
+			if (!fabric && !shaped) return;
+			const id = fabric ?? UNSET_MATERIAL.id;
+			const byFrac = tally.get(id) ?? new Map<number, Map<ShapeKind, number>>();
 			const byKind = byFrac.get(frac) ?? new Map<ShapeKind, number>();
 			byKind.set(kind, (byKind.get(kind) ?? 0) + 1);
 			byFrac.set(frac, byKind);
-			tally.set(fabric, byFrac);
+			tally.set(id, byFrac);
 		});
 	});
 
-	return materials
+	// Unset comes last, after every fabric that has been chosen.
+	return [...materials, UNSET_MATERIAL]
 		.filter((material) => tally.has(material.id))
 		.map((material) => {
 			const byFrac = tally.get(material.id)!;

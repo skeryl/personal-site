@@ -2325,22 +2325,31 @@ test("the materials list is the design's three sections, off the panel", async (
 	await expect(page.locator('.sheet .section')).toHaveText(['Fabric', 'Cut List', 'Sew List']);
 	await expect(page.locator('.sheet .title')).toHaveText('Materials List');
 
-	// Fabric: a swatch and what to buy, in the eighths a bolt is cut in.
-	await expect(page.locator('.sheet .fabric-swatch')).toHaveCount(1);
-	await expect(page.locator('.sheet .fabric-yards')).toContainText('yard');
+	/*
+	 * Fabric: a swatch and what to buy, in the eighths a bolt is cut in. Two of
+	 * them — the denim, and the half of every triangle left without a colour,
+	 * which still costs cloth and is bought as the grey it is drawn in.
+	 */
+	await expect(page.locator('.sheet .fabric-swatch')).toHaveCount(2);
+	await expect(page.locator('.sheet .fabric-yards').first()).toContainText('yard');
+	await expect(page.locator('.sheet .fabric-swatch').last()).toHaveAttribute('title', 'Unset');
 	const yardSize = await page
 		.locator('.sheet .fabric-yards')
+		.first()
 		.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
 	expect(yardSize).toBe(12);
 
 	/*
 	 * Sew list: the quilt is two of the same pinwheel, so it asks for that
-	 * block once with a two against it rather than listing it twice.
+	 * block once with a two against it rather than listing it twice — and then
+	 * for the eight triangles the two of them are pieced from, because a
+	 * pinwheel is not sewn as a pinwheel.
 	 */
 	const sew = page.locator('.sheet .row').last().locator('.caption');
-	await expect(sew).toHaveCount(1);
-	await expect(sew).toContainText('Pinwheel');
-	await expect(sew).toContainText('(2)');
+	await expect(sew).toHaveText([
+		/^Pinwheel - 8 x 8” \(2\)$/,
+		/^Half square triangle - 4 x 4” \(8\)$/
+	]);
 
 	await closeMaterials(page);
 	await expect(page.locator('.sheet')).toHaveCount(0);

@@ -27,8 +27,8 @@
 			p.fabric ? hexOf(p.fabric) : p.shaped ? (ROLE_FILL[p.role] ?? '#ffffff') : '#ffffff'
 		);
 
-	const nameOf = (id: string, hex: string): string =>
-		store.materialById.get(id)?.name.trim() || hex.slice(1).toUpperCase();
+	const nameOf = (material: { name: string; hex: string }): string =>
+		material.name.trim() || material.hex.slice(1).toUpperCase();
 
 	/*
 	 * Yardage, at the width fabric is sold in. Blanks are laid across the
@@ -60,10 +60,19 @@
 		return `${fmtInches(yards)} ${yards <= 1 ? 'yard' : 'yards'}`;
 	};
 
-	/* Fabrics the quilt actually uses, in the order the palette holds them. */
-	const fabrics = $derived(
-		store.materials.filter((m) => store.cutPieces.some((p) => p.material.id === m.id))
-	);
+	/*
+	 * Fabrics the quilt actually uses, in the order the cutting list gives
+	 * them — which is the palette's order, with the unset grey after it. Taken
+	 * from the cut pieces rather than the palette so that unset, which is no
+	 * palette colour, is bought and cut like the rest.
+	 */
+	const fabrics = $derived.by(() => {
+		const seen = new Map<string, (typeof store.cutPieces)[number]['material']>();
+		for (const piece of store.cutPieces) {
+			if (!seen.has(piece.material.id)) seen.set(piece.material.id, piece.material);
+		}
+		return [...seen.values()];
+	});
 
 	/*
 	 * One scale per row, taken from its largest shape, so the pieces read
@@ -136,7 +145,7 @@
 							<span
 								class="fabric-swatch"
 								style="background: {material.hex}"
-								title={nameOf(material.id, material.hex)}
+								title={nameOf(material)}
 							></span>
 							<span class="fabric-yards">{fmtYards(yardsFor(material.id))}</span>
 						</li>
