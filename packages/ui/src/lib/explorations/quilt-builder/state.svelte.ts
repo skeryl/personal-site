@@ -146,6 +146,12 @@ export interface BlockRef {
 interface PaintGesture {
 	pointerId: number;
 	mode: Tool;
+	/*
+	 * Squares this drag has already stamped a block into. A cut recuts the
+	 * piece under the cursor, so it wants every move; a block type covers a
+	 * whole square, so it wants one per square and no more.
+	 */
+	stamped?: Set<number>;
 }
 
 export const PATTERN_PREFIX = 'pattern:';
@@ -479,6 +485,17 @@ export class QuiltStore {
 		if (pending.mode === 'pattern') {
 			const updates = this.patternUpdates(index, pending.blocks);
 			return updates ? this.commit(updates) : false;
+		}
+		/*
+		 * A block type fills the square, so a drag gives each square it crosses
+		 * one of them and moves on. Without this every pointer move inside a
+		 * square would find the block already there and recolour the piece
+		 * under the cursor, which turns dragging into a paint stroke.
+		 */
+		const gesture = this.gesture;
+		if (gesture && pending.mode === 'stamp') {
+			if (gesture.stamped?.has(index)) return false;
+			(gesture.stamped ??= new Set()).add(index);
 		}
 		const target = this.placementTarget(this.cells[index], whole);
 		const block = buildPlacement(target, point, pending, this.selectedMaterialId);

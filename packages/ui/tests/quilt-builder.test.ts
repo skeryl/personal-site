@@ -666,6 +666,32 @@ test('selected blocks are outlined, not just labelled', async ({ page }) => {
 	expect(parseFloat(other.width) || 0).toBe(0);
 });
 
+test('dragging a block type stamps each square once, without painting a trail', async ({
+	page
+}) => {
+	await addFabric(page, 'Blue', '4f7fe8');
+	await pickShape(page, 'Pinwheel');
+
+	// Drag along the lower half of a row, so the cursor crosses each square
+	// well inside it rather than clipping a corner.
+	const first = (await cell(page, 0).boundingBox())!;
+	const last = (await cell(page, 3).boundingBox())!;
+	await page.mouse.move(first.x + 4, first.y + first.height * 0.75);
+	await page.mouse.down();
+	await page.mouse.move(last.x + last.width - 4, last.y + last.height * 0.78, { steps: 30 });
+	await page.mouse.up();
+	await parkMouse(page);
+
+	/*
+	 * Each square gets the block once. Every pointer move used to place again,
+	 * find the block already there, and recolour the piece under the cursor —
+	 * so the drag left its own path painted across the row.
+	 */
+	const fills = await cellFills(page, 0);
+	expect(fills).toHaveLength(8);
+	for (const index of [1, 2, 3]) expect(await cellFills(page, index)).toEqual(fills);
+});
+
 test('a block type lands in the sub-block under the cursor, like a cut does', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
 	const cols = await gridCols(page);
