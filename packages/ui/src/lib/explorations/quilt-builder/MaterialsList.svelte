@@ -103,7 +103,7 @@
 
 			<h2 class="section">Cut List</h2>
 			{#if store.cutPieces.length}
-				<ul class="row">
+				<ul class="row cut">
 					{#each store.cutPieces as piece, i (`${piece.material.id}-${piece.kind}-${piece.w}-${piece.h}-${i}`)}
 						<li class="cell">
 							<span class="art">
@@ -191,13 +191,18 @@
 		width: 612px;
 		max-width: 100%;
 		min-height: 792px;
-		padding: 30px 10px 40px;
+		/*
+		 * No side padding of its own: the rules and the columns run the full
+		 * width of the page, and it is the text that is indented past them.
+		 */
+		padding: 30px 0 40px;
 		background: #fff;
 		color: #000;
+		--sheet-indent: 61px;
 	}
 	.quilt {
 		margin: 0;
-		padding: 0;
+		padding: 0 0 0 var(--sheet-indent);
 		font-family: var(--qb-mono);
 		font-size: 10px;
 		line-height: 18px;
@@ -205,7 +210,7 @@
 	}
 	.title {
 		margin: 3px 0 0;
-		padding: 0;
+		padding: 0 0 0 var(--sheet-indent);
 		font-family: var(--qb-sans);
 		font-size: 17.75px;
 		font-weight: 400;
@@ -213,8 +218,9 @@
 		color: var(--qb-ink);
 	}
 	.section {
-		margin: 43px 0 0;
-		padding: 0;
+		margin: 26px 0 0;
+		padding: 0 0 9px var(--sheet-indent);
+		border-bottom: 0.5px solid var(--qb-line);
 		font-family: var(--qb-sans);
 		font-size: 12px;
 		font-weight: 400;
@@ -224,7 +230,7 @@
 	}
 	.empty {
 		margin: 0;
-		padding: 0.75rem 0 0;
+		padding: 0.75rem 0 0 var(--sheet-indent);
 		font-family: var(--qb-sans);
 		font-size: 12px;
 		font-style: italic;
@@ -235,7 +241,7 @@
 	.fabrics {
 		list-style: none;
 		margin: 0;
-		padding: 29px 0 0;
+		padding: 10px 0 0 var(--sheet-indent);
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
@@ -243,7 +249,7 @@
 	.fabric {
 		display: flex;
 		align-items: center;
-		gap: 22px;
+		gap: 12px;
 	}
 	.fabric-swatch {
 		flex: none;
@@ -271,10 +277,15 @@
 	.row {
 		list-style: none;
 		margin: 0;
-		padding: 21px 0 0;
+		padding: 8px 0 0;
 		display: flex;
 		flex-wrap: wrap;
 		align-items: stretch;
+	}
+	/* The cut list is closed off before the sew list is announced. */
+	.row.cut {
+		padding-bottom: 8px;
+		border-bottom: 0.5px solid var(--qb-line);
 	}
 	.cell {
 		flex: 1 1 0;
