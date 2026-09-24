@@ -1077,7 +1077,15 @@
 	.actions .action.active {
 		color: #000;
 	}
-	.action.active {
+	/*
+	 * The tools say which one is armed by going black, and nothing else. An
+	 * underline reads as a link, and these are not links — the row is a
+	 * statement of what the keys do, and one of them happens to be in force.
+	 *
+	 * The wall's own toggle keeps its rule: it is on or off, and colour alone
+	 * cannot say which when the text is already black.
+	 */
+	.wall-actions .action.active {
 		text-decoration: underline;
 		text-underline-offset: 0.3em;
 	}
