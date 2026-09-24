@@ -117,10 +117,11 @@ export const fmtLength = (inches: number, metric: boolean): string =>
 	metric ? `${Math.round(inches * MM_PER_INCH)}mm` : `${fmtInches(inches)}”`;
 
 /**
- * Two lengths as one measurement — 17x9”, 432x229mm. The unit is written once,
- * at the end, the way a pattern gives a cut size.
+ * Two lengths as one measurement — 17 x 9”, 432 x 229mm. The unit is written
+ * once, at the end, the way a pattern gives a cut size. The x is held apart
+ * from the numbers: run together, a pair of fractions is a wall of glyphs.
  */
 export const fmtLengthPair = (w: number, h: number, metric: boolean): string =>
 	metric
-		? `${Math.round(w * MM_PER_INCH)}x${Math.round(h * MM_PER_INCH)}mm`
-		: `${fmtInches(w)}x${fmtInches(h)}”`;
+		? `${Math.round(w * MM_PER_INCH)} x ${Math.round(h * MM_PER_INCH)}mm`
+		: `${fmtInches(w)} x ${fmtInches(h)}”`;

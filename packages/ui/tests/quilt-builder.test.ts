@@ -208,8 +208,8 @@ test('stamping a block keeps the fabric underneath in the background slots', asy
 
 	expect(await cellFills(page, 5)).toEqual(['#38511f', '#4f7fe8', '#4f7fe8', '#4f7fe8', '#4f7fe8']);
 	await openMaterials(page);
-	await expect(page.locator('.sheet .caption').first()).toContainText('4½x4½” (2)');
-	await expect(page.locator('.sheet .caption').nth(1)).toContainText('6⅛x6⅛” (1)');
+	await expect(page.locator('.sheet .caption').first()).toContainText('4½ x 4½” (2)');
+	await expect(page.locator('.sheet .caption').nth(1)).toContainText('6⅛ x 6⅛” (1)');
 });
 
 test('the design, fabrics, and size survive a reload', async ({ page }) => {
@@ -236,7 +236,7 @@ test('composition subdivides a block without changing how it looks', async ({ pa
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#4f7fe8']);
 	await openMaterials(page);
-	await expect(page.locator('.sheet .caption').first()).toContainText('8½x8½” (1)');
+	await expect(page.locator('.sheet .caption').first()).toContainText('8½ x 8½” (1)');
 	await closeMaterials(page);
 
 	await selectCell(page, 0);
@@ -247,14 +247,14 @@ test('composition subdivides a block without changing how it looks', async ({ pa
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(Array(4).fill('#4f7fe8'));
 	await openMaterials(page);
-	await expect(page.locator('.sheet .caption').first()).toContainText('4½x4½” (4)');
+	await expect(page.locator('.sheet .caption').first()).toContainText('4½ x 4½” (4)');
 	await closeMaterials(page);
 
 	await composition(page, /^4 by 4$/).click();
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(Array(16).fill('#4f7fe8'));
 	await openMaterials(page);
-	await expect(page.locator('.sheet .caption').first()).toContainText('2½x2½” (16)');
+	await expect(page.locator('.sheet .caption').first()).toContainText('2½ x 2½” (16)');
 	await closeMaterials(page);
 
 	// Coarsening keeps each group's top-left piece, and undo restores the 4x4.
@@ -696,8 +696,8 @@ test('a block type lands in the sub-block under the cursor, like a cut does', as
 	// And it is cut smaller, because it finished at a quarter of the block.
 	await openMaterials(page);
 	const captions = page.locator('.sheet .caption');
-	await expect(captions.filter({ hasText: '4½x4½”' })).not.toHaveCount(0);
-	await expect(captions.filter({ hasText: '2½x2½”' })).not.toHaveCount(0);
+	await expect(captions.filter({ hasText: '4½ x 4½”' })).not.toHaveCount(0);
+	await expect(captions.filter({ hasText: '2½ x 2½”' })).not.toHaveCount(0);
 });
 
 /** Alt-drag from one cell to another, which duplicates rather than moves. */
@@ -1549,9 +1549,9 @@ test('the grid sets how fine a placed piece lands, without leaving Place', async
 	// And it shows up in the cut list at three different sizes.
 	await openMaterials(page);
 	const cuts = page.locator('.sheet .caption');
-	await expect(cuts.filter({ hasText: '8½x8½”' })).not.toHaveCount(0);
-	await expect(cuts.filter({ hasText: '4½x4½”' })).not.toHaveCount(0);
-	await expect(cuts.filter({ hasText: '2½x2½”' })).not.toHaveCount(0);
+	await expect(cuts.filter({ hasText: '8½ x 8½”' })).not.toHaveCount(0);
+	await expect(cuts.filter({ hasText: '4½ x 4½”' })).not.toHaveCount(0);
+	await expect(cuts.filter({ hasText: '2½ x 2½”' })).not.toHaveCount(0);
 });
 
 test('the armed grid is a minimum, so placing never flattens finer detail', async ({ page }) => {
@@ -2134,14 +2134,14 @@ test('the dimensions are the design dropdowns, and the seam allowance is real', 
 	await cell(page, 0).click();
 	await parkMouse(page);
 	await openMaterials(page);
-	await expect(page.locator('.sheet .caption').first()).toContainText('8½x8½”');
+	await expect(page.locator('.sheet .caption').first()).toContainText('8½ x 8½”');
 	await closeMaterials(page);
 
 	const seam = page.locator('.dimensions .dropdown').nth(1);
 	await seam.locator('.trigger').click();
 	await seam.getByRole('option', { name: '1/2”' }).click();
 	await openMaterials(page);
-	await expect(page.locator('.sheet .caption').first()).toContainText('9x9”');
+	await expect(page.locator('.sheet .caption').first()).toContainText('9 x 9”');
 	await closeMaterials(page);
 	await expect(seam.locator('.display')).toHaveText('1/2');
 });
