@@ -471,7 +471,7 @@
 	 */
 	.chip.current {
 		outline: 1.5px solid #000;
-		outline-offset: 3px;
+		outline-offset: 1.5px;
 	}
 	/*
 	 * 8px under its swatch: small enough that a name and its share of the
