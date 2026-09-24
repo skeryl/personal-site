@@ -95,15 +95,22 @@ export const normalizeHex = (raw: string): string | null => {
 	return null;
 };
 
-const EIGHTHS = ['', '⅛', '¼', '⅜', '½', '⅝', '¾', '⅞'];
+/*
+ * Written out rather than set in the ready-made fraction glyphs. The page
+ * carries two typefaces, and each draws those glyphs its own way — one lays
+ * the halves diagonally, the other stacks them — so the same measurement came
+ * out looking like two different notations depending on the section it was
+ * in. Spelled in plain figures it reads the same in either.
+ */
+const EIGHTHS = ['', '1/8', '1/4', '3/8', '1/2', '5/8', '3/4', '7/8'];
 
-/** Inches to the nearest eighth, as quilters write them: 8.5 -> 8½. */
+/** Inches to the nearest eighth, as a pattern writes them: 8.5 -> 8 1/2. */
 export const fmtInches = (inches: number): string => {
 	const eighths = Math.round(inches * 8);
 	const whole = Math.floor(eighths / 8);
 	const rem = eighths % 8;
 	if (rem === 0) return String(whole);
-	return whole === 0 ? EIGHTHS[rem] : `${whole}${EIGHTHS[rem]}`;
+	return whole === 0 ? EIGHTHS[rem] : `${whole} ${EIGHTHS[rem]}`;
 };
 
 export const MM_PER_INCH = 25.4;
