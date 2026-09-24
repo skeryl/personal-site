@@ -285,10 +285,6 @@
 						Click or drag on the quilt to paint this grid.
 					{:else if store.tool === 'place'}
 						Pieces you place land at this grid. Hold alt to cover a whole square.
-					{:else}
-						Pick a grid to paint it on, or
-						<button class="link" onclick={() => (store.tool = 'mouse')}>select</button>
-						blocks to change theirs.
 					{/if}
 				</p>
 			</div>
@@ -651,10 +647,11 @@
 	}
 
 	/*
-	 * Held open to the tallest wording, three lines. These hints change as the
-	 * tool changes, and a hint that shrinks drags the palette up under the
-	 * pointer mid-gesture: the second half of a double-click then lands on
-	 * whatever slid into its place.
+	 * Held open to the tallest wording. These hints change as the tool changes,
+	 * and a hint that shrinks drags the palette up under the pointer
+	 * mid-gesture: the second half of a double-click then lands on whatever
+	 * slid into its place. Which is why the room stays reserved even with
+	 * nothing to say, as it is at rest now.
 	 */
 	/* Prose about what to do next, so it takes the sans the design labels in. */
 	.hint {
@@ -665,14 +662,5 @@
 		line-height: 1.5;
 		letter-spacing: 0.36px;
 		color: var(--qb-tool);
-	}
-	.link {
-		font: inherit;
-		padding: 0;
-		border: none;
-		background: none;
-		color: var(--color-text-strong);
-		text-decoration: underline;
-		cursor: pointer;
 	}
 </style>
