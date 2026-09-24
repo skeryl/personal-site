@@ -2315,9 +2315,13 @@ test("the materials list is the design's three sections, off the panel", async (
 	await expect(page.locator('.sheet .section')).toHaveText(['Fabric', 'Cut List', 'Sew List']);
 	await expect(page.locator('.sheet .title')).toHaveText('Materials List');
 
-	// Fabric: what to buy, in the eighths a bolt is cut in.
-	await expect(page.locator('.sheet .fabric-name')).toHaveText(['Denim']);
+	// Fabric: a swatch and what to buy, in the eighths a bolt is cut in.
+	await expect(page.locator('.sheet .fabric-swatch')).toHaveCount(1);
 	await expect(page.locator('.sheet .fabric-yards')).toContainText('yard');
+	const yardSize = await page
+		.locator('.sheet .fabric-yards')
+		.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+	expect(yardSize).toBe(12);
 
 	/*
 	 * Sew list: the quilt is two of the same pinwheel, so it asks for that

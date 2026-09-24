@@ -91,8 +91,11 @@
 				<ul class="fabrics">
 					{#each fabrics as material (material.id)}
 						<li class="fabric">
-							<span class="fabric-swatch" style="background: {material.hex}"></span>
-							<span class="fabric-name">{nameOf(material.id, material.hex)}</span>
+							<span
+								class="fabric-swatch"
+								style="background: {material.hex}"
+								title={nameOf(material.id, material.hex)}
+							></span>
 							<span class="fabric-yards">{fmtYards(yardsFor(material.id))}</span>
 						</li>
 					{/each}
@@ -257,17 +260,11 @@
 		height: 48px;
 		border: 1px solid var(--qb-line);
 	}
-	.fabric-name {
-		flex: none;
-		min-width: 120px;
-		font-family: var(--qb-mono);
-		font-size: 10px;
-		letter-spacing: 0.3px;
-		text-transform: uppercase;
-	}
+	/* 12px, a short step from the swatch it belongs to, as the design sets it. */
 	.fabric-yards {
 		font-family: var(--qb-sans);
 		font-size: 12px;
+		line-height: 18px;
 	}
 
 	/*
