@@ -254,6 +254,8 @@
 	/* The design's own page: 612 by 792, which is letter at 72 to the inch. */
 	.sheet {
 		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
 		width: 612px;
 		max-width: 100%;
 		min-height: 792px;
@@ -261,7 +263,8 @@
 		 * No side padding of its own: the rules and the columns run the full
 		 * width of the page, and it is the text that is indented past them.
 		 */
-		padding: 30px 0 40px;
+		/* No foot: the last band runs to the bottom edge, rules and all. */
+		padding: 30px 0 0;
 		background: #fff;
 		color: #000;
 		--sheet-indent: 10px;
@@ -285,6 +288,7 @@
 	}
 	.section {
 		margin: 0;
+		flex: none;
 		padding: 5px 0 6px var(--sheet-indent);
 		border-top: 0.5px solid var(--qb-line);
 		border-bottom: 0.5px solid var(--qb-line);
@@ -294,6 +298,10 @@
 		line-height: 18px;
 		text-transform: uppercase;
 		color: #000;
+	}
+	/* The title stands clear of the first rule, as the design sets it. */
+	.title + .section {
+		margin-top: 29px;
 	}
 	.empty {
 		margin: 0;
@@ -362,8 +370,13 @@
 	.row.cut {
 		min-height: 227px;
 	}
+	/*
+	 * The sew list closes the page: it takes whatever is left below it, so the
+	 * rules down its sides reach the foot rather than stopping wherever the
+	 * last caption happened to end.
+	 */
 	.row.sew {
-		min-height: 244px;
+		flex: 1;
 	}
 	.cell {
 		flex: 1 1 0;
@@ -371,6 +384,7 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
+		justify-content: flex-start;
 		gap: 4px;
 		padding: 0 10px;
 		border-left: 0.5px solid var(--qb-line);
@@ -378,8 +392,13 @@
 	.cell:first-child {
 		border-left: none;
 	}
+	/*
+	 * Held to its own height rather than stretched. The last band runs to the
+	 * foot of the page, and a stretching art box would drift its shapes into
+	 * the middle of all that room and hang the captions off the bottom edge.
+	 */
 	.art {
-		flex: 1;
+		flex: none;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -434,7 +453,8 @@
 		}
 		.sheet {
 			width: 100%;
-			min-height: 0;
+			/* The sheet of paper, whatever its height, not the screen's 792. */
+			min-height: 100vh;
 		}
 	}
 </style>
