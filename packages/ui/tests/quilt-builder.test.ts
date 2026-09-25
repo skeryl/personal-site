@@ -550,7 +550,7 @@ test('attributes lists the fabrics in a selection and remaps one', async ({ page
 });
 
 test('attributes says so when nothing is selected', async ({ page }) => {
-	await expect(page.locator('.attributes .hint').first()).toContainText('No blocks selected');
+	await expect(page.locator('.attributes .hint').first()).toContainText('none selected');
 });
 
 test('the app fits the window: only the wall and the palette scroll', async ({ page }) => {

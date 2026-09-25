@@ -166,7 +166,7 @@
 			<button class="link" onclick={() => store.selectParent()}>{store.parentLabel}</button>
 		</p>
 	{:else if !store.activeScope.length}
-		<p class="hint muted">No blocks selected</p>
+		<p class="hint muted">none selected</p>
 	{:else if !store.selectionSlots.length}
 		<p class="hint muted">The selected blocks are empty</p>
 	{:else}
@@ -241,6 +241,9 @@
 				</span>
 			</div>
 		{/each}
+		{#if !store.materials.length}
+			<p class="hint muted">none selected</p>
+		{/if}
 		<button class="add-color" onclick={addAndPick}>+ Add color</button>
 	</div>
 </div>
@@ -324,6 +327,10 @@
 	 * swatches between them to separate, and the gap only read as something
 	 * missing.
 	 */
+	.palette .muted {
+		margin: 0;
+		align-self: center;
+	}
 	.muted {
 		font-style: italic;
 		/* The site gives every <p> its own vertical padding; this one is a
