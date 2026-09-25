@@ -357,6 +357,12 @@
 		background: var(--qb-panel);
 	}
 	.group-scroll {
+		/*
+		 * Room for the ring a chosen tile wears, which stands outside the tile
+		 * and was being cut off by the scroller's own top edge. Taken back out
+		 * of the heading above so nothing moves.
+		 */
+		padding-top: 4px;
 		padding-bottom: 0.9rem;
 	}
 	/* Attributes is a plain section, so its heading and body can sit apart. */
@@ -498,7 +504,7 @@
 		display: flex;
 		align-items: baseline;
 		gap: 6px;
-		padding: 16px var(--sheet-gutter) 5px;
+		padding: 16px var(--sheet-gutter) 1px;
 	}
 	/*
 	 * Down the Attributes pane the design spaces things differently from the
@@ -607,7 +613,7 @@
 	.type {
 		aspect-ratio: 1;
 		padding: 0;
-		border: 0.25px solid #000;
+		border: 0.5px solid #000;
 		background: none;
 		cursor: pointer;
 		line-height: 0;
