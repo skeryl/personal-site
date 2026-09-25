@@ -141,13 +141,13 @@ test('shapes go down before any colour exists, in the palette greys', async ({ p
 	await pickShape(page, 'Half square triangle');
 	await placeInto(page, 0);
 	await parkMouse(page);
-	expect(await cellFills(page, 0)).toEqual(['#4a4a4a', '#d9d9d9']);
+	expect(await cellFills(page, 0)).toEqual(['#83817d', '#d9d9d9']);
 
 	// A plain square has only the one role, and takes the first grey.
 	await pickShape(page, 'Square');
 	await cell(page, 1).click();
 	await parkMouse(page);
-	expect(await cellFills(page, 1)).toEqual(['#4a4a4a']);
+	expect(await cellFills(page, 1)).toEqual(['#83817d']);
 
 	// Adding a colour is enough: it becomes active and placing works unnamed.
 	await addFabric(page, '', '4f7fe8');
@@ -224,7 +224,7 @@ test('the design, fabrics, and size survive a reload', async ({ page }) => {
 	await page.reload();
 	await page.waitForSelector('[data-cell-index="0"]');
 	await expect(page.getByLabel('Quilt name')).toHaveValue('Stars');
-	await expect(page.locator('.size .display')).toHaveText('Throw (48”x64”)');
+	await expect(page.locator('.size .display')).toHaveText('48” x 64”');
 	await expect(page.locator('.palette .chip')).toHaveCount(1);
 	expect(await cellFills(page, 3)).toEqual(['#4f7fe8']);
 });
@@ -1293,8 +1293,8 @@ test('the guides run the whole width and height of the quilt', async ({ page }) 
 	const horizontal = (await guideBounds(page, 'horizontal'))!;
 
 	// Not a box around the middle squares: lines across the whole quilt.
-	expect(vertical.height).toBeGreaterThan(blanket.height - 8);
-	expect(horizontal.width).toBeGreaterThan(blanket.width - 8);
+	expect(vertical.height).toBeGreaterThan(blanket.height - 12);
+	expect(horizontal.width).toBeGreaterThan(blanket.width - 12);
 });
 
 test('an even grid brackets the two columns and rows either side of centre', async ({ page }) => {
@@ -1352,9 +1352,12 @@ test('the quilt name and size head the canvas, and nothing is left over below', 
 	expect(size.x).toBeGreaterThan(name.x + name.width - 2);
 	expect(name.y).toBeLessThan(wall.y);
 
-	// The page has no second heading of its own any more, and the builder
-	// runs to the bottom edge rather than stopping short of it.
-	await expect(page.locator('.qb h1')).toHaveCount(0);
+	/*
+	 * The only heading in the builder is its own name across the top; the page
+	 * adds none of its own. And it runs to the bottom edge rather than
+	 * stopping short of it.
+	 */
+	await expect(page.locator('.qb h1')).toHaveText(['Quilt Builder']);
 	const fit = await page.evaluate(() => ({
 		overflow: document.documentElement.scrollHeight - window.innerHeight,
 		below: Math.round(
@@ -1375,8 +1378,8 @@ test('the block grid tiles are squares labelled by division', async ({ page }) =
 	 * verbatim.
 	 */
 	const tile = (await page.locator('.composition .chip-grid').first().boundingBox())!;
-	expect(tile.width).toBeCloseTo(55.2, -0.5);
-	expect(tile.width / tile.height).toBeCloseTo(55.2 / 55.9, 2);
+	expect(tile.width).toBeCloseTo(50, -0.5);
+	expect(tile.width / tile.height).toBeCloseTo(1, 2);
 
 	// One piece has no seams; 2x2 has one each way; 4x4 has three.
 	const seams = await page.$$eval('.composition .chip-grid', (grids) =>
@@ -1406,7 +1409,7 @@ test('the block grid tiles are squares labelled by division', async ({ page }) =
 		expect(tileState.stroke).toBe('1');
 		expect(tileState.dash).toBe('5px, 5px');
 		// Top edge to bottom edge, with no inset.
-		expect(tileState.spans).toBe('0..55.9');
+		expect(tileState.spans).toBe('0..50');
 	}
 });
 
@@ -1429,25 +1432,26 @@ test("the builder uses the design file's own colours and gutter", async ({ page 
 	// Read out of the Figma file, not picked by eye.
 	expect(tokens).toEqual({
 		accent: '#763edf',
-		panel: '#ffffff',
-		wall: '#f3f3f3',
-		line: '#cacaca',
-		square: '#dfdfdf',
+		panel: '#f5f4f2',
+		wall: '#f5f4f2',
+		line: '#d0cfc7',
+		square: '#f3f0e8',
 		tile: '#d9d9d9',
 		ink: '#525252',
 		guide: '#ff8585'
 	});
 
-	// A 426px panel with a 40px gutter, as the design lays it out.
+	// A 426px panel with a 10px gutter, as the design lays it out.
 	const side = (await page.locator('.side').boundingBox())!;
 	expect(side.width).toBeCloseTo(426, 0);
-	// Three tiles a row, square, inset 40px, with 20px between them.
+	// Three 100px tiles a row, square, inset 10px, with 50px between them.
 	const tiles = await page.locator('[data-panel="type"] .type').all();
 	const first = (await tiles[0].boundingBox())!;
 	const second = (await tiles[1].boundingBox())!;
-	expect(first.x - side.x).toBeCloseTo(40, 0);
+	expect(first.x - side.x).toBeCloseTo(10, 0);
+	expect(first.width).toBeCloseTo(100, 0);
 	expect(first.width).toBeCloseTo(first.height, 0);
-	expect(second.x - (first.x + first.width)).toBeCloseTo(20, 0);
+	expect(second.x - (first.x + first.width)).toBeCloseTo(50, 0);
 });
 
 test('nothing is subdivided on load, so the one-piece tile is the armed one', async ({ page }) => {
@@ -1731,7 +1735,7 @@ test('reset puts a colour row back to unset', async ({ page }) => {
 	await parkMouse(page);
 
 	// The shape stays; only its fabric goes.
-	expect(await cellFills(page, 0)).toEqual(['#4a4a4a']);
+	expect(await cellFills(page, 0)).toEqual(['#83817d']);
 	await expect(page.locator('.colors .color-label')).toHaveText(['Unset 1']);
 	// And the fabric is still in the palette for anything else using it.
 	await expect(page.locator('.palette .chip')).toHaveCount(1);
@@ -1751,7 +1755,7 @@ test('removing a fabric leaves the shapes cut from it, unset', async ({ page }) 
 	await parkMouse(page);
 
 	// The triangle is still a triangle, in the greys it started as.
-	expect(await cellFills(page, 0)).toEqual(['#4a4a4a', '#d9d9d9']);
+	expect(await cellFills(page, 0)).toEqual(['#83817d', '#d9d9d9']);
 });
 
 test('alt while placing covers the whole square, however finely it is divided', async ({
@@ -1867,7 +1871,7 @@ test('a square placed with no colour is a shape, and the eraser takes it', async
 	await pickShape(page, 'Square');
 	await cell(page, 0).click();
 	await parkMouse(page);
-	expect(await cellFills(page, 0)).toEqual(['#4a4a4a']);
+	expect(await cellFills(page, 0)).toEqual(['#83817d']);
 	expect(await cellFills(page, 1)).toEqual(['#ffffff']);
 
 	await selectCell(page, 0);
@@ -1910,7 +1914,7 @@ test('the unset slots print the grey they are drawn in', async ({ page }) => {
 	const hexes = (await page.locator('.colors .hex-chip').allTextContents()).map((text) =>
 		text.trim()
 	);
-	expect(hexes).toEqual(['4A4A4A', 'D9D9D9']);
+	expect(hexes).toEqual(['83817D', 'D9D9D9']);
 });
 
 test('delete takes the palette swatch you are on out of the palette', async ({ page }) => {
@@ -2205,7 +2209,7 @@ test('the quilt size opens as the design table', async ({ page }) => {
 		.locator('.size')
 		.getByRole('option', { name: /^King\b/ })
 		.click();
-	await expect(page.locator('.size .display')).toHaveText('King (112”x112”)');
+	await expect(page.locator('.size .display')).toHaveText('112” x 112”');
 	await expect(page.locator('.size .menu')).toHaveCount(0);
 });
 
@@ -2407,7 +2411,7 @@ test('in and mm is one switch, and it reaches every measurement', async ({ page 
 	const unit = (name: string) => page.locator('.units .unit', { hasText: name });
 	await expect(unit('in')).toHaveAttribute('aria-pressed', 'true');
 	await expect(page.locator('.dimensions .display')).toHaveText(['8”', '¼', '⅝”']);
-	await expect(page.locator('.size .display')).toContainText('48”x64”');
+	await expect(page.locator('.size .display')).toContainText('48” x 64”');
 
 	await unit('mm').click();
 
@@ -2415,7 +2419,7 @@ test('in and mm is one switch, and it reaches every measurement', async ({ page 
 	await expect(unit('mm')).toHaveAttribute('aria-pressed', 'true');
 	await expect(unit('in')).toHaveAttribute('aria-pressed', 'false');
 	await expect(page.locator('.dimensions .display')).toHaveText(['203mm', '6mm', '16mm']);
-	await expect(page.locator('.size .display')).toContainText('1219mmx1626mm');
+	await expect(page.locator('.size .display')).toContainText('1219mm x 1626mm');
 
 	// Including the sheet you take to the shop, yardage and all.
 	await openMaterials(page);

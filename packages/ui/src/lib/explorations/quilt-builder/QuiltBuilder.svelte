@@ -51,6 +51,8 @@
 />
 
 <div class="qb" bind:this={root} style="--qb-top: {top}px">
+	<!-- The builder names itself across the top, ruled off from the work. -->
+	<h1 class="masthead">Quilt Builder</h1>
 	<section class="body">
 		<SidePanel {store} />
 		<Wall {store} />
@@ -67,16 +69,22 @@
 		 */
 		--qb-mono: 'Spline Sans Mono', 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
 		--qb-sans: 'Cabin', var(--font-sans, system-ui, -apple-system, 'Segoe UI', sans-serif);
+		/* The builder's own name, and only that: a serif against the other two. */
+		--qb-title: 'Neuton', Georgia, 'Times New Roman', serif;
 
 		/* Read from the design file rather than eyeballed. */
 		--qb-accent: #763edf;
-		--qb-panel: #ffffff;
-		--qb-wall: #f3f3f3;
-		--qb-line: #cacaca;
-		/* Squares on the quilt are ruled lighter than the panel's own borders. */
-		--qb-square: #dfdfdf;
+		/* One warm off-white behind both the palette and the wall. */
+		--qb-panel: #f5f4f2;
+		--qb-wall: #f5f4f2;
+		/* Rules between sections, and the cream the quilt is ruled in. */
+		--qb-line: #d0cfc7;
+		--qb-square: #f3f0e8;
 		--qb-tile: #d9d9d9;
 		--qb-ink: #525252;
+		/* The quilt's binding, and the grey its quieter writing is set in. */
+		--qb-binding: #83817d;
+		--qb-muted: #83817d;
 		--qb-guide: #ff8585;
 		/* The blue every link in the design is set in. */
 		--qb-link: #0011cf;
@@ -112,11 +120,29 @@
 		height: calc(100dvh - var(--qb-top, 0px));
 	}
 
+	/* 33px tall, the name centred in it, as the design heads the page. */
+	.masthead {
+		flex-shrink: 0;
+		box-sizing: border-box;
+		height: 33px;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-family: var(--qb-title);
+		font-size: 16px;
+		font-weight: 400;
+		line-height: 20px;
+		color: #000;
+		background: var(--qb-panel);
+	}
+
 	.body {
 		display: grid;
 		grid-template-columns: 26.625rem minmax(0, 1fr);
 		align-items: stretch;
-		border-top: 1px solid var(--qb-line);
+		border-top: 0.5px solid var(--qb-line);
 		flex: 1;
 		min-height: 0;
 	}

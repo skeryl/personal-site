@@ -299,26 +299,27 @@
 	/* The same 12px Cabin heading the rest of the palette uses. */
 	.label {
 		font-family: var(--qb-sans);
-		font-size: 12px;
+		font-size: 10px;
 		line-height: 18px;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
 		color: #000;
 	}
+	/* The short rule the design draws between the grid and the colours. */
 	.rule {
-		margin: 16px var(--qb-pad) 0;
+		margin: 16px 34px 0 49px;
 		border: none;
-		border-top: 1px solid var(--qb-line);
+		border-top: 0.5px solid var(--qb-line);
 	}
 	.section {
-		padding: 16px var(--qb-pad) 4px;
+		padding: 16px 10px 4px;
 	}
 	.hint {
-		margin: 0 var(--qb-pad) 0.5rem;
+		margin: 0 10px 0.5rem 47px;
 		font-family: var(--qb-sans);
 		font-size: 12px;
 		letter-spacing: 0.36px;
-		color: var(--qb-tool);
+		color: var(--qb-muted);
 	}
 	/*
 	 * With nothing selected the note sits straight under the heading, as the
@@ -344,7 +345,7 @@
 	.colors {
 		list-style: none;
 		margin: 0;
-		padding: 0 var(--qb-pad);
+		padding: 0 10px 0 47px;
 		display: grid;
 		grid-template-columns: repeat(auto-fill, 6.6875rem);
 		gap: 1.1rem 2.0625rem;
@@ -423,8 +424,8 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: flex-start;
-		gap: 1.25rem 10px;
-		padding: 0 var(--qb-pad);
+		gap: 1.25rem 19px;
+		padding: 0 10px 0 47px;
 	}
 	/*
 	 * Wider than the swatch it belongs to. The design sizes the name to the

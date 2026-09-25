@@ -102,7 +102,12 @@ const geeseUnit = (x0: number, gooseRole: number, skyRole: number): PieceShape[]
  * How a role reads with no fabric behind it: the greys the palette icons are
  * drawn in, so an uncoloured shape on the quilt looks like its own icon.
  */
-export const ROLE_FILL = ['#4a4a4a', '#d9d9d9'];
+/*
+ * The two greys a shape is drawn in before it has any fabric — the design's
+ * own, warm rather than neutral, so an uncoloured block sits with the cream
+ * the quilt is ruled in instead of against it.
+ */
+export const ROLE_FILL = ['#83817d', '#d9d9d9'];
 
 const PIECES: Cut[] = [
 	{

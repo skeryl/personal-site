@@ -168,12 +168,12 @@
 		gap: 0.3rem;
 	}
 
-	/* The dimensions along the top of the palette: 12px Cabin, in the design. */
+	/* The dimensions along the top of the palette: 10px Cabin, in the design. */
 	.field-label {
 		font-family: var(--qb-sans);
-		font-size: 12px;
+		font-size: 10px;
 		line-height: 20px;
-		letter-spacing: 0.36px;
+		letter-spacing: 0.3px;
 		text-transform: uppercase;
 		color: #000;
 		white-space: nowrap;
@@ -213,21 +213,23 @@
 	 * of the quilt's own name across from it.
 	 */
 	.boxed {
-		display: block;
+		display: inline-flex;
+		align-items: baseline;
+		gap: 5px;
 	}
 	.boxed .trigger {
-		height: 25px;
-		gap: 10px;
+		height: 20px;
+		gap: 4px;
 		justify-content: flex-end;
 		background: none;
 		border: none;
+		border-bottom: 0.5px solid #000;
 	}
 	.boxed .display {
-		font-family: var(--qb-sans);
-		font-size: 16px;
+		font-family: var(--qb-mono);
+		font-size: 12px;
 		line-height: 18px;
-		text-transform: uppercase;
-		color: var(--qb-ink);
+		color: #000;
 	}
 	.boxed .caret {
 		width: 13px;

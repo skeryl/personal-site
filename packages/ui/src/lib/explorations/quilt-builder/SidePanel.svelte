@@ -87,8 +87,8 @@
 	 * The design's own block-grid tile. The panel renders it at exactly this
 	 * size, so the stroke and dash values inside stay literal pixels.
 	 */
-	const TILE_W = 55.2;
-	const TILE_H = 55.9;
+	const TILE_W = 50;
+	const TILE_H = 50;
 	/* Every rule inside the tile, chosen or not: the ring says which is which. */
 	const RULE = 1;
 
@@ -156,28 +156,32 @@
 		<div class="group-scroll">
 			<div class="types">
 				{#each cutEntries as entry (entry.cut.id)}
-					<button
-						class="type"
-						class:active={store.tab === 'piece' && store.pieceId === entry.cut.id}
-						aria-pressed={store.tab === 'piece' && store.pieceId === entry.cut.id}
-						aria-label={entry.cut.name}
-						title={entry.cut.name}
-						onclick={() => store.pickPiece(entry.cut.id)}
-					>
-						<BlockSvg block={entry.block} fills={roleFills(entry.block)} />
-					</button>
+					<div class="shape">
+						<button
+							class="type"
+							class:active={store.tab === 'piece' && store.pieceId === entry.cut.id}
+							aria-pressed={store.tab === 'piece' && store.pieceId === entry.cut.id}
+							aria-label={entry.cut.name}
+							onclick={() => store.pickPiece(entry.cut.id)}
+						>
+							<BlockSvg block={entry.block} fills={roleFills(entry.block)} />
+						</button>
+						<span class="shape-name">{entry.cut.abbr ?? entry.cut.name}</span>
+					</div>
 				{/each}
 				{#each blockEntries as entry (entry.type.id)}
-					<button
-						class="type"
-						class:active={store.tab === 'block' && store.blockId === entry.type.id}
-						aria-pressed={store.tab === 'block' && store.blockId === entry.type.id}
-						aria-label={entry.type.name}
-						title={entry.type.name}
-						onclick={() => store.pickBlock(entry.type.id)}
-					>
-						<BlockSvg block={entry.block} fills={roleFills(entry.block)} />
-					</button>
+					<div class="shape">
+						<button
+							class="type"
+							class:active={store.tab === 'block' && store.blockId === entry.type.id}
+							aria-pressed={store.tab === 'block' && store.blockId === entry.type.id}
+							aria-label={entry.type.name}
+							onclick={() => store.pickBlock(entry.type.id)}
+						>
+							<BlockSvg block={entry.block} fills={roleFills(entry.block)} />
+						</button>
+						<span class="shape-name">{entry.type.name}</span>
+					</div>
 				{/each}
 			</div>
 		</div>
@@ -306,6 +310,7 @@
 	 * reach for while looking at the quilt rather than while browsing.
 	 */
 	.side {
+		--sheet-gutter: 10px;
 		display: flex;
 		flex-direction: column;
 		background: var(--qb-panel);
@@ -370,13 +375,13 @@
 	 * itself rather than pushing the export off the bottom of the panel.
 	 */
 	.pane {
-		border-top: 1px solid var(--qb-line);
+		border-top: 0.5px solid var(--qb-line);
 	}
 	.trailer {
 		display: flex;
 		justify-content: center;
-		padding: 0.85rem var(--qb-pad);
-		border-top: 1px solid var(--qb-line);
+		padding: 0.85rem var(--sheet-gutter);
+		border-top: 0.5px solid var(--qb-line);
 	}
 	.export {
 		border: none;
@@ -398,7 +403,7 @@
 		cursor: default;
 	}
 	.group {
-		border-top: 1px solid var(--qb-line);
+		border-top: 0.5px solid var(--qb-line);
 	}
 	/*
 	 * Native disclosures, so keyboard and screen readers get the behaviour for
@@ -466,23 +471,20 @@
 		align-items: baseline;
 		gap: 0.5rem 1.55rem;
 		padding: 0.9rem 10px 0.75rem;
-		border-bottom: 1px solid var(--qb-line);
+		border-bottom: 0.5px solid var(--qb-line);
 	}
+	/* 10px uppercase Cabin, in black: the design's section heading, every one
+	   of them the same size, Attributes included. */
 	.label {
-		/* 12px uppercase Cabin, in black: the design's section heading. */
 		font-family: var(--qb-sans);
-		font-size: 12px;
+		font-size: 10px;
 		line-height: 18px;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
 		color: #000;
 	}
-	/* Attributes heads a whole pane rather than a list, and is set larger. */
-	.pane > .label {
-		font-size: 16px;
-	}
 	.section {
-		padding: 1.5rem var(--qb-pad) 0.55rem;
+		padding: 16px var(--sheet-gutter) 5px;
 	}
 	/*
 	 * Down the Attributes pane the design spaces things differently from the
@@ -492,10 +494,10 @@
 	.pane > .label.section {
 		/* The site gives every h2 a margin of its own; this one sets its room. */
 		margin: 0;
-		padding: 15px var(--qb-pad) 3px;
+		padding: 15px var(--sheet-gutter) 3px;
 	}
 	.grid-section > .label.section {
-		padding: 0 var(--qb-pad) 5px;
+		padding: 0 var(--sheet-gutter) 5px;
 	}
 	.section kbd {
 		font: inherit;
@@ -511,10 +513,10 @@
 	 */
 	.composition {
 		display: grid;
-		grid-template-columns: repeat(3, 55.2px);
-		justify-content: space-between;
-		gap: 0;
-		padding: 0 var(--qb-pad);
+		grid-template-columns: repeat(3, 50px);
+		justify-content: start;
+		gap: 0 64px;
+		padding: 0 10px 0 71px;
 	}
 	.chip {
 		display: flex;
@@ -531,7 +533,7 @@
 	.chip-grid {
 		display: block;
 		width: 100%;
-		aspect-ratio: 55.2 / 55.9;
+		aspect-ratio: 1;
 		background: #fff;
 		color: var(--qb-ink);
 	}
@@ -566,11 +568,27 @@
 	}
 
 	/* Three 102px tiles with 20px gutters is exactly the design's 426px panel. */
+	/* Three 100px tiles a row at the design's own 50px apart, 43px between
+	   rows, starting at the panel's gutter rather than spread across it. */
 	.types {
 		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 1.25rem;
-		padding: 0 var(--qb-pad);
+		grid-template-columns: repeat(3, 100px);
+		justify-content: start;
+		gap: 43px 50px;
+		padding: 0 var(--sheet-gutter);
+	}
+	/* A tile and the name under it, which is what the grid lays out now. */
+	.shape {
+		display: flex;
+		flex-direction: column;
+		gap: 7px;
+	}
+	.shape-name {
+		font-size: 12px;
+		line-height: 15px;
+		text-transform: uppercase;
+		text-align: center;
+		color: #000;
 	}
 	.type {
 		aspect-ratio: 1;

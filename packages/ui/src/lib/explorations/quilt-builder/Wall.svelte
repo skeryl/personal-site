@@ -77,9 +77,9 @@
 	/** What the size field shows: the preset's name and its finished inches. */
 	const sizeLabel = $derived.by(() => {
 		const w = (inches: number) => fmtLength(inches, store.metric);
-		if (store.isCustomSize) return `Custom (${w(store.customWidth)}x${w(store.customHeight)})`;
+		if (store.isCustomSize) return `${w(store.customWidth)} x ${w(store.customHeight)}`;
 		const size = QUILT_SIZE_BY_ID[store.sizeId];
-		return size ? `${size.name} (${w(size.width)}x${w(size.height)})` : 'Custom';
+		return size ? `${w(size.width)} x ${w(size.height)}` : 'Custom';
 	});
 
 	// ── Zoom and pan ─────────────────────────────────────────────────
@@ -329,6 +329,7 @@
 		<div class="size">
 			<Dropdown
 				variant="boxed"
+				label="Size:"
 				display={sizeLabel}
 				value={store.sizeId}
 				headings={['Size:', '(W)', '(H)']}
@@ -681,7 +682,7 @@
 	}
 	.wall-frame {
 		background: var(--qb-wall);
-		border: 1px solid var(--qb-line);
+		border: none;
 		padding: 0.75rem 2rem 1.25rem;
 		display: flex;
 		flex-direction: column;
@@ -785,16 +786,16 @@
 	}
 	.col-headers {
 		display: grid;
-		gap: 1px;
-		/* Matches the blanket's 1px border so the labels line up exactly. */
-		padding: 0 1px;
+		gap: 0;
+		/* Matches the blanket's binding so the labels line up exactly. */
+		padding: 0 5px;
 		box-sizing: border-box;
 		will-change: transform;
 	}
 	.row-headers {
 		display: grid;
-		gap: 1px;
-		padding: 1px 0;
+		gap: 0;
+		padding: 5px 0;
 		box-sizing: border-box;
 		will-change: transform;
 	}
@@ -827,22 +828,28 @@
 	 * resolves -1 against the EXPLICIT grid, so a full-height guide collapsed
 	 * to the first row while only the columns were declared.
 	 */
+	/*
+	 * Seams in the cream the design rules the quilt in, and a binding round
+	 * the outside — the one heavy edge on the wall, and the only place the
+	 * quilt's own colour shows against the cloth of the squares.
+	 */
 	.blanket {
 		position: relative;
 		display: grid;
-		gap: 1px;
-		/*
-		 * The design has no heavy frame: the quilt's outer edge is the same
-		 * 1px rule as the seams between its squares.
-		 */
-		background: var(--qb-square);
-		border: 1px solid var(--qb-square);
+		gap: 0;
+		border: 5px solid var(--qb-binding);
 		/* Width and height are set from the fit, so the border must sit inside. */
 		box-sizing: border-box;
 	}
 	.cell {
 		position: relative;
-		border: none;
+		/*
+		 * Every square carries its own seam, as the design draws them, rather
+		 * than the grid showing a colour through its gaps: at half a pixel a
+		 * gap closes up entirely and the quilt loses its ruling.
+		 */
+		box-sizing: border-box;
+		border: 0.5px solid var(--qb-square);
 		padding: 0;
 		background: #fff;
 		/* pan-y keeps the page scrollable on touch; horizontal drags still paint. */
