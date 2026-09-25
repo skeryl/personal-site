@@ -195,9 +195,10 @@
 		flex: none;
 	}
 
-	/* Inline: the value underlined, with the caret alongside. */
+	/* Inline: the value underlined, with the caret alongside. The rule under
+	   it is the design's own hairline, not one of the builder's dividers. */
 	.inline .trigger {
-		border-bottom: 1px solid #000;
+		border-bottom: 0.5px solid #777676;
 	}
 	/* Set at the size of the label it answers, so the pair reads as one line. */
 	.inline .display {
@@ -223,7 +224,7 @@
 		justify-content: flex-end;
 		background: none;
 		border: none;
-		border-bottom: 0.5px solid #000;
+		border-bottom: 0.5px solid #777676;
 	}
 	.boxed .display {
 		font-family: var(--qb-mono);

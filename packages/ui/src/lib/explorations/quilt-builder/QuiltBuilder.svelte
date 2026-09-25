@@ -77,6 +77,12 @@
 		/* One warm off-white behind both the palette and the wall. */
 		--qb-panel: #f5f4f2;
 		--qb-wall: #f5f4f2;
+		/*
+		 * Every line that divides one part of the builder from another, down
+		 * the panel and across it: black, and half a pixel. Distinct from the
+		 * hairlines that edge a swatch or a tile, which are not dividers.
+		 */
+		--qb-divider: 0.5px solid #000;
 		/* Rules between sections, and the cream the quilt is ruled in. */
 		--qb-line: #d0cfc7;
 		--qb-square: #f3f0e8;
@@ -135,14 +141,15 @@
 		font-weight: 400;
 		line-height: 20px;
 		color: #000;
-		background: var(--qb-panel);
+		/* White, not the warm ground the work below it sits on. */
+		background: #fff;
+		border-bottom: var(--qb-divider);
 	}
 
 	.body {
 		display: grid;
 		grid-template-columns: 26.625rem minmax(0, 1fr);
 		align-items: stretch;
-		border-top: 0.5px solid var(--qb-line);
 		flex: 1;
 		min-height: 0;
 	}

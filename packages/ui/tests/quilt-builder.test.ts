@@ -1028,12 +1028,16 @@ test('the shape sections collapse, and stay collapsed across a reload', async ({
 	await expect(typePanel).toHaveAttribute('open', '');
 	await expect(page.getByRole('button', { name: 'Pinwheel', exact: true })).toBeVisible();
 
-	// Collapsing Block type pulls what is under it up the panel.
+	/*
+	 * Collapsing puts away what is inside a section without moving what is
+	 * below it: each keeps its third of the panel open or shut, so closing
+	 * one does not make the others appear to jump.
+	 */
 	const before = (await patterns.boundingBox())!.y;
 	await typePanel.locator('summary').click();
 	await expect(typePanel).not.toHaveAttribute('open', '');
 	await expect(page.getByRole('button', { name: 'Pinwheel', exact: true })).toBeHidden();
-	expect((await patterns.boundingBox())!.y).toBeLessThan(before);
+	expect((await patterns.boundingBox())!.y).toBe(before);
 
 	await page.waitForTimeout(AUTOSAVE_MS);
 	await page.reload();
@@ -2159,9 +2163,9 @@ test('the dimensions are the design dropdowns, and the seam allowance is real', 
 	await expect(page.locator('.dimensions .field-label')).toHaveText([
 		'Block size:',
 		'Seam allowance:',
-		'Binding'
+		'Binding:'
 	]);
-	await expect(page.locator('.dimensions .display')).toHaveText(['8”', '¼', '⅝”']);
+	await expect(page.locator('.dimensions .display')).toHaveText(['8”', '¼”', '⅝”']);
 
 	// Every blank is its finished size plus two allowances, so changing the
 	// allowance changes the cutting list.
@@ -2179,7 +2183,7 @@ test('the dimensions are the design dropdowns, and the seam allowance is real', 
 	await openMaterials(page);
 	await expect(page.locator('.sheet .caption').first()).toContainText('9 x 9”');
 	await closeMaterials(page);
-	await expect(seam.locator('.display')).toHaveText('½');
+	await expect(seam.locator('.display')).toHaveText('½”');
 });
 
 test('the quilt size opens as the design table', async ({ page }) => {
@@ -2410,7 +2414,7 @@ test('in and mm is one switch, and it reaches every measurement', async ({ page 
 	// Inches to start with, written as the design writes them.
 	const unit = (name: string) => page.locator('.units .unit', { hasText: name });
 	await expect(unit('in')).toHaveAttribute('aria-pressed', 'true');
-	await expect(page.locator('.dimensions .display')).toHaveText(['8”', '¼', '⅝”']);
+	await expect(page.locator('.dimensions .display')).toHaveText(['8”', '¼”', '⅝”']);
 	await expect(page.locator('.size .display')).toContainText('48” x 64”');
 
 	await unit('mm').click();

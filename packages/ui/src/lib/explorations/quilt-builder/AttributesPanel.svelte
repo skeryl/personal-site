@@ -309,7 +309,7 @@
 	.rule {
 		margin: 16px 34px 0 49px;
 		border: none;
-		border-top: 0.5px solid var(--qb-line);
+		border-top: var(--qb-divider);
 	}
 	.section {
 		padding: 16px 10px 4px;

@@ -80,7 +80,6 @@
 	 * Millimetres have no such convention and are just numbers.
 	 */
 	const metric = $derived(store.metric);
-	const fraction = (inches: number) => (metric ? fmtLength(inches, true) : fmtFraction(inches));
 	const length = (inches: number) => (metric ? fmtLength(inches, true) : `${fmtInches(inches)}”`);
 
 	/*
@@ -128,7 +127,7 @@
 		/>
 		<Dropdown
 			label="Seam allowance:"
-			display={fraction(store.seamInches)}
+			display={metric ? fmtLength(store.seamInches, true) : `${fmtFraction(store.seamInches)}”`}
 			value={String(store.seamInches)}
 			title="Added to every side of every blank in the cutting list"
 			choices={SEAM_ALLOWANCES.map((inches) => ({
@@ -138,7 +137,7 @@
 			onpick={(next) => (store.seamInches = Number(next))}
 		/>
 		<Dropdown
-			label="Binding"
+			label="Binding:"
 			display={metric
 				? fmtLength(store.bindingInches, true)
 				: `${fmtFraction(store.bindingInches)}”`}
@@ -314,7 +313,7 @@
 		display: flex;
 		flex-direction: column;
 		background: var(--qb-panel);
-		border-right: 1px solid var(--qb-line);
+		border-right: var(--qb-divider);
 		font-family: var(--qb-mono);
 		min-height: 0;
 	}
@@ -333,10 +332,11 @@
 		flex: 1 1 0;
 		min-height: 0;
 	}
-	/* Collapsed, a section is its heading and nothing else. */
-	.group:not([open]) {
-		flex: none;
-	}
+	/*
+	 * A section keeps its third of the panel whether it is open or shut.
+	 * Letting a closed one give its room back moved everything below it, so
+	 * collapsing the patterns made the shapes above appear to jump.
+	 */
 	/*
 	 * The disclosure scrolls as a whole with its heading pinned to the top,
 	 * rather than holding a scrolling box inside itself: a <details> wraps
@@ -375,13 +375,13 @@
 	 * itself rather than pushing the export off the bottom of the panel.
 	 */
 	.pane {
-		border-top: 0.5px solid var(--qb-line);
+		border-top: var(--qb-divider);
 	}
 	.trailer {
 		display: flex;
 		justify-content: center;
 		padding: 0.85rem var(--sheet-gutter);
-		border-top: 0.5px solid var(--qb-line);
+		border-top: var(--qb-divider);
 	}
 	.export {
 		border: none;
@@ -403,7 +403,7 @@
 		cursor: default;
 	}
 	.group {
-		border-top: 0.5px solid var(--qb-line);
+		border-top: var(--qb-divider);
 	}
 	/*
 	 * Native disclosures, so keyboard and screen readers get the behaviour for
@@ -469,9 +469,9 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: baseline;
-		gap: 0.5rem 1.55rem;
+		gap: 0.5rem 23px;
 		padding: 0.9rem 10px 0.75rem;
-		border-bottom: 0.5px solid var(--qb-line);
+		border-bottom: var(--qb-divider);
 	}
 	/* 10px uppercase Cabin, in black: the design's section heading, every one
 	   of them the same size, Attributes included. */
@@ -658,9 +658,11 @@
 	}
 
 	/* The design's other "+ add" link, in the same blue and the same size. */
+	/* Centred under the patterns, as the design places it. */
 	.add-new {
 		display: block;
-		margin: 0.9rem var(--qb-pad) 0;
+		width: 100%;
+		margin: 0.9rem 0 0;
 		font: inherit;
 		font-size: 10px;
 		line-height: 18px;
@@ -671,7 +673,7 @@
 		border: none;
 		padding: 0;
 		cursor: pointer;
-		text-align: left;
+		text-align: center;
 	}
 	.add-new:hover:not(:disabled) {
 		text-decoration: underline;
