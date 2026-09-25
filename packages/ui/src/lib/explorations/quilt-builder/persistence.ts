@@ -70,8 +70,24 @@ export interface SavedState {
 	materials: Material[];
 	selectedMaterialId: string | null;
 	patterns: Pattern[];
+	/*
+	 * Names given to the built-in shapes, against the id of the cut or block
+	 * type they rename. Only the ones actually renamed are kept, so a shape
+	 * left alone goes on answering to whatever the app calls it.
+	 */
+	blockNames: Record<string, string>;
 	cells: Board;
 }
+
+/** Renamed shapes: string to string, and nothing else gets through. */
+const sanitizeBlockNames = (raw: unknown): Record<string, string> => {
+	if (typeof raw !== 'object' || raw === null) return {};
+	return Object.fromEntries(
+		Object.entries(raw as Record<string, unknown>).filter(
+			([id, name]) => typeof id === 'string' && typeof name === 'string' && name.trim() !== ''
+		)
+	) as Record<string, string>;
+};
 
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
@@ -260,6 +276,7 @@ export const parseSavedState = (raw: unknown): SavedState | null => {
 				: null,
 		// Saves written before patterns existed keep their blocks under `customBlocks`.
 		patterns: sanitizePatterns(s.patterns ?? s.customBlocks, known),
+		blockNames: sanitizeBlockNames(s.blockNames),
 		cells: sanitizeCells(s.cells, rows * cols, known)
 	};
 };

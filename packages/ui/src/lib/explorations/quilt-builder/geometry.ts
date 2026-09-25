@@ -109,6 +109,14 @@ const geeseUnit = (x0: number, gooseRole: number, skyRole: number): PieceShape[]
  */
 export const ROLE_FILL = ['#83817d', '#d9d9d9'];
 
+/*
+ * The grey a piece of this role is drawn in before it has any fabric. A shape
+ * with more parts than there are named roles — flying geese has three — takes
+ * the last of them for the rest, so it draws in cloth rather than in a hole.
+ */
+export const roleFill = (role: number): string =>
+	ROLE_FILL[role] ?? ROLE_FILL[ROLE_FILL.length - 1];
+
 const PIECES: Cut[] = [
 	{
 		id: 'square',

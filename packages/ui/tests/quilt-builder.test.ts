@@ -1020,7 +1020,7 @@ test('column and row headers stay frozen when the wall scrolls', async ({ page }
 	expect(scrolled.cellLeft).toBeLessThan(fit.cellLeft);
 });
 
-test('the shape sections collapse, and stay collapsed across a reload', async ({ page }) => {
+test('the shape sections collapse, and open again on the next visit', async ({ page }) => {
 	const typePanel = page.locator('[data-panel="type"]');
 	const patterns = page.locator('[data-panel="patterns"]');
 
@@ -1039,11 +1039,15 @@ test('the shape sections collapse, and stay collapsed across a reload', async ({
 	await expect(page.getByRole('button', { name: 'Pinwheel', exact: true })).toBeHidden();
 	expect((await patterns.boundingBox())!.y).toBe(before);
 
+	/*
+	 * Both open again next time. Closing one is a way of getting at what is
+	 * under it for a moment rather than a setting, and a section found shut on
+	 * arrival reads as one that is missing.
+	 */
 	await page.waitForTimeout(AUTOSAVE_MS);
 	await page.reload();
 	await page.waitForSelector('[data-cell-index="0"]');
-	await expect(page.locator('[data-panel="type"]')).not.toHaveAttribute('open', '');
-	// The other was left alone.
+	await expect(page.locator('[data-panel="type"]')).toHaveAttribute('open', '');
 	await expect(page.locator('[data-panel="patterns"]')).toHaveAttribute('open', '');
 });
 
@@ -2500,6 +2504,46 @@ test('everything picked in the builder is marked the same way', async ({ page })
 	expect(await ring('.composition .chip.active .chip-grid')).toBe(shape);
 	expect(await ring('.palette .chip.current')).toBe(shape);
 	expect(await ring('.cell.selected')).toBe(shape);
+});
+
+test('a shape can be called what its quilter calls it', async ({ page }) => {
+	const named = (n: number) => page.locator('.types .shape-name').nth(n);
+
+	// Until renamed, a shape shows the name it came with.
+	await expect(named(0)).toHaveValue('');
+	await expect(named(0)).toHaveAttribute('placeholder', 'Square');
+
+	await named(0).fill('Patch');
+	await expect(named(0)).toHaveValue('Patch');
+
+	// And it is still called that on the next visit.
+	await page.waitForTimeout(AUTOSAVE_MS);
+	await page.reload();
+	await page.waitForSelector('[data-cell-index="0"]');
+	await expect(named(0)).toHaveValue('Patch');
+
+	// Emptied, it answers to its own name again rather than to nothing.
+	await named(0).fill('');
+	await page.waitForTimeout(AUTOSAVE_MS);
+	await page.reload();
+	await page.waitForSelector('[data-cell-index="0"]');
+	await expect(named(0)).toHaveValue('');
+	await expect(named(0)).toHaveAttribute('placeholder', 'Square');
+});
+
+test('a shape with more parts than roles is drawn in cloth, not in holes', async ({ page }) => {
+	/*
+	 * Flying geese has three roles where the greys name two, and the third was
+	 * falling through to white — a hole in the block rather than a piece of it.
+	 */
+	const fills = await page
+		.locator('.types .type')
+		.nth(3)
+		.evaluate((el) =>
+			Array.from(el.querySelectorAll('polygon')).map((p) => p.getAttribute('fill'))
+		);
+	expect(fills.length).toBeGreaterThan(0);
+	expect(fills).not.toContain('#ffffff');
 });
 
 test('a swatch with nothing in it still has an edge to aim at', async ({ page }) => {

@@ -189,6 +189,8 @@ export class QuiltStore {
 	materials = $state<Material[]>([]);
 	selectedMaterialId = $state<string | null>(null);
 	patterns = $state<Pattern[]>([]);
+	/** Shapes the quilter has renamed, against the id they are known by. */
+	blockNames = $state<Record<string, string>>({});
 	cells = $state<Board>(emptyBoard(gridDims(DEFAULT_SIZE_ID, DEFAULT_BLOCK_SIZE)));
 	/** Board indices the composition control and pattern capture act on. */
 	selection = $state<number[]>([]);
@@ -262,6 +264,14 @@ export class QuiltStore {
 		const saved = parseSavedState(raw);
 		if (saved) this.restore(saved);
 		this.panels = parsePanels(readJson(localStorage, PANELS_KEY), DEFAULT_PANELS);
+		/*
+		 * The shape lists open every time, whatever was left behind. Closing
+		 * one is a way of getting at what is under it for a moment, not a
+		 * setting — and a section found shut on arrival reads as one that is
+		 * missing rather than one that was put away.
+		 */
+		this.panels.type = true;
+		this.panels.patterns = true;
 	}
 
 	private restore(saved: SavedState) {
@@ -275,6 +285,7 @@ export class QuiltStore {
 		this.materials = saved.materials;
 		this.selectedMaterialId = saved.selectedMaterialId;
 		this.patterns = saved.patterns;
+		this.blockNames = saved.blockNames;
 		this.cells = saved.cells;
 	}
 
@@ -402,6 +413,7 @@ export class QuiltStore {
 		materials: this.materials,
 		selectedMaterialId: this.selectedMaterialId,
 		patterns: this.patterns,
+		blockNames: this.blockNames,
 		cells: this.cells
 	});
 
@@ -1301,6 +1313,27 @@ export class QuiltStore {
 	selectMaterial(id: string) {
 		this.selectedMaterialId = id;
 		this.tool = 'place';
+	}
+
+	/*
+	 * Rename a shape in the palette. Cleared back to nothing rather than kept
+	 * as an empty string, so the shape answers to its own name again.
+	 */
+	renameBlock(id: string, name: string) {
+		const next = { ...this.blockNames };
+		if (name.trim()) next[id] = name;
+		else delete next[id];
+		this.blockNames = next;
+	}
+
+	/** Rename a saved pattern, in the list it is shown in. */
+	renamePattern(id: string, name: string) {
+		this.patterns = this.patterns.map((p) => (p.id === id ? { ...p, name } : p));
+	}
+
+	/** What a shape is called: what it was given, or what it came with. */
+	blockName(id: string, fallback: string): string {
+		return this.blockNames[id] ?? fallback;
 	}
 
 	renameMaterial(id: string, name: string) {

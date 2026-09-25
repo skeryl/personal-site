@@ -10,7 +10,7 @@
 	import { fmtLength } from './data';
 	import Dropdown from './Dropdown.svelte';
 	import Minimap from './Minimap.svelte';
-	import { ROLE_FILL, toPolygonPoints } from './geometry';
+	import { roleFill, toPolygonPoints } from './geometry';
 	import {
 		colOf,
 		columnLabel,
@@ -41,11 +41,7 @@
 	 * Blank space stays blank.
 	 */
 	const fillOf = (piece: FlatPiece): string =>
-		piece.fabric
-			? hexOf(piece.fabric)
-			: piece.shaped
-				? (ROLE_FILL[piece.role] ?? '#ffffff')
-				: '#ffffff';
+		piece.fabric ? hexOf(piece.fabric) : piece.shaped ? roleFill(piece.role) : '#ffffff';
 
 	const nameOf = (id: string | null): string =>
 		id ? store.materialById.get(id)?.name.trim() || 'unnamed fabric' : 'empty';

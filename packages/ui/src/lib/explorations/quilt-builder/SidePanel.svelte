@@ -20,7 +20,7 @@
 	} from './data';
 	import Dropdown from './Dropdown.svelte';
 	import { BLOCK_TYPES } from './blocks';
-	import { PIECE_CUTS, ROLE_FILL } from './geometry';
+	import { PIECE_CUTS, roleFill } from './geometry';
 	import { flatten, leafBlock, rotateBlock, type Block } from './model';
 	import { boundsOf, rotatePattern } from './pattern';
 	import AttributesPanel from './AttributesPanel.svelte';
@@ -35,8 +35,7 @@
 	let showMaterials = $state(false);
 
 	/** Icon fills: dark for the fabric role, light for background, white for empty. */
-	const roleFills = (block: Block): string[] =>
-		flatten(block).map((p) => ROLE_FILL[p.role] ?? '#ffffff');
+	const roleFills = (block: Block): string[] => flatten(block).map((p) => roleFill(p.role));
 
 	const hexOf = (id: string | null): string =>
 		id ? (store.materialById.get(id)?.hex ?? '#fff') : '#fff';
@@ -154,6 +153,7 @@
 		<div class="group-scroll">
 			<div class="types">
 				{#each cutEntries as entry (entry.cut.id)}
+					{@const given = entry.cut.abbr ?? entry.cut.name}
 					<div class="shape">
 						<button
 							class="type"
@@ -164,7 +164,15 @@
 						>
 							<BlockSvg block={entry.block} fills={roleFills(entry.block)} />
 						</button>
-						<span class="shape-name">{entry.cut.abbr ?? entry.cut.name}</span>
+						<input
+							class="shape-name"
+							type="text"
+							maxlength="40"
+							aria-label={`Name for ${given}`}
+							value={store.blockNames[entry.cut.id] ?? ''}
+							placeholder={given}
+							oninput={(e) => store.renameBlock(entry.cut.id, e.currentTarget.value)}
+						/>
 					</div>
 				{/each}
 				{#each blockEntries as entry (entry.type.id)}
@@ -178,7 +186,15 @@
 						>
 							<BlockSvg block={entry.block} fills={roleFills(entry.block)} />
 						</button>
-						<span class="shape-name">{entry.type.name}</span>
+						<input
+							class="shape-name"
+							type="text"
+							maxlength="40"
+							aria-label={`Name for ${entry.type.name}`}
+							value={store.blockNames[entry.type.id] ?? ''}
+							placeholder={entry.type.name}
+							oninput={(e) => store.renameBlock(entry.type.id, e.currentTarget.value)}
+						/>
 					</div>
 				{/each}
 			</div>
@@ -217,7 +233,14 @@
 								<PatternSvg blocks={entry.blocks} fillOf={hexOf} />
 							</button>
 							<span class="saved-name">
-								{entry.saved.name}{#if entry.size}<span class="saved-size">{entry.size}</span>{/if}
+								<input
+									class="shape-name"
+									type="text"
+									maxlength="40"
+									aria-label={`Name for ${entry.saved.name}`}
+									value={entry.saved.name}
+									oninput={(e) => store.renamePattern(entry.saved.id, e.currentTarget.value)}
+								/>{#if entry.size}<span class="saved-size">{entry.size}</span>{/if}
 							</span>
 							<button
 								class="saved-remove"
@@ -603,12 +626,28 @@
 		flex-direction: column;
 		gap: 7px;
 	}
+	/* A field, not a caption: a shape can be called what its quilter calls it. */
 	.shape-name {
+		width: 100%;
+		padding: 0;
+		border: none;
+		background: none;
+		font: inherit;
 		font-size: 12px;
 		line-height: 15px;
 		text-transform: uppercase;
 		text-align: center;
 		color: #000;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.shape-name::placeholder {
+		color: inherit;
+		opacity: 1;
+	}
+	.shape-name:focus {
+		outline: none;
+		box-shadow: 0 1px 0 0 #000;
 	}
 	/*
 	 * The rule is laid over the block rather than beside it. As a border it

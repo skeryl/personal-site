@@ -13,7 +13,7 @@
 
 	import BlockSvg from './BlockSvg.svelte';
 	import { fmtInches } from './data';
-	import { ROLE_FILL } from './geometry';
+	import { roleFill } from './geometry';
 	import { flatten, type Block } from './model';
 	import type { QuiltStore } from './state.svelte';
 
@@ -24,7 +24,7 @@
 
 	const fillsOf = (block: Block): string[] =>
 		flatten(block).map((p) =>
-			p.fabric ? hexOf(p.fabric) : p.shaped ? (ROLE_FILL[p.role] ?? '#ffffff') : '#ffffff'
+			p.fabric ? hexOf(p.fabric) : p.shaped ? roleFill(p.role) : '#ffffff'
 		);
 
 	const nameOf = (material: { name: string; hex: string }): string =>
