@@ -36,7 +36,13 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          # The quilt builder installs from GitHub Packages, which wants a
+          # token even though the package is ours.
+          registry-url: https://npm.pkg.github.com
+          scope: '@skeryl'
       - run: npm install
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: svelte-check
         run: npm run check -w @sc/ui
 
@@ -50,7 +56,13 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          # The quilt builder installs from GitHub Packages, which wants a
+          # token even though the package is ours.
+          registry-url: https://npm.pkg.github.com
+          scope: '@skeryl'
       - run: npm install
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Format auto-generated files
         working-directory: packages/ui
         run: npx prettier --write src/lib/entries/index.ts src/lib/assets/videos/posts/index.ts
@@ -68,7 +80,13 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          # The quilt builder installs from GitHub Packages, which wants a
+          # token even though the package is ours.
+          registry-url: https://npm.pkg.github.com
+          scope: '@skeryl'
       - run: npm install
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: vitest
         working-directory: packages/ui
         run: npx vitest run
@@ -83,7 +101,13 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          # The quilt builder installs from GitHub Packages, which wants a
+          # token even though the package is ours.
+          registry-url: https://npm.pkg.github.com
+          scope: '@skeryl'
       - run: npm install
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: build
         run: npm run build -w @sc/ui
       - name: Upload build output
@@ -128,7 +152,13 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          # The quilt builder installs from GitHub Packages, which wants a
+          # token even though the package is ours.
+          registry-url: https://npm.pkg.github.com
+          scope: '@skeryl'
       - run: npm install
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Install Playwright
         working-directory: packages/ui
         run: npx playwright install chromium --with-deps
