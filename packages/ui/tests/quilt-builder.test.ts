@@ -61,3 +61,27 @@ test('the wall is given the page padding back, and reaches the window', async ({
 	// Reaching the window is not the same as spilling past it.
 	expect(overflow).toBe(0);
 });
+
+test('the builder takes the whole of the room this page gives it', async ({ page }) => {
+	/*
+	 * The element is a flex item here, and this page sizes the element rather
+	 * than what is inside it. When the content ignored that room the quilt
+	 * wall lost a quarter of its height and every square shrank with it —
+	 * twelve pixels instead of nineteen on a phone. Nothing looked broken,
+	 * which is exactly why it is worth measuring rather than eyeballing.
+	 */
+	await page.setViewportSize({ width: 390, height: 844 });
+	await page.goto(ROUTE);
+	await expect(page.locator('[data-cell-index="0"]')).toBeVisible();
+	await page.evaluate(() => document.fonts.ready);
+
+	const room = await page.evaluate(() => {
+		const el = document.querySelector('quilt-builder')!;
+		return {
+			given: el.getBoundingClientRect().height,
+			taken: el.firstElementChild!.getBoundingClientRect().height
+		};
+	});
+	// It may ask for more than it is given. What it must not do is take less.
+	expect(Math.round(room.taken)).toBeGreaterThanOrEqual(Math.round(room.given));
+});
