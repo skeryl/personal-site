@@ -49,6 +49,9 @@
 	 * be placed made the list hard to read. Leaving the rest at their own
 	 * identity also keeps the flatten cache hitting.
 	 */
+	/* Filled squares chosen on the quilt: what a capture would take. */
+	const capturableCount = $derived(store.capturable.length);
+
 	const armedCut = $derived(store.tab === 'piece' ? store.pieceId : null);
 	const armedBlock = $derived(store.tab === 'block' ? store.blockId : null);
 
@@ -147,7 +150,20 @@
 	</div>
 
 	<details class="group" data-panel="type" bind:open={store.panels.type}>
-		<summary class="label section">Block type</summary>
+		<summary class="label section">
+			Block type
+			<button
+				class="add-new"
+				onclick={(e) => {
+					/* Inside the summary, so the press must stop short of it. */
+					e.preventDefault();
+					e.stopPropagation();
+					store.capturePattern();
+				}}
+			>
+				+ Add block type
+			</button>
+		</summary>
 		<div class="group-scroll">
 			<div class="types">
 				{#each cutEntries as entry (entry.cut.id)}
@@ -211,7 +227,7 @@
 					store.capturePattern();
 				}}
 			>
-				+ Add selection as pattern
+				{capturableCount ? '+ Add selection as pattern' : '+ Add block pattern'}
 			</button>
 		</summary>
 		<div class="group-scroll">

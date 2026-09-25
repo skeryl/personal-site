@@ -2547,9 +2547,14 @@ test('a shape with more parts than roles is drawn in cloth, not in holes', async
 });
 
 test('adding a selection as a pattern is always there to be pressed', async ({ page }) => {
-	// Enabled with nothing chosen, and pressing it then does nothing at all —
-	// it does not open a naming prompt for a pattern that has no blocks in it.
-	const add = page.locator('.add-new');
+	/*
+	 * Both sections carry one. Enabled with nothing chosen, and pressing then
+	 * does nothing at all — no naming prompt opens for a pattern that has no
+	 * blocks in it. The pattern one asks for a pattern until there is a
+	 * selection to make one from, and then asks for that instead.
+	 */
+	await expect(page.locator('.add-new')).toHaveText(['+ Add block type', '+ Add block pattern']);
+	const add = page.locator('[data-panel="patterns"] .add-new');
 	await expect(add).toBeEnabled();
 	let prompted = false;
 	page.on('dialog', (d) => {
@@ -2562,6 +2567,15 @@ test('adding a selection as a pattern is always there to be pressed', async ({ p
 	await expect(page.locator('[data-panel="patterns"] .saved')).toHaveCount(0);
 	// And the press stops at the button rather than working the disclosure.
 	await expect(page.locator('[data-panel="patterns"]')).toHaveAttribute('open', '');
+
+	// With filled squares chosen, it offers to take them.
+	await addFabric(page, 'Blue', '4f7fe8');
+	await pickShape(page, 'Pinwheel');
+	await cell(page, 0).click();
+	await tool(page, /^Select/).click();
+	await cell(page, 0).click();
+	await parkMouse(page);
+	await expect(add).toHaveText('+ Add selection as pattern');
 });
 
 test('a swatch with nothing in it still has an edge to aim at', async ({ page }) => {
