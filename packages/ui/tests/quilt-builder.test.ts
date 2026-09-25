@@ -2267,10 +2267,21 @@ test('the palette names each fabric and how much of it the quilt uses', async ({
 	expect(await paletteNames(page)).toEqual(['Denim', 'Peach']);
 	await expect(page.locator('.entry-count')).toHaveText(['(3)', '(0)']);
 
-	// The design's own sizes: 50 by 43 in the palette, 51 by 37 in the
-	// selection, with the hex directly under it and no label between.
-	const chip = (await page.locator('.palette .chip').first().boundingBox())!;
-	expect([Math.round(chip.width), Math.round(chip.height)]).toEqual([50, 43]);
+	/*
+	 * The design's own sizes: a broad band 40 high in the palette, three to a
+	 * row with 10 between them, and 51 by 37 in the selection, with the hex
+	 * directly under it and no label between.
+	 */
+	const chips = await page.locator('.palette .chip').all();
+	const first = (await chips[0].boundingBox())!;
+	const second = (await chips[1].boundingBox())!;
+	expect(Math.round(first.height)).toBe(40);
+	expect(Math.round(second.x - (first.x + first.width))).toBe(10);
+	// A third of the palette's width, so three sit across it.
+	const palette = (await page.locator('.palette').boundingBox())!;
+	expect(Math.round(first.width * 3 + 20)).toBe(Math.round(palette.width - 20));
+	// The empty slots stand in at exactly the size a swatch would be.
+	await expect(page.locator('.slot')).toHaveCount(0);
 
 	await selectCell(page, 0);
 	const swatch = (await page.locator('.colors .swatch').first().boundingBox())!;
@@ -2281,6 +2292,45 @@ test('the palette names each fabric and how much of it the quilt uses', async ({
 		'Color selection',
 		/^Color palette\s*\+ Add color$/
 	]);
+});
+
+test("an untouched palette stands its slots open at a swatch's size", async ({ page }) => {
+	/*
+	 * First time in, before any colour has been made: three empty slots the
+	 * size a swatch will be, rather than a blank band of panel. Each is the
+	 * same third of the row, with the same 10 between them.
+	 */
+	const slots = page.locator('.slot');
+	await expect(slots).toHaveCount(3);
+	await expect(page.locator('.palette .chip')).toHaveCount(0);
+
+	const boxes = await Promise.all((await slots.all()).map(async (s) => (await s.boundingBox())!));
+	for (const box of boxes) expect(Math.round(box.height)).toBe(40);
+	expect(Math.round(boxes[1].x - (boxes[0].x + boxes[0].width))).toBe(10);
+	expect(Math.round(boxes[2].x - (boxes[1].x + boxes[1].width))).toBe(10);
+	// All one width, and none of them named — nothing has been made to name.
+	expect(new Set(boxes.map((b) => Math.round(b.width))).size).toBe(1);
+	await expect(page.locator('.entry-name')).toHaveCount(0);
+
+	// The first colour takes the first slot's place, at the same size.
+	await addFabric(page, 'Denim', '4f7fe8');
+	await expect(slots).toHaveCount(0);
+	const chip = (await page.locator('.palette .chip').first().boundingBox())!;
+	expect([Math.round(chip.x), Math.round(chip.width), Math.round(chip.height)]).toEqual([
+		Math.round(boxes[0].x),
+		Math.round(boxes[0].width),
+		40
+	]);
+});
+
+test("the header is the design's own band across the top", async ({ page }) => {
+	// White, and 33 high, which is what the design sets both of them at.
+	for (const selector of ['nav', '.masthead']) {
+		const bar = page.locator(selector).first();
+		const box = (await bar.boundingBox())!;
+		expect(Math.round(box.height)).toBe(33);
+		await expect(bar).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+	}
 });
 
 test('a fabric is named in the picker, which the palette then shows', async ({ page }) => {
@@ -2302,8 +2352,10 @@ test('a palette name is edited where it is read, and never hides its count', asy
 	// The name is a field under its swatch, and typing in it renames the
 	// fabric everywhere.
 	const name = page.locator('.entry-label').first();
-	await name.fill('Flamingo Sateen');
-	await expect(page.getByRole('button', { name: /^Paint with Flamingo Sateen/ })).toBeVisible();
+	await name.fill('Flamingo Sateen Broadcloth');
+	await expect(
+		page.getByRole('button', { name: /^Paint with Flamingo Sateen Broadcloth/ })
+	).toBeVisible();
 
 	/*
 	 * However long the name, the count keeps its own room at the end of the

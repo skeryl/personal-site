@@ -417,35 +417,32 @@
 		color: #000;
 	}
 
-	/* Swatches 50 by 43, each over its name and its share of the quilt. */
 	/*
+	 * Three to a row, each a broad band of colour 40 high with its name
+	 * centred under it — the size the design draws a swatch at, and the size
+	 * the empty slots below stand in at. The columns are thirds rather than a
+	 * fixed width, so a row holding one fabric puts it where a row holding
+	 * three would put the first instead of stretching it across the panel.
+	 *
 	 * Rows sit far enough apart that a chosen swatch's box has room to stand
-	 * clear of the name under it. Across, the gap is small because the names
-	 * already carry room of their own: it is the space between the swatches
-	 * that should read as the design's, not the space between the columns.
+	 * clear of the name under it.
 	 */
 	.palette {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: flex-start;
-		gap: 1.25rem 19px;
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		align-items: start;
+		gap: 1.25rem 10px;
 		padding: 0 10px;
 	}
-	/*
-	 * Wider than the swatch it belongs to. The design sizes the name to the
-	 * swatch, which only works at the 8px it sets them in; at a size that can
-	 * actually be read, the name needs the extra room or it would shorten to
-	 * a few letters.
-	 */
 	.entry {
 		display: flex;
 		flex-direction: column;
 		gap: 0;
-		width: 70px;
+		min-width: 0;
 	}
 	.chip {
-		width: 50px;
-		height: 43px;
+		width: 100%;
+		height: 40px;
 		padding: 0;
 		cursor: pointer;
 	}
@@ -460,25 +457,30 @@
 		outline-offset: var(--qb-picked-gap);
 	}
 	/*
-	 * 8px under its swatch: small enough that a name and its share of the
-	 * quilt fit the 50px the swatch is wide. The count holds its own width at
-	 * the end of the row and the name takes what is left, so it is the name
-	 * that shortens — FLA...(10) rather than a count run off the edge.
+	 * The count holds its own width at the end of the row and the name takes
+	 * what is left, so it is the name that shortens — FLA...(10) rather than
+	 * a count run off the edge.
 	 */
 	/* An empty slot: the grey the design stands in for a colour not yet made. */
 	.slot {
-		flex: 1 1 0;
 		min-width: 0;
 		height: 40px;
 		background: #e9e9e9;
 	}
 
+	/*
+	 * Centred under its swatch, and in the app's own hand rather than the
+	 * sans the headings above are labelled in: a fabric's name is something
+	 * typed into the quilt, the way the quilt's own name is.
+	 */
 	.entry-name {
 		display: flex;
+		justify-content: center;
 		align-items: baseline;
-		width: 70px;
+		width: 100%;
 		/* Clears the box drawn around a chosen swatch. */
 		margin-top: 4px;
+		font-family: var(--qb-mono);
 		font-size: 10px;
 		line-height: 18px;
 		letter-spacing: 0.3px;
