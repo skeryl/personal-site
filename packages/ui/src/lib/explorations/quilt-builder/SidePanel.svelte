@@ -89,8 +89,6 @@
 	const TILE_H = 50;
 	/* Every rule inside the tile, chosen or not: the ring says which is which. */
 	const RULE = 1;
-
-	const capturableCount = $derived(store.capturable.length);
 </script>
 
 <aside class="side">
@@ -206,7 +204,6 @@
 			Block patterns
 			<button
 				class="add-new"
-				disabled={!capturableCount}
 				onclick={(e) => {
 					/* It lives inside the summary, so it must not work the disclosure too. */
 					e.preventDefault();
@@ -759,10 +756,6 @@
 	.add-new:hover:not(:disabled) {
 		text-decoration: underline;
 		text-underline-offset: 0.25em;
-	}
-	.add-new:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
 	}
 
 	/*

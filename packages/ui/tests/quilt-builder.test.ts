@@ -2546,6 +2546,24 @@ test('a shape with more parts than roles is drawn in cloth, not in holes', async
 	expect(fills).not.toContain('#ffffff');
 });
 
+test('adding a selection as a pattern is always there to be pressed', async ({ page }) => {
+	// Enabled with nothing chosen, and pressing it then does nothing at all —
+	// it does not open a naming prompt for a pattern that has no blocks in it.
+	const add = page.locator('.add-new');
+	await expect(add).toBeEnabled();
+	let prompted = false;
+	page.on('dialog', (d) => {
+		prompted = true;
+		d.dismiss();
+	});
+	await add.click();
+	await parkMouse(page);
+	expect(prompted).toBe(false);
+	await expect(page.locator('[data-panel="patterns"] .saved')).toHaveCount(0);
+	// And the press stops at the button rather than working the disclosure.
+	await expect(page.locator('[data-panel="patterns"]')).toHaveAttribute('open', '');
+});
+
 test('a swatch with nothing in it still has an edge to aim at', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
 	await pickShape(page, 'Half square triangle');
