@@ -250,8 +250,8 @@
 	 * box with room either side of it rather than against the ends.
 	 */
 	.inline .trigger {
-		gap: 6px;
-		padding: 0 3px 0 8px;
+		gap: 4px;
+		padding: 0 2px 0 8px;
 		border-bottom: 0.5px solid #777676;
 	}
 	/* Set at the size of the label it answers, so the pair reads as one line. */

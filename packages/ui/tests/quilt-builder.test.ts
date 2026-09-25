@@ -2186,6 +2186,36 @@ test('the dimensions are the design dropdowns, and the seam allowance is real', 
 	await expect(seam.locator('.display')).toHaveText('1/2”');
 });
 
+test('the three dimensions hold one line across the panel', async ({ page }) => {
+	/*
+	 * They are ruled off along the top of the palette as one row, and the
+	 * panel is the width the design gives it. Chrome added to a dropdown is
+	 * paid for out of that row, so a couple of pixels either side of a value
+	 * is enough to fold the binding onto a second line.
+	 */
+	// Measured in the faces it is set in: the fallbacks are wider, and the row
+	// is tight enough that measuring mid-load reports a wrap that never lands.
+	await page.evaluate(() => document.fonts.ready);
+	const row = await page.locator('.dimensions').evaluate((el) => {
+		const cs = getComputedStyle(el);
+		const groups = Array.from(el.querySelectorAll('.dropdown'));
+		const natural = groups.reduce((sum, g) => {
+			const label = g.querySelector('.field-label')!.getBoundingClientRect().width;
+			const trigger = g.querySelector('.trigger')!.getBoundingClientRect().width;
+			return sum + label + parseFloat(getComputedStyle(g).columnGap) + trigger;
+		}, 0);
+		const boxes = groups.map((g) => g.getBoundingClientRect());
+		return {
+			available: el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight),
+			natural: natural + parseFloat(cs.columnGap) * (groups.length - 1),
+			// Sat on one line they share a baseline, so their feet are level.
+			level: boxes.every((b) => Math.abs(b.bottom - boxes[0].bottom) < 6)
+		};
+	});
+	expect(row.level).toBe(true);
+	expect(row.natural).toBeLessThanOrEqual(row.available);
+});
+
 test('the quilt size opens as the design table', async ({ page }) => {
 	await page.locator('.size .trigger').click();
 
