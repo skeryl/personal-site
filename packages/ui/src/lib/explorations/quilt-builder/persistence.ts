@@ -1,31 +1,93 @@
 /*
- * Persistence: named patterns and the autosaved working state, sanitized on
- * the way in so stale or malformed saves degrade to empty cells instead of
- * breaking the page. Storage is injected so tests can use a fake, and writes
- * never throw (a full quota must not take down the editor).
+ * Persistence: the autosaved working state, sanitized on the way in so stale
+ * or malformed saves degrade gracefully instead of breaking the page.
+ * Storage is injected so tests can use a fake, and writes never throw.
+ *
+ * v2 stored one flat cell per grid position: { layout, rotation, slots }. v3
+ * stores a Block tree. A v2 cell reads as a leaf, and the three layouts that
+ * became compositions (pinwheel, broken dishes, four patch) are resampled
+ * into their grid form so saved designs keep their colours.
  */
 
-import { FABRIC_BY_ID } from './data';
-import { LAYOUTS } from './geometry';
-import { CELL_COUNT, emptyCell, type Board, type Cell } from './model';
+import {
+	BLOCK_SIZES,
+	CUSTOM_SIZE_ID,
+	DEFAULT_BLOCK_SIZE,
+	DEFAULT_SIZE_ID,
+	LEGACY_SIZE_IDS,
+	QUILT_SIZE_BY_ID,
+	clampCustomInches,
+	normalizeHex,
+	type Material,
+	BINDINGS,
+	DEFAULT_BINDING_INCHES,
+	DEFAULT_SEAM_INCHES,
+	SEAM_ALLOWANCES
+} from './data';
+import { REPLACED_BY } from './blocks';
+import { CUTS, isCutId, normalizeTurns } from './geometry';
+import { cloneBlock, emptyBlock, leafBlock, rotateBlock, type Block, type Board } from './model';
+import { resample } from './placement';
+import { blocksFrom, coordOf, type Pattern, type PatternBlocks } from './pattern';
 
-export const PATTERNS_KEY = 'quilt-builder:patterns';
-export const CURRENT_KEY = 'quilt-builder:current';
+export const STATE_KEY = 'quilt-builder:v3';
+/*
+ * Which palette sections are open. Kept out of the saved design: it is a
+ * preference about the window, not part of the quilt.
+ */
+export const PANELS_KEY = 'quilt-builder:panels';
 
-export interface SavedPattern {
-	id: string;
+export type Panels = Record<string, boolean>;
+
+export const parsePanels = (raw: unknown, defaults: Panels): Panels => {
+	if (typeof raw !== 'object' || raw === null) return { ...defaults };
+	const saved = raw as Record<string, unknown>;
+	return Object.fromEntries(
+		Object.entries(defaults).map(([id, fallback]) => [
+			id,
+			typeof saved[id] === 'boolean' ? saved[id] : fallback
+		])
+	);
+};
+/** Read once when v3 is absent, so existing designs survive the upgrade. */
+export const LEGACY_STATE_KEY = 'quilt-builder:v2';
+
+/** Compositions the palette offers. Anything else in a save is rejected. */
+const DIVISIONS = [1, 2, 4];
+
+/** Guard against a corrupt save claiming an enormous pattern. */
+const MAX_PATTERN_BLOCKS = 256;
+
+export interface SavedState {
 	name: string;
+	sizeId: string;
+	/** Only meaningful when sizeId is 'custom'. */
+	customWidth: number;
+	customHeight: number;
+	blockSize: number;
+	seamInches: number;
+	bindingInches: number;
+	materials: Material[];
+	selectedMaterialId: string | null;
+	patterns: Pattern[];
+	/*
+	 * Names given to the built-in shapes, against the id of the cut or block
+	 * type they rename. Only the ones actually renamed are kept, so a shape
+	 * left alone goes on answering to whatever the app calls it.
+	 */
+	blockNames: Record<string, string>;
 	cells: Board;
-	savedAt: number;
 }
 
-export type PatternMap = Record<string, SavedPattern>;
-
-export interface WorkingState {
-	cells: Board | null;
-	currentId: string | null;
-	name: string | null;
-}
+/** Renamed shapes: string to string, and nothing else gets through. */
+const sanitizeBlockNames = (raw: unknown): Record<string, string> => {
+	if (typeof raw !== 'object' || raw === null) return {};
+	return Object.fromEntries(
+		Object.entries(raw as Record<string, unknown>).filter(
+			([id, name]) => typeof id === 'string' && typeof name === 'string' && name.trim() !== ''
+		)
+	) as Record<string, string>;
+};
 
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
@@ -47,59 +109,174 @@ export const writeJson = (storage: StorageLike, key: string, value: unknown): bo
 	}
 };
 
-const isLayoutId = (value: unknown): value is Cell['layout'] =>
-	typeof value === 'string' && value in LAYOUTS;
-
-export const sanitizeCells = (raw: unknown): Board => {
-	const list = Array.isArray(raw) ? raw : [];
-	return Array.from({ length: CELL_COUNT }, (_, i) => {
-		const cell = list[i] as Partial<Cell> | undefined;
-		if (!cell || !isLayoutId(cell.layout) || !Array.isArray(cell.slots)) return emptyCell();
-		if (cell.slots.length !== LAYOUTS[cell.layout].slots.length) return emptyCell();
-		return {
-			layout: cell.layout,
-			rotation: typeof cell.rotation === 'number' ? ((cell.rotation % 4) + 4) % 4 : 0,
-			slots: cell.slots.map((slot) =>
-				typeof slot === 'string' && slot in FABRIC_BY_ID ? slot : null
-			)
-		};
+const fabricList = (raw: unknown, count: number, known: ReadonlySet<string>): (string | null)[] =>
+	Array.from({ length: count }, (_, i) => {
+		const value = Array.isArray(raw) ? raw[i] : null;
+		return typeof value === 'string' && known.has(value) ? value : null;
 	});
-};
 
-/**
- * Saves from before ids existed were keyed by name; migrate them. The id
- * minting is injectable so tests are deterministic.
- */
-export const sanitizePatterns = (
-	raw: unknown,
-	mintId: () => string = () => crypto.randomUUID()
-): PatternMap => {
-	if (typeof raw !== 'object' || raw === null) return {};
-	return Object.entries(raw as Record<string, Partial<SavedPattern>>).reduce<PatternMap>(
-		(out, [key, pattern]) => {
-			if (typeof pattern !== 'object' || pattern === null) return out;
-			const id = typeof pattern.id === 'string' ? pattern.id : mintId();
-			out[id] = {
-				id,
-				name: typeof pattern.name === 'string' ? pattern.name : key,
-				cells: sanitizeCells(pattern.cells),
-				savedAt: typeof pattern.savedAt === 'number' ? pattern.savedAt : 0
-			};
-			return out;
-		},
-		{}
+type Loose = Record<string, unknown>;
+
+const sanitizeLeaf = (raw: Loose, known: ReadonlySet<string>): Block => {
+	if (!isCutId(raw.cut)) return emptyBlock();
+	const count = CUTS[raw.cut].pieces.length;
+	if (!Array.isArray(raw.fabrics) || raw.fabrics.length !== count) return emptyBlock();
+	// Kept even when zero: its presence is what marks a composed leaf.
+	return leafBlock(
+		raw.cut,
+		normalizeTurns(typeof raw.rotation === 'number' ? raw.rotation : 0),
+		fabricList(raw.fabrics, count, known),
+		typeof raw.roleOffset === 'number' ? raw.roleOffset : undefined
 	);
 };
 
-/** The working state was a bare cells array before currentId existed. */
-export const parseWorkingState = (raw: unknown, knownIds: ReadonlySet<string>): WorkingState => {
-	if (Array.isArray(raw)) return { cells: sanitizeCells(raw), currentId: null, name: null };
-	if (typeof raw !== 'object' || raw === null) return { cells: null, currentId: null, name: null };
-	const state = raw as { cells?: unknown; currentId?: unknown; name?: unknown };
+/** A v2 cell, converted to a leaf and then to its replacement composition. */
+const migrateCell = (raw: Loose, known: ReadonlySet<string>): Block => {
+	if (!isCutId(raw.layout)) return emptyBlock();
+	const count = CUTS[raw.layout].pieces.length;
+	if (!Array.isArray(raw.slots) || raw.slots.length !== count) return emptyBlock();
+	const rotation = normalizeTurns(typeof raw.rotation === 'number' ? raw.rotation : 0);
+	const old = leafBlock(raw.layout, rotation, fabricList(raw.slots, count, known));
+	const replacement = REPLACED_BY[raw.layout];
+	// Resampling by centroid, so the index order of the old layout never matters.
+	return replacement ? resample(rotateBlock(cloneBlock(replacement), rotation), old) : old;
+};
+
+export const sanitizeBlock = (raw: unknown, known: ReadonlySet<string>): Block => {
+	if (typeof raw !== 'object' || raw === null) return emptyBlock();
+	const value = raw as Loose;
+	if (value.kind === 'grid') {
+		const { cols, rows, children } = value;
+		if (
+			typeof cols !== 'number' ||
+			typeof rows !== 'number' ||
+			!DIVISIONS.includes(cols) ||
+			!DIVISIONS.includes(rows) ||
+			!Array.isArray(children) ||
+			children.length !== cols * rows
+		) {
+			return emptyBlock();
+		}
+		return { kind: 'grid', cols, rows, children: children.map((c) => sanitizeBlock(c, known)) };
+	}
+	if (value.kind === 'leaf') return sanitizeLeaf(value, known);
+	return migrateCell(value, known);
+};
+
+export const sanitizeCells = (raw: unknown, count: number, known: ReadonlySet<string>): Board => {
+	const list = Array.isArray(raw) ? raw : [];
+	return Array.from({ length: count }, (_, i) => sanitizeBlock(list[i], known));
+};
+
+export const sanitizeMaterials = (raw: unknown): Material[] => {
+	if (!Array.isArray(raw)) return [];
+	const seen = new Set<string>();
+	return raw.flatMap((item) => {
+		const m = item as Partial<Material>;
+		if (typeof m?.id !== 'string' || seen.has(m.id)) return [];
+		const hex = typeof m.hex === 'string' ? normalizeHex(m.hex) : null;
+		if (!hex) return [];
+		seen.add(m.id);
+		return [{ id: m.id, name: typeof m.name === 'string' ? m.name : '', hex }];
+	});
+};
+
+/*
+ * Three shapes have to read: a pattern's sparse map, the single `block` a
+ * saved block carried before patterns existed, and the v2 layout stored
+ * inline. The last two become a one-by-one pattern.
+ */
+const sanitizePatternBlocks = (raw: Loose, known: ReadonlySet<string>): PatternBlocks => {
+	if (typeof raw.blocks !== 'object' || raw.blocks === null) {
+		return blocksFrom([
+			{ x: 0, y: 0, block: sanitizeBlock('block' in raw ? raw.block : raw, known) }
+		]);
+	}
+	const entries = Object.entries(raw.blocks as Record<string, unknown>)
+		.filter(([key]) => /^-?\d+,-?\d+$/.test(key))
+		.slice(0, MAX_PATTERN_BLOCKS)
+		.map(([key, value]) => {
+			const [x, y] = key.split(',').map(Number);
+			return { x, y, block: sanitizeBlock(value, known) };
+		});
+	return entries.length ? blocksFrom(entries) : { [coordOf(0, 0)]: emptyBlock() };
+};
+
+const sanitizePatterns = (raw: unknown, known: ReadonlySet<string>): Pattern[] => {
+	if (!Array.isArray(raw)) return [];
+	return raw.flatMap((item) => {
+		if (typeof item !== 'object' || item === null) return [];
+		const p = item as Loose;
+		if (typeof p.id !== 'string' || typeof p.name !== 'string') return [];
+		return [{ id: p.id, name: p.name, blocks: sanitizePatternBlocks(p, known) }];
+	});
+};
+
+/** Finished dimensions for any size id, custom included. */
+export const sizeInches = (
+	sizeId: string,
+	customWidth: number,
+	customHeight: number
+): { width: number; height: number } => {
+	if (sizeId === CUSTOM_SIZE_ID) {
+		return { width: clampCustomInches(customWidth), height: clampCustomInches(customHeight) };
+	}
+	const size = QUILT_SIZE_BY_ID[sizeId] ?? QUILT_SIZE_BY_ID[DEFAULT_SIZE_ID];
+	return { width: size.width, height: size.height };
+};
+
+export const gridDims = (
+	sizeId: string,
+	blockSize: number,
+	customWidth = 0,
+	customHeight = 0
+): { rows: number; cols: number } => {
+	const { width, height } = sizeInches(sizeId, customWidth, customHeight);
 	return {
-		cells: state.cells ? sanitizeCells(state.cells) : null,
-		currentId:
-			typeof state.currentId === 'string' && knownIds.has(state.currentId) ? state.currentId : null,
-		name: typeof state.name === 'string' ? state.name : null
+		rows: Math.max(1, Math.floor(height / blockSize)),
+		cols: Math.max(1, Math.floor(width / blockSize))
+	};
+};
+
+export const parseSavedState = (raw: unknown): SavedState | null => {
+	if (typeof raw !== 'object' || raw === null) return null;
+	const s = raw as Partial<Record<keyof SavedState, unknown>> & { customBlocks?: unknown };
+	const rawSizeId = typeof s.sizeId === 'string' ? (LEGACY_SIZE_IDS[s.sizeId] ?? s.sizeId) : '';
+	const sizeId =
+		rawSizeId === CUSTOM_SIZE_ID || rawSizeId in QUILT_SIZE_BY_ID ? rawSizeId : DEFAULT_SIZE_ID;
+	const fallback = QUILT_SIZE_BY_ID[DEFAULT_SIZE_ID];
+	const customWidth = clampCustomInches(
+		typeof s.customWidth === 'number' ? s.customWidth : fallback.width
+	);
+	const customHeight = clampCustomInches(
+		typeof s.customHeight === 'number' ? s.customHeight : fallback.height
+	);
+	const blockSize =
+		typeof s.blockSize === 'number' && BLOCK_SIZES.includes(s.blockSize)
+			? s.blockSize
+			: DEFAULT_BLOCK_SIZE;
+	/** One of the offered values, or the default; saves predate both. */
+	const oneOf = (raw: unknown, allowed: readonly number[], fallbackValue: number) =>
+		typeof raw === 'number' && allowed.includes(raw) ? raw : fallbackValue;
+	const materials = sanitizeMaterials(s.materials);
+	const known = new Set(materials.map((m) => m.id));
+	const { rows, cols } = gridDims(sizeId, blockSize, customWidth, customHeight);
+	return {
+		name: typeof s.name === 'string' ? s.name : '',
+		sizeId,
+		customWidth,
+		customHeight,
+		blockSize,
+		seamInches: oneOf(s.seamInches, SEAM_ALLOWANCES, DEFAULT_SEAM_INCHES),
+		bindingInches: oneOf(s.bindingInches, BINDINGS, DEFAULT_BINDING_INCHES),
+		materials,
+		selectedMaterialId:
+			typeof s.selectedMaterialId === 'string' && known.has(s.selectedMaterialId)
+				? s.selectedMaterialId
+				: null,
+		// Saves written before patterns existed keep their blocks under `customBlocks`.
+		patterns: sanitizePatterns(s.patterns ?? s.customBlocks, known),
+		blockNames: sanitizeBlockNames(s.blockNames),
+		cells: sanitizeCells(s.cells, rows * cols, known)
 	};
 };

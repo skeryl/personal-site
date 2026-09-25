@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
-	LAYOUTS,
+	BLOCK_CUTS,
+	CUTS,
+	PIECE_CUTS,
 	centroidOf,
 	normalizeTurns,
 	pointInPolygon,
 	rotatePoint,
-	rotatedSlots,
-	slotAt,
+	rotatedPieces,
+	pieceAt,
 	toPolygonPoints,
 	type Point
 } from './geometry';
@@ -32,46 +34,71 @@ describe('rotatePoint', () => {
 	});
 });
 
-describe('rotatedSlots', () => {
-	it('memoizes: repeated calls return the same instance', () => {
-		expect(rotatedSlots('diagonal', 1)).toBe(rotatedSlots('diagonal', 1));
+describe('CUTS', () => {
+	it('registers every piece and block cut by id', () => {
+		[...PIECE_CUTS, ...BLOCK_CUTS].forEach((cut) => {
+			expect(CUTS[cut.id]).toBe(cut);
+		});
 	});
 
-	it('normalizes rotation, so 4 turns equals 0', () => {
-		expect(rotatedSlots('quarters', 4)).toBe(rotatedSlots('quarters', 0));
+	it('gives every block cut at least one piece that takes the selected fabric', () => {
+		BLOCK_CUTS.forEach((cut) => {
+			expect(cut.pieces.some((s) => s.role === 0)).toBe(true);
+		});
 	});
 
-	it('returns the raw layout slots for rotation 0', () => {
-		expect(rotatedSlots('half', 0)).toBe(LAYOUTS.half.slots);
+	it('keeps legacy cuts out of the palette but resolvable for migration', () => {
+		expect(CUTS.pinwheel.group).toBe('legacy');
+		expect([...PIECE_CUTS, ...BLOCK_CUTS].map((c) => c.id)).not.toContain('pinwheel');
 	});
 });
 
-describe('slotAt', () => {
-	it('always hits slot 0 in the whole layout', () => {
-		expect(slotAt('whole', 0, [0.5, 0.5])).toBe(0);
+describe('rotatedPieces', () => {
+	it('memoizes: repeated calls return the same instance', () => {
+		expect(rotatedPieces('hst', 1)).toBe(rotatedPieces('hst', 1));
 	});
 
-	it('splits the half layout at the horizontal middle', () => {
-		expect(slotAt('half', 0, [0.5, 0.25])).toBe(0);
-		expect(slotAt('half', 0, [0.5, 0.75])).toBe(1);
+	it('normalizes rotation, so 4 turns equals 0', () => {
+		expect(rotatedPieces('hourglass', 4)).toBe(rotatedPieces('hourglass', 0));
 	});
 
-	it('resolves clicks exactly on the far edge to the edge slot, not slot 0', () => {
-		// y=1 lies outside every polygon's strict inequalities without clamping.
-		expect(slotAt('half', 0, [0.5, 1])).toBe(1);
-		expect(slotAt('half', 0, [1, 1])).toBe(1);
+	it('returns the raw cut pieces for rotation 0', () => {
+		expect(rotatedPieces('rectangle', 0)).toBe(CUTS.rectangle.pieces);
+	});
+});
+
+describe('pieceAt', () => {
+	it('always hits piece 0 in the square cut', () => {
+		expect(pieceAt('square', 0, [0.5, 0.5])).toBe(0);
 	});
 
-	it('distinguishes the diagonal halves', () => {
-		expect(slotAt('diagonal', 0, [0.7, 0.2])).toBe(0);
-		expect(slotAt('diagonal', 0, [0.2, 0.7])).toBe(1);
+	it('splits the rectangle cut at the vertical middle', () => {
+		expect(pieceAt('rectangle', 0, [0.25, 0.5])).toBe(0);
+		expect(pieceAt('rectangle', 0, [0.75, 0.5])).toBe(1);
 	});
 
-	it('finds all four quarters', () => {
-		expect(slotAt('quarters', 0, [0.5, 0.1])).toBe(0);
-		expect(slotAt('quarters', 0, [0.9, 0.5])).toBe(1);
-		expect(slotAt('quarters', 0, [0.5, 0.9])).toBe(2);
-		expect(slotAt('quarters', 0, [0.1, 0.5])).toBe(3);
+	it('resolves clicks exactly on the far edge to the edge piece, not piece 0', () => {
+		// x=1 lies outside every polygon's strict inequalities without clamping.
+		expect(pieceAt('rectangle', 0, [1, 0.5])).toBe(1);
+		expect(pieceAt('rectangle', 0, [1, 1])).toBe(1);
+	});
+
+	it('distinguishes the half square triangle halves', () => {
+		expect(pieceAt('hst', 0, [0.2, 0.7])).toBe(0);
+		expect(pieceAt('hst', 0, [0.7, 0.2])).toBe(1);
+	});
+
+	it('finds all four hourglass quarters', () => {
+		expect(pieceAt('hourglass', 0, [0.5, 0.1])).toBe(0);
+		expect(pieceAt('hourglass', 0, [0.9, 0.5])).toBe(1);
+		expect(pieceAt('hourglass', 0, [0.5, 0.9])).toBe(2);
+		expect(pieceAt('hourglass', 0, [0.1, 0.5])).toBe(3);
+	});
+
+	it('finds the goose and its sky corners in a flying geese unit', () => {
+		expect(pieceAt('flying-geese', 0, [0.15, 0.5])).toBe(0);
+		expect(pieceAt('flying-geese', 0, [0.4, 0.08])).toBe(1);
+		expect(pieceAt('flying-geese', 0, [0.4, 0.92])).toBe(2);
 	});
 });
 

@@ -1,400 +1,1110 @@
 <script lang="ts">
-	import { COLS, FABRIC_BY_ID, ROWS, SQUARE_INCHES, inchesToFeet } from './data';
-	import { LAYOUTS, rotatedSlots, toPolygonPoints } from './geometry';
-	import { KIND_NOUN } from './cutting';
-	import { CELL_COUNT, colOf, isEmpty, rowOf, type Cell } from './model';
-	import type { QuiltStore } from './state.svelte';
+	import { tick } from 'svelte';
+	import {
+		CUSTOM_SIZE_ID,
+		MAX_CUSTOM_INCHES,
+		MIN_CUSTOM_INCHES,
+		QUILT_SIZE_BY_ID,
+		QUILT_SIZES
+	} from './data';
+	import { fmtLength } from './data';
+	import Dropdown from './Dropdown.svelte';
+	import Minimap from './Minimap.svelte';
+	import { roleFill, toPolygonPoints } from './geometry';
+	import {
+		colOf,
+		columnLabel,
+		pieceKey,
+		rectAt,
+		divisionOf,
+		dominantFabric,
+		flatten,
+		isEmpty,
+		leafRects,
+		rowOf,
+		walkLeaves,
+		type Block,
+		type FlatPiece
+	} from './model';
+	import { ZOOM_MAX, ZOOM_MIN, ZOOM_STEP, type QuiltStore } from './state.svelte';
 
 	let { store }: { store: QuiltStore } = $props();
 
 	const VB = 100;
-	let blanket = $state<HTMLElement | null>(null);
-	$effect(() => {
-		store.blanketEl = blanket;
-	});
 
-	const widthIn = COLS * SQUARE_INCHES;
-	const heightIn = ROWS * SQUARE_INCHES;
+	const hexOf = (id: string | null): string =>
+		id ? (store.materialById.get(id)?.hex ?? '#ffffff') : '#ffffff';
 
-	const drag = $derived(
-		store.gesture?.kind === 'slot-drag' || store.gesture?.kind === 'group-drag'
-			? store.gesture
-			: null
-	);
-	const marquee = $derived(store.gesture?.kind === 'marquee' ? store.gesture : null);
+	/*
+	 * A shape can be placed before it has any fabric. Its pieces are then drawn
+	 * in the greys the palette icons use, so it still reads as the shape it is.
+	 * Blank space stays blank.
+	 */
+	const fillOf = (piece: FlatPiece): string =>
+		piece.fabric ? hexOf(piece.fabric) : piece.shaped ? roleFill(piece.role) : '#ffffff';
+
+	const nameOf = (id: string | null): string =>
+		id ? store.materialById.get(id)?.name.trim() || 'unnamed fabric' : 'empty';
 
 	/** Position plus contents, so a screen reader can read the design. */
-	const cellLabel = (index: number, cell: Cell): string => {
-		const position = `Row ${rowOf(index) + 1}, column ${colOf(index) + 1}`;
-		if (isEmpty(cell)) return `${position}: empty`;
-		const defs = LAYOUTS[cell.layout].slots;
-		const pieces = cell.slots
-			.map((id, i) => (id ? `${FABRIC_BY_ID[id].name} ${KIND_NOUN[defs[i].kind]}` : null))
-			.filter((piece): piece is string => piece !== null);
-		return `${position}: ${pieces.join(', ')}`;
+	const cellLabel = (index: number, block: Block): string => {
+		const position = `Row ${rowOf(index, store.dims.cols) + 1}, column ${colOf(index, store.dims.cols) + 1}`;
+		if (isEmpty(block)) return `${position}: empty`;
+		const names = [...new Set(flatten(block).map((p) => nameOf(p.fabric)))];
+		const division = divisionOf(block);
+		const shape =
+			division > 1
+				? `${division} by ${division} composition`
+				: walkLeaves(block)[0].leaf.cut.replace(/-/g, ' ');
+		return `${position}: ${shape} in ${names.join(', ')}`;
 	};
 
-	const onAxisKey = (e: KeyboardEvent, axis: 'v' | 'h') => {
-		const delta =
-			e.key === 'ArrowLeft' || e.key === 'ArrowUp'
-				? -1
-				: e.key === 'ArrowRight' || e.key === 'ArrowDown'
-					? 1
-					: 0;
-		if (!delta) return;
-		e.preventDefault();
-		e.stopPropagation();
-		store.nudgeAxis(axis, delta);
+	const banner = $derived.by(() => {
+		if (store.tool === 'mouse') {
+			return store.selection.length
+				? null
+				: 'Drag a box to select filled squares · hold ⌘ or Ctrl for empty ones, or to click into a piece';
+		}
+		if (store.tool === 'grid') return 'Click or drag to paint the grid chosen on the left';
+		if (store.tool === 'paint') return 'Click or drag to color pieces without recutting them';
+		return null;
+	});
+
+	/** What the size field shows: the preset's name and its finished inches. */
+	const sizeLabel = $derived.by(() => {
+		const w = (inches: number) => fmtLength(inches, store.metric);
+		if (store.isCustomSize) return `${w(store.customWidth)} x ${w(store.customHeight)}`;
+		const size = QUILT_SIZE_BY_ID[store.sizeId];
+		return size ? `${w(size.width)} x ${w(size.height)}` : 'Custom';
+	});
+
+	// ── Zoom and pan ─────────────────────────────────────────────────
+
+	let viewport = $state<HTMLElement | null>(null);
+	/* The visible area: what the quilt is centred in and the minimap reports. */
+	let viewW = $state(0);
+	let viewH = $state(0);
+	/* The scroller's own box, which its scrollbars do not change. */
+	let boxW = $state(0);
+	let boxH = $state(0);
+	let gutter = $state(0);
+	let scrollX = $state(0);
+	let scrollY = $state(0);
+
+	const aspect = $derived(store.dims.cols / store.dims.rows);
+
+	/*
+	 * Size at zoom 1: the whole quilt, contained in the viewport. The headers
+	 * sit in their own gutters outside the scroller, so the viewport's own
+	 * size is already the space available; the slack just keeps the border off
+	 * the edge so fitting never raises a scrollbar.
+	 *
+	 * Measured against the scroller's box rather than its visible area, and a
+	 * scrollbar's width held back from it. A scrollbar shrinks the visible
+	 * area, so sizing the quilt to that let the two chase each other: the
+	 * quilt grew past the viewport, a scrollbar appeared, the quilt shrank to
+	 * fit what was left, the scrollbar went away, and around again. It showed
+	 * as a flicker at whatever zoom sat on the threshold.
+	 */
+	const FIT_SLACK = 8;
+	const base = $derived.by(() => {
+		// The gutter comes off the width: a scrollbar down the side is the one
+		// that can be there at zoom 1, and nothing overflows sideways until
+		// the quilt is already taller than the viewport.
+		const availW = boxW - FIT_SLACK - gutter;
+		const availH = boxH - FIT_SLACK;
+		if (availW <= 0 || availH <= 0) return { w: 0, h: 0 };
+		const w = Math.max(Math.min(availW, availH * aspect), 80);
+		return { w, h: w / aspect };
+	});
+
+	const content = $derived({ w: base.w * store.zoom, h: base.h * store.zoom });
+	const zoomed = $derived(content.w > viewW + 1 || content.h > viewH + 1);
+
+	/*
+	 * The canvas centres the quilt when it is smaller than the viewport. The
+	 * labels have to cross that slack to stay beside the quilt, otherwise they
+	 * sit marooned at the far edge of the wall when fully zoomed out.
+	 */
+	const slack = $derived({
+		x: Math.max(0, (viewW - content.w) / 2),
+		y: Math.max(0, (viewH - content.h) / 2)
+	});
+
+	/** Where the quilt's top-left corner sits: slack and scroll together. */
+	const offset = $derived({ x: slack.x - scrollX, y: slack.y - scrollY });
+
+	/*
+	 * How much room a scrollbar takes, measured once. Zero where scrollbars
+	 * overlay the content, as they do on a Mac, so nothing is held back there.
+	 */
+	const scrollbarSize = (el: HTMLElement): number => {
+		const probe = document.createElement('div');
+		probe.style.cssText = 'position:absolute;top:-9999px;width:100px;height:100px;overflow:scroll';
+		document.body.append(probe);
+		const size = probe.offsetWidth - probe.clientWidth;
+		probe.remove();
+		// Either the gutter already held open, or what one would take.
+		return Math.max(size, el.offsetWidth - el.clientWidth);
+	};
+
+	const readView = () => {
+		const el = viewport;
+		if (!el) return;
+		scrollX = el.scrollLeft;
+		scrollY = el.scrollTop;
+	};
+
+	$effect(() => {
+		const el = viewport;
+		if (!el) return;
+		const measure = () => {
+			viewW = el.clientWidth;
+			viewH = el.clientHeight;
+			boxW = el.offsetWidth;
+			boxH = el.offsetHeight;
+			readView();
+		};
+		gutter = scrollbarSize(el);
+		measure();
+		const observer = new ResizeObserver(measure);
+		observer.observe(el);
+		return () => observer.disconnect();
+	});
+
+	/*
+	 * Ctrl (or cmd) plus wheel zooms about the pointer, so the block under the
+	 * cursor stays under the cursor. Registered by hand because preventDefault
+	 * needs a non-passive listener.
+	 */
+	$effect(() => {
+		const el = viewport;
+		if (!el) return;
+		const onWheel = async (e: WheelEvent) => {
+			if (!e.ctrlKey && !e.metaKey) return;
+			e.preventDefault();
+			const rect = el.getBoundingClientRect();
+			const cx = e.clientX - rect.left;
+			const cy = e.clientY - rect.top;
+			const before = store.zoom;
+			store.zoomBy(Math.exp(-e.deltaY * 0.0025));
+			const ratio = store.zoom / before;
+			if (ratio === 1) return;
+			await tick();
+			el.scrollLeft = (el.scrollLeft + cx) * ratio - cx;
+			el.scrollTop = (el.scrollTop + cy) * ratio - cy;
+			readView();
+		};
+		el.addEventListener('wheel', onWheel, { passive: false });
+		return () => el.removeEventListener('wheel', onWheel);
+	});
+
+	const clamp01 = (v: number) => Math.min(Math.max(v, 0), 1);
+
+	/** Fraction of the quilt currently visible, for the minimap. */
+	const view = $derived({
+		x: content.w ? clamp01(scrollX / content.w) : 0,
+		y: content.h ? clamp01(scrollY / content.h) : 0,
+		w: content.w ? clamp01(viewW / content.w) : 1,
+		h: content.h ? clamp01(viewH / content.h) : 1
+	});
+
+	/*
+	 * Middle-button drag pans. Listeners are attached by hand, like the wheel
+	 * one: they need preventDefault (to suppress autoscroll) and they belong on
+	 * a scroll container, not on an element with an interactive role. A drag
+	 * that starts over a block still pans, because cell handlers ignore every
+	 * button but 0 and pointer capture keeps the drag alive outside the wall.
+	 */
+	let panning = $state(false);
+
+	$effect(() => {
+		const el = viewport;
+		if (!el) return;
+
+		const down = (e: PointerEvent) => {
+			if (e.button !== 1) return;
+			e.preventDefault();
+			panning = true;
+			el.setPointerCapture(e.pointerId);
+		};
+		const move = (e: PointerEvent) => {
+			if (!panning) return;
+			el.scrollLeft -= e.movementX;
+			el.scrollTop -= e.movementY;
+			readView();
+		};
+		const up = (e: PointerEvent) => {
+			if (!panning) return;
+			panning = false;
+			if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+		};
+		// Middle click would otherwise start the browser's own autoscroll.
+		const auxclick = (e: MouseEvent) => e.button === 1 && e.preventDefault();
+
+		el.addEventListener('pointerdown', down);
+		el.addEventListener('pointermove', move);
+		el.addEventListener('pointerup', up);
+		el.addEventListener('pointercancel', up);
+		el.addEventListener('auxclick', auxclick);
+		return () => {
+			el.removeEventListener('pointerdown', down);
+			el.removeEventListener('pointermove', move);
+			el.removeEventListener('pointerup', up);
+			el.removeEventListener('pointercancel', up);
+			el.removeEventListener('auxclick', auxclick);
+		};
+	});
+
+	const panTo = (fx: number, fy: number) => {
+		const el = viewport;
+		if (!el) return;
+		el.scrollLeft = fx * content.w - el.clientWidth / 2;
+		el.scrollTop = fy * content.h - el.clientHeight / 2;
+		readView();
+	};
+
+	/** One fill per block, by dominant fabric, for the minimap. */
+	const minimapFills = $derived(store.cells.map((block) => hexOf(dominantFabric(block))));
+
+	const zoomPercent = $derived(Math.round(store.zoom * 100));
+
+	/*
+	 * A click on the wall away from any square lets the selection go, the way
+	 * clicking off a shape does anywhere else. Only the wall: the palette acts
+	 * on the selection, so clearing it on the way to a control there would
+	 * undo the thing the click was for.
+	 */
+	const onWallDown = (e: PointerEvent) => {
+		if (e.button !== 0) return;
+		if ((e.target as HTMLElement).closest('[data-cell-index]')) return;
+		store.clearSelection();
+	};
+
+	/*
+	 * Seams and piece outlines are non-scaling strokes, a fixed weight in
+	 * device pixels. Against a 4x4 block zoomed out that weight swamps the
+	 * pieces themselves, and neighbouring leaves each draw their own seam, so
+	 * shared edges come out doubled. Fade both with how big a sub-cell
+	 * actually is on screen: full detail when there is room, nothing at all
+	 * once the pieces are only a few pixels across.
+	 */
+	const blockPx = $derived(store.dims.cols ? content.w / store.dims.cols : 0);
+
+	const ramp = (value: number, lo: number, hi: number) =>
+		Math.min(1, Math.max(0, (value - lo) / (hi - lo)));
+
+	const detailAt = (division: number) => ramp(blockPx / Math.max(1, division), 8, 26);
+
+	/** Which piece of a given square is selected, and which is alt-hovered. */
+	const marksFor = (index: number) => {
+		const selected = store.selectedPiece;
+		const hovered = store.hoverPiece;
+		return {
+			selected:
+				selected && selected.cell === index ? pieceKey(selected.path, selected.piece) : null,
+			hovered: hovered && hovered.cell === index ? pieceKey(hovered.path, hovered.piece) : null
+		};
 	};
 </script>
 
-<div class="wall-side">
-	<div class="wall-title-row">
+<section class="wall">
+	<!-- The quilt's name and size head the canvas, as the design places them. -->
+	<div class="titlebar">
 		<input
-			class="wall-title"
+			class="quilt-name"
 			type="text"
-			placeholder="Untitled pattern"
-			aria-label="Pattern name"
-			maxlength="40"
-			bind:value={store.patternName}
-			onblur={() => store.commitName()}
+			placeholder="Untitled"
+			aria-label="Quilt name"
+			maxlength="60"
+			bind:value={store.name}
 			onkeydown={(e) => {
 				if (e.key === 'Enter') e.currentTarget.blur();
 			}}
 		/>
-		{#if store.currentId === null}
-			<span class="unsaved-tag">unsaved</span>
-		{/if}
-	</div>
-
-	<div class="wall">
-		<div
-			class="blanket"
-			bind:this={blanket}
-			class:tool-select={store.tool === 'select'}
-			class:tool-place={store.tool === 'place'}
-			class:tool-erase={store.tool === 'erase'}
-			style="grid-template-columns: repeat({COLS}, 1fr); aspect-ratio: {COLS} / {ROWS}"
-		>
-			{#each store.cells as cell, i (i)}
-				{@const pv = store.placePreview?.index === i ? store.placePreview : null}
-				{@const ev = store.erasePreview?.index === i ? store.erasePreview : null}
-				{@const gv = store.groupPreview?.get(i) ?? null}
-				{@const mv =
-					store.placePreview !== null && store.placePreview.index !== i
-						? (store.placePreview.mirrors.get(i) ?? null)
-						: null}
-				{@const display = gv ?? mv ?? (pv && !pv.blocked ? pv.cell : cell)}
-				<button
-					class="cell"
-					class:hovered={store.hover?.index === i}
-					class:selected={store.selectedSet.has(i)}
-					class:blocked={pv?.blocked}
-					class:lifted={store.groupPreview !== null &&
-						drag?.kind === 'group-drag' &&
-						!drag.copy &&
-						store.selectedSet.has(i)}
-					data-cell-index={i}
-					aria-label={cellLabel(i, cell)}
-					aria-pressed={store.selectedSet.has(i)}
-					onpointerdown={(e) => store.onCellPointerDown(e, i)}
-					onclick={(e) => {
-						// detail 0 = keyboard activation; pointer clicks are
-						// handled by the pointer gesture machinery.
-						if (e.detail === 0) store.activateCell(i);
-					}}
-					oncontextmenu={(e) => {
-						e.preventDefault();
-						store.contextRotate(i);
-					}}
-				>
-					<svg viewBox="0 0 {VB} {VB}" preserveAspectRatio="none" aria-hidden="true">
-						{#each rotatedSlots(display.layout, display.rotation) as slot, s (s)}
-							{@const id = display.slots[s]}
-							<polygon
-								points={toPolygonPoints(slot.points, VB)}
-								fill={id ? FABRIC_BY_ID[id].hex : '#ffffff'}
-								class:ghost={gv !== null ||
-									mv !== null ||
-									(pv !== null && s === pv.slot && !pv.blocked)}
-								class:erasing={ev !== null && s === ev.slot}
-								stroke={display.slots.length > 1 ? 'rgba(0, 0, 0, 0.18)' : 'none'}
-								stroke-width="1"
-								vector-effect="non-scaling-stroke"
-							/>
-						{/each}
-					</svg>
-				</button>
-			{/each}
-
-			{#if store.symV}
-				<div
-					class="axis axis-v"
-					role="slider"
-					tabindex="0"
-					aria-label="Vertical symmetry axis"
-					aria-orientation="vertical"
-					aria-valuemin="1"
-					aria-valuemax={2 * COLS - 1}
-					aria-valuenow={store.axisV}
-					style="left: {(store.axisV / (2 * COLS)) * 100}%"
-					onpointerdown={(e) => {
-						e.stopPropagation();
-						store.startAxisDrag(e, 'v');
-					}}
-					onkeydown={(e) => onAxisKey(e, 'v')}
-				></div>
-			{/if}
-			{#if store.symH}
-				<div
-					class="axis axis-h"
-					role="slider"
-					tabindex="0"
-					aria-label="Horizontal symmetry axis"
-					aria-orientation="horizontal"
-					aria-valuemin="1"
-					aria-valuemax={2 * ROWS - 1}
-					aria-valuenow={store.axisH}
-					style="top: {(store.axisH / (2 * ROWS)) * 100}%"
-					onpointerdown={(e) => {
-						e.stopPropagation();
-						store.startAxisDrag(e, 'h');
-					}}
-					onkeydown={(e) => onAxisKey(e, 'h')}
-				></div>
-			{/if}
+		<div class="size">
+			<Dropdown
+				variant="boxed"
+				label="Size:"
+				display={sizeLabel}
+				value={store.sizeId}
+				headings={['Size:', '(W)', '(H)']}
+				width={172}
+				choices={QUILT_SIZES.map((size) => ({
+					value: size.id,
+					label: size.name,
+					cols: [fmtLength(size.width, store.metric), fmtLength(size.height, store.metric)]
+				}))}
+				custom={{
+					value: CUSTOM_SIZE_ID,
+					w: store.customWidth,
+					h: store.customHeight,
+					min: MIN_CUSTOM_INCHES,
+					max: MAX_CUSTOM_INCHES,
+					onchange: (w, h) => store.setCustomSize(w, h)
+				}}
+				onpick={(next) => store.setSize(next)}
+			/>
 		</div>
 	</div>
+	<!--
+		Spoken, not shown. The selection is already plain from the outlines on
+		the quilt, and naming every square wrapped over several lines once a few
+		were selected; but somebody who cannot see those outlines still needs to
+		be told what changed.
+	-->
+	<p class="readout sr-only" aria-live="polite">{store.selectionLabel}</p>
+	<div class="wall-frame">
+		<div class="banner-slot" aria-live="polite">
+			{#if banner}
+				<span class="banner">{banner}</span>
+			{/if}
+		</div>
 
-	<p class="wall-caption">
-		{COLS} × {ROWS} squares at {SQUARE_INCHES}" ({inchesToFeet(widthIn)} × {inchesToFeet(heightIn)} finished);
-		{store.filled} of {CELL_COUNT} cells started. Pick a piece and color, then click or drag to paint.
-		The mouse tool selects squares (shift-click, shift-drag, or arrow keys for more): R or right-click
-		rotates, delete removes, drag moves, alt-drag duplicates. ⌘C copies the selection and ⌘V pastes it
-		at the cursor. ⌘Z undoes, ⇧⌘Z redoes.
-	</p>
-</div>
+		<div class="stage">
+			<!--
+				Headers live OUTSIDE the scroller and are translated by the scroll
+				offset, so they stay pinned to the edges the way a spreadsheet
+				freezes its row and column labels.
+			-->
+			<div class="corner" aria-hidden="true"></div>
+			<div class="col-strip" aria-hidden="true" style="height: calc(var(--head-h) + {slack.y}px)">
+				<div
+					class="col-headers"
+					style="grid-template-columns: repeat({store.dims
+						.cols}, 1fr); width: {content.w}px; transform: translate({offset.x}px, {slack.y}px)"
+				>
+					{#each { length: store.dims.cols } as _, c (c)}
+						<span class="head">{columnLabel(c)}</span>
+					{/each}
+				</div>
+			</div>
+			<div class="row-strip" aria-hidden="true" style="width: calc(var(--head-w) + {slack.x}px)">
+				<div
+					class="row-headers"
+					style="grid-template-rows: repeat({store.dims
+						.rows}, 1fr); height: {content.h}px; transform: translate({slack.x}px, {offset.y}px)"
+				>
+					{#each { length: store.dims.rows } as _, r (r)}
+						<span class="head">{r + 1}</span>
+					{/each}
+				</div>
+			</div>
+			<!-- Presentational: Escape is the keyboard way to drop a selection. -->
+			<div
+				class="viewport"
+				class:panning
+				role="presentation"
+				bind:this={viewport}
+				onscroll={readView}
+				onpointerdown={onWallDown}
+			>
+				<div class="canvas">
+					<div
+						class="blanket"
+						class:tool-erase={store.tool === 'erase'}
+						class:tool-mouse={store.tool === 'mouse'}
+						class:copying={store.blockDrag?.mode === 'copy'}
+						class:moving={store.blockDrag?.mode === 'move'}
+						class:tool-grid={store.tool === 'grid'}
+						class:tool-paint={store.tool === 'paint'}
+						style="grid-template-columns: repeat({store.dims
+							.cols}, 1fr); grid-template-rows: repeat({store.dims
+							.rows}, 1fr); width: {content.w}px; height: {content.h}px"
+					>
+						{#if store.centerLines}
+							{@const lines = store.centerLines}
+							<div
+								class="center-guide vertical"
+								aria-hidden="true"
+								style="grid-column: {lines.c0 + 1} / {lines.c1 + 2}; grid-row: 1 / -1"
+							></div>
+							<div
+								class="center-guide horizontal"
+								aria-hidden="true"
+								style="grid-row: {lines.r0 + 1} / {lines.r1 + 2}; grid-column: 1 / -1"
+							></div>
+						{/if}
+						{#if store.marqueeRect}
+							{@const rect = store.marqueeRect}
+							<div
+								class="lasso"
+								aria-hidden="true"
+								style="grid-column: {rect.c0 + 1} / {rect.c1 + 2}; grid-row: {rect.r0 +
+									1} / {rect.r1 + 2}"
+							></div>
+						{/if}
+						{#each store.cells as cell, i (i)}
+							{@const pv =
+								(
+									store.placePreview ??
+									store.paintPreview ??
+									store.gridPreview ??
+									store.dragPreview
+								)?.get(i) ?? null}
+							{@const ev = store.erasePreview?.get(i) ?? null}
+							{@const display = pv ?? cell}
+							{@const pieces = flatten(display)}
+							{@const before = pv ? new Map(flatten(cell).map((p) => [p.key, p.fabric])) : null}
+							{@const pieceMarks = marksFor(i)}
+							{@const detail = detailAt(divisionOf(display))}
+							{@const after = ev ? new Map(flatten(ev).map((p) => [p.key, p.fabric])) : null}
+							<button
+								class="cell"
+								class:hovered={store.hover?.index === i}
+								class:selected={store.highlighted.has(i)}
+								class:context={store.contextCell === i}
+								data-cell-index={i}
+								aria-label={cellLabel(i, cell)}
+								onpointerdown={(e) => store.onCellPointerDown(e, i)}
+								onclick={(e) => {
+									// detail 0 = keyboard activation; pointer clicks are
+									// handled by the pointer gesture machinery.
+									if (e.detail === 0) store.activateCell(i);
+								}}
+								oncontextmenu={(e) => {
+									e.preventDefault();
+									store.rotateCell(i);
+								}}
+							>
+								<svg viewBox="0 0 {VB} {VB}" preserveAspectRatio="none" aria-hidden="true">
+									{#each pieces as piece (piece.key)}
+										<polygon
+											points={toPolygonPoints(piece.points, VB)}
+											fill={fillOf(piece)}
+											class:ghost={before !== null &&
+												(before.get(piece.key) ?? null) !== piece.fabric}
+											class:erasing={after !== null &&
+												piece.fabric !== null &&
+												(after.get(piece.key) ?? null) !== piece.fabric}
+											stroke={pieces.length > 1 && detail > 0
+												? `rgba(0, 0, 0, ${0.18 * detail})`
+												: 'none'}
+											stroke-width="1"
+											vector-effect="non-scaling-stroke"
+										/>
+									{/each}
+									{#if store.selectedNode?.cell === i}
+										{@const node = rectAt(display, store.selectedNode.path)}
+										<rect
+											class="node-outline"
+											x={node.x * VB}
+											y={node.y * VB}
+											width={node.w * VB}
+											height={node.h * VB}
+										/>
+									{/if}
+									<!-- Drawn after the fills so the outline is not painted over. -->
+									{#each pieces as piece (piece.key)}
+										{#if pieceMarks.selected === piece.key || pieceMarks.hovered === piece.key}
+											<polygon
+												class="piece-outline"
+												class:preview={pieceMarks.selected !== piece.key}
+												points={toPolygonPoints(piece.points, VB)}
+											/>
+										{/if}
+									{/each}
+									{#if detail > 0}
+										{#each leafRects(display) as seam, s (s)}
+											<rect
+												class="seam"
+												x={seam.x * VB}
+												y={seam.y * VB}
+												width={seam.w * VB}
+												height={seam.h * VB}
+												style="opacity: {detail}"
+											/>
+										{/each}
+									{/if}
+								</svg>
+							</button>
+						{/each}
+					</div>
+				</div>
+			</div>
+			{#if zoomed}
+				<div class="minimap-slot">
+					<Minimap
+						cols={store.dims.cols}
+						rows={store.dims.rows}
+						fills={minimapFills}
+						{view}
+						onPan={panTo}
+					/>
+				</div>
+			{/if}
+		</div>
 
-{#if marquee?.active}
-	<div
-		class="marquee"
-		style="left: {Math.min(marquee.x0, marquee.x)}px; top: {Math.min(
-			marquee.y0,
-			marquee.y
-		)}px; width: {Math.abs(marquee.x - marquee.x0)}px; height: {Math.abs(marquee.y - marquee.y0)}px"
-	></div>
-{/if}
+		<div class="actions">
+			<button
+				class="action"
+				class:active={store.tool === 'place'}
+				onclick={() => (store.tool = 'place')}
+			>
+				Place block <kbd>P</kbd>
+			</button>
+			<button
+				class="action"
+				class:active={store.tool === 'mouse'}
+				onclick={() => (store.tool = 'mouse')}
+			>
+				Select <kbd>V</kbd>
+			</button>
+			<button
+				class="action"
+				class:active={store.tool === 'grid'}
+				onclick={() => (store.tool = 'grid')}
+			>
+				Grid <kbd>G</kbd>
+			</button>
+			<button
+				class="action"
+				class:active={store.tool === 'paint'}
+				onclick={() => (store.tool = 'paint')}
+			>
+				Paint <kbd>T</kbd>
+			</button>
+			<button
+				class="action"
+				class:active={store.tool === 'erase'}
+				onclick={() => (store.tool = 'erase')}
+			>
+				Erase <kbd>E</kbd>
+			</button>
+			<button class="action" onclick={() => store.rotate()}>Rotate <kbd>R</kbd></button>
+			<button class="action" onclick={() => store.undo()} disabled={!store.canUndo}>
+				Undo <kbd>⌘Z</kbd>
+			</button>
+			<button class="action" onclick={() => store.redo()} disabled={!store.canRedo}>
+				Redo <kbd>⇧⌘Z</kbd>
+			</button>
+		</div>
 
-{#if drag?.active}
-	<div
-		class="drag-ghost"
-		style="left: {drag.x}px; top: {drag.y}px; background: {FABRIC_BY_ID[drag.fabricId].hex}"
-	>
-		{#if drag.kind === 'group-drag' || drag.copy}
-			<span class="ghost-badge">
-				{drag.kind === 'group-drag' ? `×${store.selection.length}` : ''}{drag.copy ? '+' : ''}
-			</span>
-		{/if}
+		<div class="wall-actions">
+			<button
+				class="action"
+				class:active={store.panels.centerGuides}
+				aria-pressed={store.panels.centerGuides}
+				onclick={() => (store.panels.centerGuides = !store.panels.centerGuides)}
+			>
+				Show quilt center
+			</button>
+			<button class="action" onclick={() => store.clearAll()} disabled={store.filled === 0}>
+				Clear quilt wall
+			</button>
+		</div>
+
+		<div class="footer">
+			<div class="zoom" role="group" aria-label="Zoom">
+				<button
+					class="action"
+					aria-label="Zoom out"
+					onclick={() => store.zoomBy(1 / ZOOM_STEP)}
+					disabled={store.zoom <= ZOOM_MIN}>−</button
+				>
+				<button class="action zoom-level" onclick={() => store.resetZoom()} title="Reset zoom">
+					{zoomPercent}%
+				</button>
+				<button
+					class="action"
+					aria-label="Zoom in"
+					onclick={() => store.zoomBy(ZOOM_STEP)}
+					disabled={store.zoom >= ZOOM_MAX}>+</button
+				>
+				<span class="zoom-hint">⌃scroll</span>
+			</div>
+		</div>
 	</div>
-{/if}
+</section>
 
 <style>
-	.wall-title-row {
+	/*
+	 * Held to a fixed height rather than sized by its text. The name and the
+	 * quilt size are set in webfonts, which arrive after the first paint: left
+	 * to size itself, this row changes height as they swap in, and the wall
+	 * below it re-fits the quilt to the fraction of a pixel that frees up.
+	 */
+	.titlebar {
+		flex-shrink: 0;
 		display: flex;
 		align-items: center;
-		gap: 0.6rem;
-		margin-bottom: 0.5rem;
+		justify-content: space-between;
+		gap: 2rem;
+		box-sizing: border-box;
+		height: 3rem;
+		padding: 0 2rem;
+		/* Ruled off from the wall, as the dimensions are from the palette. */
+		border-bottom: var(--qb-divider);
 	}
-	/* A title that is secretly an input: plain text at rest, obviously
-	   editable on hover, a real field when focused. */
-	.wall-title {
+	/* The quilt's own name, in the app's writing at the design's 17.75px. */
+	.quilt-name {
 		flex: 1;
 		min-width: 0;
 		font: inherit;
-		font-size: 1.35rem;
-		font-weight: 700;
-		color: var(--color-text-strong);
+		font-family: var(--qb-mono);
+		font-size: 17.75px;
+		line-height: 18px;
+		color: var(--qb-ink);
 		background: none;
-		border: 1px solid transparent;
-		border-radius: 0.375rem;
-		padding: 0.1rem 0.4rem;
-		margin-left: -0.4rem;
+		border: none;
+		border-bottom: 1px solid transparent;
+		padding: 0.1rem 0;
 	}
-	.wall-title:hover {
-		border-color: var(--color-border);
-		background: var(--color-surface-active);
-		cursor: text;
+	.quilt-name:hover {
+		border-bottom-color: var(--qb-line);
 	}
-	.wall-title:focus {
-		border-color: var(--color-border-strong);
-		background: var(--color-surface-active);
+	.quilt-name:focus {
 		outline: none;
+		border-bottom-color: var(--color-text-strong);
 	}
-	.unsaved-tag {
-		font-size: 0.72rem;
-		color: var(--color-text-muted);
-		border: 1px dashed var(--color-border-strong);
-		padding: 0.1rem 0.5rem;
-		border-radius: 999px;
+	.size {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
 		white-space: nowrap;
 	}
 
-	/* The design wall: a neutral backdrop so the fabric colours read true. */
 	.wall {
-		background: var(--qb-wall, #616161);
-		padding: 1.25rem;
-		border-radius: 0.5rem;
+		font-family: var(--qb-mono);
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+		height: 100%;
 	}
+	.wall-frame {
+		background: var(--qb-wall);
+		border: none;
+		padding: 0.75rem 2rem 1.25rem;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		flex: 1;
+		min-height: 0;
+	}
+	.banner-slot {
+		height: 1.5rem;
+		margin-bottom: 0.25rem;
+		display: flex;
+		align-items: center;
+	}
+	/* Instructional prose, so it takes the same voice as the tool names. */
+	.banner {
+		font-family: var(--qb-sans);
+		font-style: italic;
+		font-size: 12px;
+		line-height: 20px;
+		letter-spacing: 0.36px;
+		color: var(--qb-tool);
+	}
+
+	.stage {
+		position: relative;
+		width: 100%;
+		max-width: 80rem;
+		flex: 1;
+		min-height: 0;
+		display: grid;
+		--head-w: 2.25rem;
+		--head-h: 1.5rem;
+		grid-template-columns: var(--head-w) minmax(0, 1fr);
+		grid-template-rows: var(--head-h) minmax(0, 1fr);
+	}
+	.viewport {
+		grid-area: 2 / 2;
+		height: 100%;
+		overflow: auto;
+		/*
+		 * Hold the scrollbar's room open whether or not one is showing, so the
+		 * visible area stops changing under the quilt as it grows. Costs
+		 * nothing where scrollbars overlay the content, as on a Mac trackpad.
+		 */
+		scrollbar-gutter: stable;
+		/*
+		 * Scroll chaining stays on: the wall fills most of the window, so
+		 * trapping the wheel here would strand the toolbar below it.
+		 */
+		background: var(--qb-wall);
+	}
+	.viewport.panning,
+	.viewport.panning :global(.cell) {
+		cursor: grabbing;
+	}
+	/*
+	 * Grows with the blanket so the viewport scrolls once zoomed in, and stays
+	 * viewport-sized when it fits, which centres the quilt.
+	 */
+	.canvas {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: max-content;
+		height: max-content;
+		min-width: 100%;
+		min-height: 100%;
+	}
+	.minimap-slot {
+		position: absolute;
+		right: 0.75rem;
+		bottom: 0.75rem;
+		z-index: 4;
+	}
+
+	/*
+	 * Headers align to the blanket's tracks by repeating its column and row
+	 * template, its 1px gaps, and padding that matches its 2px border.
+	 */
+	.corner {
+		grid-area: 1 / 1;
+	}
+	/*
+	 * Gutters clip their strip; the strip inside slides with the scroll. Each
+	 * strip may grow past its track, across the centring slack, so the labels
+	 * stay beside the quilt rather than pinned to the wall's edge. The tracks
+	 * are a fixed size so that growth cannot feed back into the slack it was
+	 * measured from.
+	 */
+	.col-strip {
+		grid-area: 1 / 2;
+		overflow: hidden;
+		pointer-events: none;
+		align-self: start;
+	}
+	.row-strip {
+		grid-area: 2 / 1;
+		overflow: hidden;
+		pointer-events: none;
+		justify-self: start;
+	}
+	.col-headers {
+		display: grid;
+		gap: 0;
+		/* Matches the blanket's binding so the labels line up exactly. */
+		padding: 0 5px;
+		box-sizing: border-box;
+		will-change: transform;
+	}
+	.row-headers {
+		display: grid;
+		gap: 0;
+		padding: 5px 0;
+		box-sizing: border-box;
+		will-change: transform;
+	}
+	/*
+	 * The letters and numbers ruling the quilt's edges. The design sets these
+	 * in the sans, larger and lighter than the app's own writing, so they read
+	 * as marks on a ruler rather than as labels you could click.
+	 */
+	.head {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: var(--head-h);
+		font-family: var(--qb-sans);
+		font-size: 17.75px;
+		color: var(--qb-rule);
+		line-height: 1;
+	}
+	.row-headers {
+		width: var(--head-w);
+	}
+	.row-headers .head {
+		height: auto;
+		justify-content: flex-end;
+		padding-right: 0.45rem;
+	}
+
+	/*
+	 * Rows are templated, not left implicit. An absolutely positioned child
+	 * resolves -1 against the EXPLICIT grid, so a full-height guide collapsed
+	 * to the first row while only the columns were declared.
+	 */
+	/*
+	 * Seams in the cream the design rules the quilt in, and a binding round
+	 * the outside — the one heavy edge on the wall, and the only place the
+	 * quilt's own colour shows against the cloth of the squares.
+	 */
 	.blanket {
 		position: relative;
 		display: grid;
-		width: 100%;
-		gap: 1px;
-		background: #b0b0b0;
-		border: 1px solid #3a3a3a;
+		gap: 0;
+		border: 5px solid var(--qb-binding);
+		/* Width and height are set from the fit, so the border must sit inside. */
+		box-sizing: border-box;
 	}
 	.cell {
 		position: relative;
-		aspect-ratio: 1;
-		border: none;
+		/*
+		 * Every square carries its own seam, as the design draws them, rather
+		 * than the grid showing a colour through its gaps: at half a pixel a
+		 * gap closes up entirely and the quilt loses its ruling.
+		 */
+		box-sizing: border-box;
+		border: 0.5px solid var(--qb-square);
 		padding: 0;
 		background: #fff;
 		/* pan-y keeps the page scrollable on touch; horizontal drags still paint. */
 		touch-action: pan-y;
 		line-height: 0;
+		cursor: cell;
 	}
 	.cell svg {
 		width: 100%;
 		height: 100%;
 		display: block;
 	}
-	.tool-select .cell {
-		cursor: pointer;
-	}
-	.tool-place .cell {
-		cursor: cell;
-	}
-	.tool-place .cell.blocked {
-		cursor: not-allowed;
-	}
-	.tool-erase .cell {
+	.tool-erase .cell,
+	.tool-paint .cell {
 		cursor: crosshair;
 	}
+
+	.tool-mouse .cell {
+		cursor: pointer;
+	}
+	.tool-grid .cell {
+		cursor: crosshair;
+	}
+	.copying .cell {
+		cursor: copy;
+	}
+	.moving .cell {
+		cursor: move;
+	}
+	/*
+	 * Outlines, not inset box-shadows. Each cell's svg covers it exactly, and
+	 * an inset shadow paints UNDER child content, so every one of these was
+	 * invisible. Outlines paint above descendants, which is why the focus ring
+	 * was the only state that ever showed. Negative offsets keep them inside
+	 * the cell so they do not overlap the neighbour.
+	 *
+	 * Source order is the precedence: hover, then selected, then focus.
+	 */
 	.cell.hovered {
-		box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.45);
+		outline: 2px solid rgba(0, 0, 0, 0.35);
+		outline-offset: -2px;
 		z-index: 1;
+	}
+	/* With the mouse tool, hover previews what a click would select. */
+	.tool-mouse .cell.hovered {
+		outline-color: rgba(199, 102, 228, 0.7);
+	}
+	/*
+	 * Marked the way everything picked in the builder is marked: a black
+	 * hairline held off the square. It stands outside the cell rather than
+	 * inside it, so it crosses the hairline gap into the neighbour — which is
+	 * what lets a run of selected squares read as one shape with a line round
+	 * it instead of a grid of separate boxes.
+	 */
+	.cell.selected,
+	.tool-mouse .cell.selected {
+		outline: var(--qb-picked);
+		outline-offset: var(--qb-picked-gap);
+		z-index: 2;
+	}
+	/* The square holding a drilled-in selection, so you keep your bearings. */
+	.cell.context {
+		outline: 1.5px dashed rgba(199, 102, 228, 0.4);
+		outline-offset: -1px;
+		z-index: 1;
+	}
+	/*
+	 * Absolute, so it does not take part in auto-placement: as a grid ITEM it
+	 * occupied tracks and shoved every cell along while a drag was in flight.
+	 * Placed by grid line, so it still lines up exactly with the tracks.
+	 */
+	.lasso {
+		position: absolute;
+		/* Fills its grid area: without this it collapses to its own content. */
+		inset: 0;
+		pointer-events: none;
+		z-index: 3;
+		border: 1.5px dashed var(--qb-accent);
+		background: rgba(199, 102, 228, 0.1);
 	}
 	.cell:focus-visible {
 		outline: 3px solid var(--qb-accent);
 		outline-offset: -3px;
 		z-index: 3;
 	}
-	.cell.selected {
-		z-index: 2;
-	}
-	/* Drawn on top of the fabric so selection reads on any color. */
-	.cell.selected::after {
-		content: '';
-		position: absolute;
-		inset: 0;
-		border: 3px solid var(--qb-accent);
-		box-shadow:
-			inset 0 0 0 2px rgba(255, 255, 255, 0.95),
-			0 0 8px rgba(245, 158, 11, 0.7);
-		pointer-events: none;
-	}
 	polygon.ghost {
-		opacity: 0.55;
-		stroke: rgba(0, 0, 0, 0.6);
+		opacity: 0.7;
+		stroke: rgba(0, 0, 0, 0.7);
 		stroke-dasharray: 4 3;
 		stroke-width: 1.5;
 	}
 	polygon.erasing {
-		opacity: 0.3;
+		opacity: 0.25;
 	}
-	/* Group-move sources fade while their ghost shows at the destination. */
-	.cell.lifted svg {
-		opacity: 0.35;
+	/*
+	 * The piece rung of the selection ladder. Drawn as its own polygon after
+	 * the fills, since a stroke on the filled polygon would be painted over by
+	 * whichever piece is drawn next.
+	 */
+	polygon.piece-outline {
+		fill: none;
+		stroke: var(--qb-accent);
+		stroke-width: 3;
+		vector-effect: non-scaling-stroke;
+	}
+	polygon.piece-outline.preview {
+		stroke-width: 2;
+		stroke-dasharray: 4 3;
+	}
+	/* The middle rung: one block inside a composed square. */
+	rect.node-outline {
+		fill: none;
+		stroke: var(--qb-accent);
+		stroke-width: 3;
+		vector-effect: non-scaling-stroke;
 	}
 
-	.axis {
+	/*
+	 * The seams inside a square: one device pixel, solid, in the same grey as
+	 * the rules between squares. Every line on the quilt is drawn alike, so
+	 * nothing about a subdivision catches the eye more than the quilt does.
+	 * The design dashes these, but a dash against a pieced block reads as an
+	 * artefact of the drawing rather than as a seam.
+	 */
+	rect.seam {
+		fill: none;
+		stroke: var(--qb-square);
+		stroke-width: 1;
+		vector-effect: non-scaling-stroke;
+	}
+	/*
+	 * The middle of the quilt, drawn the way the design does: dashed lines
+	 * running the full width and height. Placed by grid line rather than by
+	 * percentage, so they land exactly on the seams between squares despite
+	 * the blanket's gaps and border.
+	 */
+	.center-guide {
 		position: absolute;
-		z-index: 5;
-		touch-action: none;
-	}
-	.axis:focus-visible {
-		outline: 2px solid var(--qb-accent);
-	}
-	.axis-v {
-		top: 0;
-		bottom: 0;
-		width: 14px;
-		transform: translateX(-50%);
-		cursor: col-resize;
-	}
-	.axis-h {
-		left: 0;
-		right: 0;
-		height: 14px;
-		transform: translateY(-50%);
-		cursor: row-resize;
-	}
-	.axis-v::before,
-	.axis-h::before {
-		content: '';
-		position: absolute;
-		background: var(--qb-axis-v);
-		opacity: 0.8;
-	}
-	.axis-v::before {
-		left: 50%;
-		top: 0;
-		bottom: 0;
-		width: 3px;
-		transform: translateX(-50%);
-	}
-	.axis-h::before {
-		top: 50%;
-		left: 0;
-		right: 0;
-		height: 3px;
-		transform: translateY(-50%);
-		background: var(--qb-axis-h);
-	}
-
-	.wall-caption {
-		font-size: 0.8rem;
-		color: var(--color-text-muted);
-		margin: 0.6rem 0 0;
-	}
-
-	.marquee {
-		position: fixed;
-		border: 1.5px dashed var(--qb-accent);
-		background: rgba(245, 158, 11, 0.12);
+		inset: 0;
 		pointer-events: none;
-		z-index: 40;
+		z-index: 4;
 	}
-	.drag-ghost {
-		position: fixed;
-		width: 2.5rem;
-		height: 2.5rem;
-		margin: -1.25rem 0 0 -1.25rem;
-		border: 1px solid rgba(0, 0, 0, 0.3);
-		border-radius: 0.125rem;
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-		pointer-events: none;
-		z-index: 50;
+	.center-guide.vertical {
+		border-left: 2px dashed var(--qb-guide);
+		border-right: 2px dashed var(--qb-guide);
 	}
-	.ghost-badge {
-		position: absolute;
-		top: -0.55rem;
-		right: -0.55rem;
-		background: #1f2937;
-		color: #fff;
+	.center-guide.horizontal {
+		border-top: 2px dashed var(--qb-guide);
+		border-bottom: 2px dashed var(--qb-guide);
+	}
+
+	/*
+	 * One row under the tools: zoom at one end, the export at the other, and
+	 * what the quilt comes to between them.
+	 */
+	/* Spelled out, on a line of their own: these act on the whole quilt. */
+	.wall-actions {
+		display: flex;
+		justify-content: center;
+		gap: 2rem;
+		margin-top: 0.4rem;
+	}
+	.footer {
+		width: 100%;
+		margin-top: 0.4rem;
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
+		align-items: center;
+		gap: 1rem;
+	}
+	.zoom {
+		display: flex;
+		align-items: center;
+		justify-self: start;
+		gap: 0.4rem;
+	}
+	/* Chrome rather than design: kept quieter than the two rows above it. */
+	.zoom .action {
+		font-size: 0.7rem;
+		letter-spacing: 0.1em;
+		color: var(--color-text-secondary);
+	}
+	.zoom-level {
+		min-width: 3.5rem;
+	}
+	.zoom-hint {
 		font-size: 0.65rem;
-		line-height: 1;
-		padding: 0.2rem 0.35rem;
-		border-radius: 999px;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--color-text-secondary);
+	}
+	.actions {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 0.25rem 1rem;
+		margin-top: 0.75rem;
+	}
+
+	/*
+	 * Two rows under the quilt, in two voices, as the design sets them. The
+	 * tools are named in the sans, italic and grey, because they describe what
+	 * the mouse is about to do. What acts on the quilt itself — centre it,
+	 * clear it — is the app's own writing: mono, uppercase, black.
+	 */
+	.action {
+		border: none;
+		background: none;
+		padding: 0.2rem 0;
+		font: inherit;
+		font-size: 12px;
+		line-height: 20px;
+		letter-spacing: 0.36px;
+		text-transform: uppercase;
+		color: #000;
+		cursor: pointer;
+	}
+	.actions .action {
+		font-family: var(--qb-sans);
+		font-style: italic;
+		text-transform: none;
+		color: var(--qb-tool);
+	}
+	.action kbd {
+		font: inherit;
+		opacity: 0.6;
+	}
+	/* The design writes the shortcut in brackets, beside the tool's name. */
+	.actions .action kbd {
+		opacity: 1;
+	}
+	.actions .action kbd::before {
+		content: '(';
+	}
+	.actions .action kbd::after {
+		content: ')';
+	}
+	.action:hover:not(:disabled),
+	.action.active,
+	.actions .action:hover:not(:disabled),
+	.actions .action.active {
+		color: #000;
+	}
+	/*
+	 * The tools say which one is armed by going black, and nothing else. An
+	 * underline reads as a link, and these are not links — the row is a
+	 * statement of what the keys do, and one of them happens to be in force.
+	 *
+	 * The wall's own toggle keeps its rule: it is on or off, and colour alone
+	 * cannot say which when the text is already black.
+	 */
+	.wall-actions .action.active {
+		text-decoration: underline;
+		text-underline-offset: 0.3em;
+	}
+	.action:disabled {
+		opacity: 0.35;
+		cursor: default;
 	}
 </style>

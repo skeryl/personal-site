@@ -1,122 +1,175 @@
+/*
+ * The v2 -> v3 upgrade. v2 stored one flat cell per grid position; v3 stores a
+ * block tree, and the three layouts that became compositions have to come back
+ * as grids with their colours intact.
+ */
+
 import { describe, expect, it } from 'vitest';
-import { CELL_COUNT, emptyCell, isEmpty } from './model';
-import {
-	parseWorkingState,
-	readJson,
-	sanitizeCells,
-	sanitizePatterns,
-	writeJson,
-	type StorageLike
-} from './persistence';
+import { divisionOf, flatten, type Block } from './model';
+import { gridDims, parseSavedState, sanitizeBlock, sizeInches } from './persistence';
 
-const fakeStorage = (
-	initial: Record<string, string> = {}
-): StorageLike & {
-	data: Map<string, string>;
-} => {
-	const data = new Map(Object.entries(initial));
-	return {
-		data,
-		getItem: (key) => data.get(key) ?? null,
-		setItem: (key, value) => void data.set(key, value)
-	};
-};
+const KNOWN = new Set(['blue', 'cream']);
+const fabrics = (block: Block) => flatten(block).map((p) => p.fabric);
 
-const throwingStorage: StorageLike = {
-	getItem: () => {
-		throw new Error('denied');
-	},
-	setItem: () => {
-		throw new DOMException('quota', 'QuotaExceededError');
-	}
-};
-
-describe('readJson / writeJson', () => {
-	it('round-trips values', () => {
-		const storage = fakeStorage();
-		expect(writeJson(storage, 'k', { a: 1 })).toBe(true);
-		expect(readJson(storage, 'k')).toEqual({ a: 1 });
+describe('sanitizeBlock reading v2 cells', () => {
+	it('reads a plain cut as a leaf', () => {
+		const block = sanitizeBlock({ layout: 'hst', rotation: 1, slots: ['blue', 'cream'] }, KNOWN);
+		expect(divisionOf(block)).toBe(1);
+		expect(fabrics(block)).toEqual(['blue', 'cream']);
 	});
 
-	it('returns null for missing keys and malformed JSON', () => {
-		expect(readJson(fakeStorage(), 'missing')).toBeNull();
-		expect(readJson(fakeStorage({ bad: '{oops' }), 'bad')).toBeNull();
+	it('converts a saved pinwheel into a 2x2 grid, keeping every colour', () => {
+		const slots = ['blue', 'cream', 'blue', 'cream', 'blue', 'cream', 'blue', 'cream'];
+		const block = sanitizeBlock({ layout: 'pinwheel', rotation: 0, slots }, KNOWN);
+		expect(divisionOf(block)).toBe(2);
+		expect(fabrics(block).filter((f) => f === 'blue')).toHaveLength(4);
+		expect(fabrics(block).filter((f) => f === 'cream')).toHaveLength(4);
 	});
 
-	it('never throws when storage does', () => {
-		expect(readJson(throwingStorage, 'k')).toBeNull();
-		expect(writeJson(throwingStorage, 'k', 1)).toBe(false);
-	});
-});
-
-describe('sanitizeCells', () => {
-	it('turns garbage into a full empty board', () => {
-		for (const garbage of [null, 42, 'nope', {}, []]) {
-			const board = sanitizeCells(garbage);
-			expect(board).toHaveLength(CELL_COUNT);
-			expect(board.every(isEmpty)).toBe(true);
-		}
-	});
-
-	it('preserves valid cells and normalizes rotation', () => {
-		const board = sanitizeCells([{ layout: 'diagonal', rotation: -1, slots: ['tan', null] }]);
-		expect(board[0]).toEqual({ layout: 'diagonal', rotation: 3, slots: ['tan', null] });
-	});
-
-	it('rejects unknown layouts, wrong slot counts, and unknown fabrics', () => {
-		const board = sanitizeCells([
-			{ layout: 'hexagon', rotation: 0, slots: [null] },
-			{ layout: 'diagonal', rotation: 0, slots: [null] },
-			{ layout: 'whole', rotation: 0, slots: ['no-such-fabric'] }
-		]);
-		expect(board[0]).toEqual(emptyCell());
-		expect(board[1]).toEqual(emptyCell());
-		expect(board[2]).toEqual({ layout: 'whole', rotation: 0, slots: [null] });
-	});
-});
-
-describe('sanitizePatterns', () => {
-	const mintId = () => 'minted-id';
-
-	it('migrates legacy name-keyed saves, minting stable ids', () => {
-		const migrated = sanitizePatterns({ 'my quilt': { cells: [], savedAt: 123 } }, mintId);
-		expect(migrated['minted-id']).toMatchObject({
-			id: 'minted-id',
-			name: 'my quilt',
-			savedAt: 123
-		});
-	});
-
-	it('keeps modern id-keyed entries as-is', () => {
-		const migrated = sanitizePatterns(
-			{ abc: { id: 'abc', name: 'kept', cells: [], savedAt: 5 } },
-			mintId
+	it('converts a rotated four patch, keeping the checkerboard', () => {
+		const block = sanitizeBlock(
+			{ layout: 'four-patch', rotation: 1, slots: ['blue', 'cream', 'blue', 'cream'] },
+			KNOWN
 		);
-		expect(Object.keys(migrated)).toEqual(['abc']);
-		expect(migrated.abc.name).toBe('kept');
+		expect(divisionOf(block)).toBe(2);
+		expect(fabrics(block).filter((f) => f === 'blue')).toHaveLength(2);
 	});
 
-	it('drops garbage entries and garbage input', () => {
-		expect(sanitizePatterns(null, mintId)).toEqual({});
-		expect(sanitizePatterns({ junk: 42 }, mintId)).toEqual({});
+	it('drops fabrics that no longer exist', () => {
+		const block = sanitizeBlock({ layout: 'hst', rotation: 0, slots: ['gone', 'blue'] }, KNOWN);
+		expect(fabrics(block)).toEqual([null, 'blue']);
+	});
+
+	it('falls back to an empty block on a bad cut or wrong piece count', () => {
+		expect(fabrics(sanitizeBlock({ layout: 'nope', slots: [] }, KNOWN))).toEqual([null]);
+		expect(fabrics(sanitizeBlock({ layout: 'hst', slots: ['blue'] }, KNOWN))).toEqual([null]);
 	});
 });
 
-describe('parseWorkingState', () => {
-	const known = new Set(['known-id']);
-
-	it('accepts the legacy bare-array format', () => {
-		const state = parseWorkingState([], known);
-		expect(state.cells).toHaveLength(CELL_COUNT);
-		expect(state.currentId).toBeNull();
+describe('sanitizeBlock reading v3 blocks', () => {
+	it('round-trips a grid', () => {
+		const saved = {
+			kind: 'grid',
+			cols: 2,
+			rows: 2,
+			children: Array.from({ length: 4 }, () => ({
+				kind: 'leaf',
+				cut: 'square',
+				rotation: 0,
+				fabrics: ['blue']
+			}))
+		};
+		const block = sanitizeBlock(saved, KNOWN);
+		expect(divisionOf(block)).toBe(2);
+		expect(fabrics(block)).toEqual(Array(4).fill('blue'));
 	});
 
-	it('keeps currentId only when the pattern still exists', () => {
-		expect(parseWorkingState({ currentId: 'known-id' }, known).currentId).toBe('known-id');
-		expect(parseWorkingState({ currentId: 'gone' }, known).currentId).toBeNull();
+	it('rejects a division the palette does not offer', () => {
+		const saved = {
+			kind: 'grid',
+			cols: 3,
+			rows: 3,
+			children: Array.from({ length: 9 }, () => ({
+				kind: 'leaf',
+				cut: 'square',
+				rotation: 0,
+				fabrics: ['blue']
+			}))
+		};
+		expect(divisionOf(sanitizeBlock(saved, KNOWN))).toBe(1);
 	});
 
-	it('returns nulls for garbage', () => {
-		expect(parseWorkingState('junk', known)).toEqual({ cells: null, currentId: null, name: null });
+	it('rejects a grid whose child count does not match its shape', () => {
+		const saved = { kind: 'grid', cols: 2, rows: 2, children: [] };
+		expect(divisionOf(sanitizeBlock(saved, KNOWN))).toBe(1);
+	});
+});
+
+describe('parseSavedState', () => {
+	it('migrates a whole v2 save, custom blocks included', () => {
+		const state = parseSavedState({
+			name: 'Stars',
+			sizeId: 'throw',
+			blockSize: 8,
+			materials: [{ id: 'blue', name: 'Blue', hex: '#4f7fe8' }],
+			selectedMaterialId: 'blue',
+			customBlocks: [
+				{ id: 'c1', name: 'Mine', layout: 'pinwheel', rotation: 0, slots: Array(8).fill('blue') }
+			],
+			cells: [{ layout: 'square', rotation: 0, slots: ['blue'] }]
+		});
+		expect(state).not.toBeNull();
+		expect(state!.name).toBe('Stars');
+		// A saved block becomes a one-by-one pattern.
+		expect(state!.patterns).toHaveLength(1);
+		expect(Object.keys(state!.patterns[0].blocks)).toEqual(['0,0']);
+		expect(divisionOf(state!.patterns[0].blocks['0,0'])).toBe(2);
+		expect(fabrics(state!.patterns[0].blocks['0,0'])).toEqual(Array(8).fill('blue'));
+		expect(fabrics(state!.cells[0])).toEqual(['blue']);
+	});
+
+	it('reads a multi-block pattern and normalizes its coordinates', () => {
+		const leaf = { kind: 'leaf', cut: 'square', rotation: 0, fabrics: ['blue'] };
+		const state = parseSavedState({
+			materials: [{ id: 'blue', name: 'Blue', hex: '#4f7fe8' }],
+			patterns: [{ id: 'p1', name: 'Ell', blocks: { '3,3': leaf, '3,4': leaf, '4,4': leaf } }],
+			cells: []
+		});
+		expect(Object.keys(state!.patterns[0].blocks).sort()).toEqual(['0,0', '0,1', '1,1']);
+	});
+
+	it('drops pattern coordinates that are not a coordinate', () => {
+		const leaf = { kind: 'leaf', cut: 'square', rotation: 0, fabrics: ['blue'] };
+		const state = parseSavedState({
+			materials: [{ id: 'blue', name: 'Blue', hex: '#4f7fe8' }],
+			patterns: [{ id: 'p1', name: 'Junk', blocks: { '0,0': leaf, nope: leaf } }],
+			cells: []
+		});
+		expect(Object.keys(state!.patterns[0].blocks)).toEqual(['0,0']);
+	});
+
+	it('returns null for junk', () => {
+		expect(parseSavedState(null)).toBeNull();
+		expect(parseSavedState('nope')).toBeNull();
+	});
+});
+
+describe('quilt size', () => {
+	const base = { materials: [], cells: [] };
+
+	it('defaults to Throw', () => {
+		const state = parseSavedState(base);
+		expect(state!.sizeId).toBe('throw');
+		expect(sizeInches(state!.sizeId, 0, 0)).toEqual({ width: 48, height: 64 });
+	});
+
+	it('maps the sizes that were split into Full/Queen', () => {
+		expect(parseSavedState({ ...base, sizeId: 'full' })!.sizeId).toBe('full-queen');
+		expect(parseSavedState({ ...base, sizeId: 'queen' })!.sizeId).toBe('full-queen');
+	});
+
+	it('falls back for a size that never existed', () => {
+		expect(parseSavedState({ ...base, sizeId: 'emperor' })!.sizeId).toBe('throw');
+	});
+
+	it('keeps a custom size and clamps it into range', () => {
+		const state = parseSavedState({
+			...base,
+			sizeId: 'custom',
+			customWidth: 9,
+			customHeight: 5000
+		});
+		expect(state!.sizeId).toBe('custom');
+		expect(state!.customWidth).toBe(12);
+		expect(state!.customHeight).toBe(200);
+	});
+
+	it('counts whole blocks only, so a custom size can leave a remainder', () => {
+		// 50 inches of 8" blocks is six blocks and two inches left over.
+		expect(gridDims('custom', 8, 50, 64)).toEqual({ cols: 6, rows: 8 });
+	});
+
+	it('always leaves at least one block', () => {
+		expect(gridDims('custom', 12, 12, 12)).toEqual({ cols: 1, rows: 1 });
 	});
 });

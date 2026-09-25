@@ -25,7 +25,7 @@
 
 <style>
 	.nav-bar {
-		height: 3.5rem;
+		height: 33px;
 		background: var(--nav-bg);
 		backdrop-filter: blur(var(--nav-blur));
 		-webkit-backdrop-filter: blur(var(--nav-blur));

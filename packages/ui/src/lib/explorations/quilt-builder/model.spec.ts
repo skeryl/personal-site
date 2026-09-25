@@ -1,136 +1,142 @@
 import { describe, expect, it } from 'vitest';
-import { COLS, ROWS } from './data';
+import { REPLACED_BY } from './blocks';
 import {
-	CELL_COUNT,
-	applyUpdates,
-	boardsEqual,
-	cellIndex,
-	cellsEqual,
-	cloneCell,
-	colOf,
-	emptyBoard,
-	emptyCell,
-	groupDelta,
-	inBounds,
+	blocksEqual,
+	divisionOf,
+	emptyBlock,
+	flatten,
 	isEmpty,
-	remainingOf,
-	rowOf,
-	usageOf,
-	withinBudget,
-	type Cell
+	leafAt,
+	leafBlock,
+	materialsInUse,
+	recompose,
+	rotateBlock,
+	sameStructure,
+	setAt,
+	withoutMaterial,
+	type Block
 } from './model';
+import { resample } from './placement';
 
-const square = (fabric: string): Cell => ({ layout: 'whole', rotation: 0, slots: [fabric] });
-const diagonal = (a: string | null, b: string | null): Cell => ({
-	layout: 'diagonal',
-	rotation: 0,
-	slots: [a, b]
-});
+const solid = (id: string): Block => leafBlock('square', 0, [id]);
+const fabrics = (block: Block) => flatten(block).map((p) => p.fabric);
 
-describe('coordinates', () => {
-	it('round-trips row/col through cellIndex', () => {
-		const index = cellIndex(3, 2);
-		expect([rowOf(index), colOf(index)]).toEqual([3, 2]);
+describe('recompose', () => {
+	it('going finer replicates, so the picture does not change', () => {
+		const composed = recompose(solid('blue'), 2);
+		expect(divisionOf(composed)).toBe(2);
+		expect(fabrics(composed)).toEqual(Array(4).fill('blue'));
 	});
 
-	it('bounds-checks the grid', () => {
-		expect(inBounds(0, 0)).toBe(true);
-		expect(inBounds(ROWS, 0)).toBe(false);
-		expect(inBounds(0, COLS)).toBe(false);
-		expect(inBounds(-1, 0)).toBe(false);
-	});
-});
-
-describe('cell equality and cloning', () => {
-	it('compares layout, rotation, and slots', () => {
-		expect(cellsEqual(square('tan'), square('tan'))).toBe(true);
-		expect(cellsEqual(square('tan'), square('cream'))).toBe(false);
-		expect(cellsEqual(square('tan'), { ...square('tan'), rotation: 1 })).toBe(false);
+	it('scales the blank size of every piece', () => {
+		expect(flatten(solid('blue')).map((p) => p.frac)).toEqual([1]);
+		expect(flatten(recompose(solid('blue'), 2)).map((p) => p.frac)).toEqual(Array(4).fill(0.5));
+		expect(flatten(recompose(solid('blue'), 4)).map((p) => p.frac)).toEqual(Array(16).fill(0.25));
 	});
 
-	it('clones deeply enough that slots are independent', () => {
-		const original = diagonal('tan', null);
-		const copy = cloneCell(original);
-		copy.slots[0] = 'cream';
-		expect(original.slots[0]).toBe('tan');
-	});
-});
-
-describe('usage and budget', () => {
-	it('counts fractional areas per fabric', () => {
-		const cells = [square('tan'), diagonal('tan', 'cream')];
-		expect(usageOf(cells)).toEqual({ tan: 1.5, cream: 0.5 });
-	});
-
-	it('reports remaining inventory for every fabric', () => {
-		const remaining = remainingOf({ white: 1 });
-		expect(remaining.white).toBe(0);
-		expect(remaining.tan).toBe(21);
+	it('leaves the block outline alone: pieces still cover the unit square', () => {
+		const area = (block: Block) =>
+			flatten(block).reduce((sum, p) => {
+				const n = p.points.length;
+				const shoelace = p.points.reduce((acc, [x, y], i) => {
+					const [nx, ny] = p.points[(i + 1) % n];
+					return acc + (x * ny - nx * y);
+				}, 0);
+				return sum + Math.abs(shoelace) / 2;
+			}, 0);
+		[1, 2, 4].forEach((division) => {
+			expect(area(recompose(solid('blue'), division))).toBeCloseTo(1, 9);
+		});
 	});
 
-	it('rejects boards that overdraw a fabric', () => {
-		// White has exactly one square in the pile.
-		expect(withinBudget([square('white')])).toBe(true);
-		expect(withinBudget([square('white'), square('white')])).toBe(false);
+	it('going coarser keeps each group top-left child', () => {
+		const grid = recompose(solid(null as never), 2) as Extract<Block, { kind: 'grid' }>;
+		grid.children[0] = leafBlock('square', 0, ['red']);
+		grid.children[3] = leafBlock('square', 0, ['blue']);
+		expect(fabrics(recompose(grid, 1))).toEqual(['red']);
+	});
+
+	it('round-trips 2x2 through itself unchanged', () => {
+		const composed = recompose(solid('blue'), 2);
+		expect(blocksEqual(recompose(composed, 2), composed)).toBe(true);
 	});
 });
 
-describe('applyUpdates', () => {
-	it('rejects updates that change nothing', () => {
-		const board = emptyBoard();
-		const result = applyUpdates(board, new Map([[0, emptyCell()]]));
-		expect(result).toEqual({ ok: false, reason: 'no-op' });
+describe('rotateBlock', () => {
+	it('turns each child and permutes their positions', () => {
+		const grid = recompose(emptyBlock(), 2) as Extract<Block, { kind: 'grid' }>;
+		grid.children[0] = leafBlock('square', 0, ['red']);
+		// One clockwise turn moves the top-left child to the top-right.
+		const turned = rotateBlock(grid, 1);
+		expect(leafAt(turned, [0.75, 0.25]).leaf.fabrics).toEqual(['red']);
+		expect(leafAt(turned, [0.25, 0.25]).leaf.fabrics).toEqual([null]);
 	});
 
-	it('rejects updates that overdraw the pile', () => {
-		const board = emptyBoard();
-		board[0] = square('white');
-		const result = applyUpdates(board, new Map([[1, square('white')]]));
-		expect(result).toEqual({ ok: false, reason: 'over-budget' });
-	});
-
-	it('applies changes without mutating the input board', () => {
-		const board = emptyBoard();
-		const result = applyUpdates(board, new Map([[0, square('tan')]]));
-		expect(result.ok).toBe(true);
-		expect(isEmpty(board[0])).toBe(true);
-		if (result.ok) {
-			expect(result.board[0].slots).toEqual(['tan']);
-			expect(boardsEqual(board, result.board)).toBe(false);
-		}
-	});
-
-	it('treats the update set as one transaction', () => {
-		// Individually affordable, jointly over budget.
-		const result = applyUpdates(
-			emptyBoard(),
-			new Map([
-				[0, square('white')],
-				[1, square('white')]
-			])
-		);
-		expect(result).toEqual({ ok: false, reason: 'over-budget' });
+	it('is the identity after four turns', () => {
+		const pinwheel = resample(REPLACED_BY.pinwheel, solid('blue'));
+		expect(blocksEqual(rotateBlock(pinwheel, 4), pinwheel)).toBe(true);
 	});
 });
 
-describe('groupDelta', () => {
-	it('passes through unclamped deltas', () => {
-		expect(groupDelta([cellIndex(1, 1)], cellIndex(1, 1), cellIndex(3, 2))).toEqual([2, 1]);
-	});
-
-	it('clamps so the whole group stays on the grid', () => {
-		const selection = [cellIndex(0, 0), cellIndex(0, COLS - 1)];
-		// The group spans the full width, so no horizontal movement fits.
-		expect(groupDelta(selection, cellIndex(0, 0), cellIndex(0, 3))).toEqual([0, 0]);
-		// Vertical movement clamps at the bottom edge.
-		expect(groupDelta(selection, cellIndex(0, 0), cellIndex(ROWS + 3, 0))[0]).toBe(ROWS - 1);
+describe('sameStructure', () => {
+	it('ignores fabric but not shape', () => {
+		expect(sameStructure(solid('red'), solid('blue'))).toBe(true);
+		expect(sameStructure(solid('red'), leafBlock('hst'))).toBe(false);
+		expect(sameStructure(recompose(solid('red'), 2), recompose(solid('blue'), 2))).toBe(true);
+		expect(sameStructure(recompose(solid('red'), 2), recompose(solid('blue'), 4))).toBe(false);
 	});
 });
 
-describe('board basics', () => {
-	it('creates a full empty board', () => {
-		const board = emptyBoard();
-		expect(board).toHaveLength(CELL_COUNT);
-		expect(board.every(isEmpty)).toBe(true);
+describe('board queries reach into compositions', () => {
+	const composed = resample(REPLACED_BY.pinwheel, solid('blue'));
+
+	it('isEmpty is true only when every child is empty', () => {
+		expect(isEmpty(composed)).toBe(false);
+		expect(isEmpty(recompose(emptyBlock(), 4))).toBe(true);
+	});
+
+	it('materialsInUse finds fabrics nested in a grid', () => {
+		expect([...materialsInUse([composed])]).toEqual(['blue']);
+	});
+
+	it('withoutMaterial takes the fabric and leaves the shape', () => {
+		const [stripped] = withoutMaterial([composed], 'blue');
+		// Losing a fabric costs no work: the pinwheel is still a pinwheel.
+		expect(isEmpty(stripped)).toBe(false);
+		expect(sameStructure(stripped, composed)).toBe(true);
+		// Nothing in it is cut from that fabric any more, though.
+		expect(flatten(stripped).every((piece) => piece.fabric === null)).toBe(true);
+	});
+});
+
+describe('empty means nothing placed, not nothing coloured', () => {
+	it('a fresh block is empty, and so is one merely subdivided', () => {
+		expect(isEmpty(emptyBlock())).toBe(true);
+		expect(isEmpty(recompose(emptyBlock(), 2))).toBe(true);
+	});
+
+	it('a shape put down without fabric is not empty', () => {
+		expect(isEmpty(leafBlock('hst'))).toBe(false);
+	});
+
+	/*
+	 * A four patch is four plain squares, structurally the same as blank ones.
+	 * The role its composition gave each is the only thing that tells them
+	 * apart, which is why the offset is kept even when it is zero.
+	 */
+	it('a four patch is not empty, though every leaf of it is a plain square', () => {
+		const fourPatch = REPLACED_BY['four-patch'];
+		expect(isEmpty(fourPatch)).toBe(false);
+		expect(flatten(fourPatch).map((piece) => piece.shaped)).toEqual([true, true, true, true]);
+	});
+
+	it('marks the pieces of a placed shape, and leaves blank space alone', () => {
+		expect(flatten(leafBlock('hst')).map((piece) => piece.shaped)).toEqual([true, true]);
+		expect(flatten(emptyBlock()).map((piece) => piece.shaped)).toEqual([false]);
+
+		// One quarter cut into a shape; the other three are still blank.
+		const mixed = setAt(recompose(emptyBlock(), 2), [0], leafBlock('hst'));
+		expect(isEmpty(mixed)).toBe(false);
+		expect(flatten(mixed).map((piece) => piece.shaped)).toEqual([true, true, false, false, false]);
 	});
 });

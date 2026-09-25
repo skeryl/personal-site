@@ -1,11 +1,34 @@
 <script lang="ts">
-	import { SQUARE_INCHES } from './data';
 	import { QuiltStore } from './state.svelte';
-	import Palette from './Palette.svelte';
+	import SidePanel from './SidePanel.svelte';
 	import Wall from './Wall.svelte';
-	import PatternsPanel from './PatternsPanel.svelte';
 
 	const store = new QuiltStore();
+
+	/*
+	 * The builder is an app shell, not a document: it fills the window from
+	 * wherever it starts down to the bottom edge, and only the work area
+	 * scrolls. How much page chrome sits above it depends on the post header,
+	 * so measure rather than hardcode an offset.
+	 */
+	let root = $state<HTMLElement | null>(null);
+	let top = $state(0);
+
+	$effect(() => {
+		const el = root;
+		if (!el) return;
+		const measure = () => {
+			top = el.getBoundingClientRect().top + window.scrollY;
+		};
+		measure();
+		window.addEventListener('resize', measure);
+		const observer = new ResizeObserver(measure);
+		observer.observe(document.body);
+		return () => {
+			window.removeEventListener('resize', measure);
+			observer.disconnect();
+		};
+	});
 
 	/*
 	 * Autosave the working state, debounced so a paint stroke is one write
@@ -13,8 +36,9 @@
 	 */
 	const AUTOSAVE_MS = 250;
 	$effect(() => {
-		void store.workingState;
-		const timer = setTimeout(() => store.persistWorking(), AUTOSAVE_MS);
+		void store.savedState;
+		void store.panels;
+		const timer = setTimeout(() => store.persist(), AUTOSAVE_MS);
 		return () => clearTimeout(timer);
 	});
 </script>
@@ -23,120 +47,133 @@
 	onpointermove={(e) => store.onPointerMove(e)}
 	onpointerup={(e) => store.onPointerUp(e)}
 	onkeydown={(e) => store.onKeyDown(e)}
+	onkeyup={(e) => store.onKeyUp(e)}
 />
 
-<div class="exploration">
-	<header class="hero">
-		<h1>Quilt Builder</h1>
-		<p class="subtitle">
-			A design wall for one finite pile of scrap fabric. Every cell is an {SQUARE_INCHES}" square
-			that can hold a whole square, two rectangles, two triangles, or four half-triangles. Drag
-			pieces around until something looks right.
-		</p>
-	</header>
-
-	<section class="tool-grid">
-		<Palette {store} />
+<div class="qb" bind:this={root} style="--qb-top: {top}px">
+	<!-- The builder names itself across the top, ruled off from the work. -->
+	<h1 class="masthead">Quilt Builder</h1>
+	<section class="body">
+		<SidePanel {store} />
 		<Wall {store} />
-		<PatternsPanel {store} />
 	</section>
 </div>
 
 <style>
-	.exploration {
-		/* Accent palette shared by the child components. */
-		--qb-accent: #f59e0b;
-		--qb-axis-v: #e11d48;
-		--qb-axis-h: #2563eb;
-		--qb-wall: #616161;
+	.qb {
+		/*
+		 * The design's two voices, both loaded from Google Fonts in app.html.
+		 * Mono is the app's own writing — what it is called, what a shape is
+		 * named, what a value reads. Sans is the labelling around it: the
+		 * headings, the field names, the quilt's own ruler marks.
+		 */
+		--qb-mono: 'Spline Sans Mono', 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+		--qb-sans: 'Cabin', var(--font-sans, system-ui, -apple-system, 'Segoe UI', sans-serif);
+		/* The builder's own name, and only that: a serif against the other two. */
+		--qb-title: 'Neuton', Georgia, 'Times New Roman', serif;
 
-		max-width: 1400px;
-		margin: 0 auto;
-		padding: 3rem 1.25rem 6rem;
+		/* Read from the design file rather than eyeballed. */
+		--qb-accent: #763edf;
+		/* One warm off-white behind both the palette and the wall. */
+		--qb-panel: #f5f4f2;
+		--qb-wall: #f5f4f2;
+		/*
+		 * Every line that divides one part of the builder from another, down
+		 * the panel and across it: black, and half a pixel. Distinct from the
+		 * hairlines that edge a swatch or a tile, which are not dividers.
+		 */
+		--qb-divider: 0.5px solid #000;
+		/* Rules between sections, and the cream the quilt is ruled in. */
+		--qb-line: #d0cfc7;
+		--qb-square: #f3f0e8;
+		--qb-tile: #d9d9d9;
+		--qb-ink: #525252;
+		/* The quilt's binding, and the grey its quieter writing is set in. */
+		--qb-binding: #83817d;
+		--qb-muted: #83817d;
+		--qb-guide: #ff8585;
+		/* The blue every link in the design is set in. */
+		--qb-link: #0011cf;
+		/*
+		 * How anything picked is marked, wherever it is picked: a hairline of
+		 * black held off the thing itself, so what you chose still reads as
+		 * the colour or the shape it is rather than as one with a dark edge.
+		 */
+		--qb-picked: 1px solid #000;
+		--qb-picked-gap: 2px;
+		/* The quilt's ruler marks, and the tool names under it. */
+		--qb-rule: #7a7a7a;
+		--qb-tool: #9b9b9b;
+		/* The panel's 40px gutter, in a 426px panel. */
+		--qb-pad: 2.5rem;
+
+		/*
+		 * Full bleed: cancel the page layout's horizontal padding (px-6, and
+		 * px-3 on small screens) so the wall can use the whole window. The
+		 * explicit width matters because the parent is a flex container, where
+		 * negative margins alone would shift the box rather than widen it.
+		 */
+		width: calc(100% + 3rem);
+		margin-inline: -1.5rem;
+		/* Cancels the page layout's own pb-8, so the wall reaches the bottom. */
+		margin-bottom: -2rem;
+		padding: 0;
 		color: var(--color-text);
-		line-height: 1.6;
-	}
-	.hero {
-		text-align: center;
-		margin-bottom: 2.5rem;
-	}
-	.hero h1 {
-		font-size: clamp(2rem, 5vw, 3rem);
-		letter-spacing: -0.02em;
-		margin: 0 0 1rem;
-		color: var(--color-text-strong);
-	}
-	.subtitle {
-		font-size: 1.05rem;
-		color: var(--color-text-secondary);
-		max-width: 62ch;
-		margin: 0 auto;
+		line-height: 1.5;
+		display: flex;
+		flex-direction: column;
+		/* Bottom gutter matches the page layout's own pb-8. */
+		height: calc(100dvh - var(--qb-top, 0px));
 	}
 
-	.tool-grid {
+	/* 33px tall, the name centred in it, as the design heads the page. */
+	.masthead {
+		flex-shrink: 0;
+		box-sizing: border-box;
+		height: 33px;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-family: var(--qb-title);
+		font-size: 16px;
+		font-weight: 400;
+		line-height: 20px;
+		color: #000;
+		/* White, not the warm ground the work below it sits on. */
+		background: #fff;
+		border-bottom: var(--qb-divider);
+	}
+
+	.body {
 		display: grid;
-		grid-template-columns: 14rem minmax(0, 1fr) 24rem;
-		gap: 2rem;
-		align-items: start;
+		grid-template-columns: 26.625rem minmax(0, 1fr);
+		align-items: stretch;
+		flex: 1;
+		min-height: 0;
 	}
 
-	/* Shared building blocks used by all three panels. */
-	.exploration :global(.tool-btn) {
-		padding: 0.3rem 0.6rem;
-		border: 1px solid var(--color-border-strong);
-		border-radius: 0.375rem;
-		background: none;
-		font: inherit;
-		font-size: 0.78rem;
-		cursor: pointer;
-	}
-	.exploration :global(.tool-btn.active) {
-		background: var(--color-filter-active-bg);
-		color: var(--color-filter-active-text);
-	}
-	.exploration :global(.tool-btn:disabled) {
-		opacity: 0.4;
-		cursor: default;
-	}
-	.exploration :global(kbd) {
-		font-size: 0.7rem;
-		opacity: 0.7;
-	}
-	.exploration :global(.group-label) {
-		font-size: 0.68rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-text-muted);
-		margin-top: 0.9rem;
-	}
-	.exploration :global(.hint) {
-		font-size: 0.8rem;
-		color: var(--color-text-muted);
-		margin: 0 0 0.75rem;
-		line-height: 1.4;
-	}
-	.exploration :global(.chip) {
-		width: 1.4rem;
-		height: 1.4rem;
-		border-radius: 0.25rem;
-		border: 1px solid var(--color-border-subtle);
+	@media (max-width: 639px) {
+		.qb {
+			width: calc(100% + 1.5rem);
+			margin-inline: -0.75rem;
+		}
 	}
 
 	@media (max-width: 1100px) {
-		.tool-grid {
-			grid-template-columns: 14rem minmax(0, 1fr);
-		}
-		.tool-grid > :global(.patterns-panel) {
-			grid-column: 1 / -1;
-		}
-		.tool-grid :global(.pattern-list) {
-			display: grid;
-			grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+		.body {
+			grid-template-columns: 20rem minmax(0, 1fr);
 		}
 	}
+	/* Narrow screens go back to a document that scrolls as a whole. */
 	@media (max-width: 768px) {
-		.tool-grid {
+		.qb {
+			height: auto;
+			margin-bottom: 0;
+			padding-bottom: 4rem;
+		}
+		.body {
 			grid-template-columns: minmax(0, 1fr);
 		}
 	}
