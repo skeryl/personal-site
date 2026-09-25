@@ -243,9 +243,15 @@
 		flex: none;
 	}
 
-	/* Inline: the value underlined, with the caret alongside. The rule under
-	   it is the design's own hairline, not one of the builder's dividers. */
+	/*
+	 * Inline: the value underlined, with the caret alongside. The rule under
+	 * it is the design's own hairline, not one of the builder's dividers, and
+	 * it runs wider than the value it carries — the design sets the value in a
+	 * box with room either side of it rather than against the ends.
+	 */
 	.inline .trigger {
+		gap: 6px;
+		padding: 0 3px 0 8px;
 		border-bottom: 0.5px solid #777676;
 	}
 	/* Set at the size of the label it answers, so the pair reads as one line. */
