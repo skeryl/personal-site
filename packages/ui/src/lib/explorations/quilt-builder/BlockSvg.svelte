@@ -10,7 +10,15 @@
 		strokeWidth?: number;
 	}
 
-	let { block, fills, stroke = 'rgba(0, 0, 0, 0.18)', strokeWidth = 1 }: Props = $props();
+	/*
+	 * Undrawn by default. Outlining every piece laid a darker edge of its own
+	 * colour round each shape, which read as the block having been drawn with
+	 * a pen rather than cut from cloth — the pieces meet, and that is the
+	 * whole of the seam.
+	 */
+	let { block, fills, stroke = 'none', strokeWidth = 0 }: Props = $props();
+
+	const outlined = $derived(stroke !== 'none' && strokeWidth > 0);
 
 	const VB = 100;
 
@@ -29,7 +37,7 @@
 			vector-effect="non-scaling-stroke"
 		/>
 	{/each}
-	{#each seams as seam, i (i)}
+	{#each outlined ? seams : [] as seam, i (i)}
 		<rect
 			x={seam.x * VB}
 			y={seam.y * VB}

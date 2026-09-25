@@ -610,15 +610,41 @@
 		text-align: center;
 		color: #000;
 	}
+	/*
+	 * The rule is laid over the block rather than beside it. As a border it
+	 * took a pixel out of the box, and the block, sized to what was left,
+	 * rounded clear of one edge and over the other — a hair of panel showing
+	 * down one side and the rule swallowed on the far one.
+	 */
+	/*
+	 * The rule is laid over the block rather than beside it. As a border it
+	 * took a pixel out of the box, and the block, sized to what was left,
+	 * rounded clear of one edge and over the other — a hair of panel showing
+	 * down one side and the rule swallowed on the far one. Drawn on a layer of
+	 * its own above the block, it sits on the edges exactly.
+	 *
+	 * Not an inset shadow, which paints under the block and disappears, and
+	 * not an outline, which the chosen tile's ring already has.
+	 */
 	.type {
+		position: relative;
 		aspect-ratio: 1;
 		padding: 0;
-		border: 0.5px solid #000;
+		border: none;
 		background: none;
 		cursor: pointer;
 		line-height: 0;
+		overflow: hidden;
 	}
-	.type:hover {
+	.type::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		box-sizing: border-box;
+		border: 0.5px solid #000;
+		pointer-events: none;
+	}
+	.type:hover::after {
 		border-color: var(--qb-ink);
 	}
 	/* Ringed, not bordered: a heavier edge would shift what is inside it. */
