@@ -1,8 +1,18 @@
 name: Deploy to GitHub Pages
+# A quilt-client release names itself here, so a deploy that came from the
+# builder is legible in the Actions list rather than looking like a rebuild.
+run-name: >-
+  Deploy${{ github.event.client_payload.version && format(' (quilt-client {0})',
+  github.event.client_payload.version) || '' }}
 
 on:
   push:
     branches: 'main'
+  # The quilt builder lives in skeryl/quilt-builder now. Publishing there tells
+  # this site to rebuild, so the newest builder reaches the journal without a
+  # commit here.
+  repository_dispatch:
+    types: [quilt-release]
 
 jobs:
   build_site:
