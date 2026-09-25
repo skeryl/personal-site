@@ -198,7 +198,10 @@
 		{/if}
 	{/if}
 
-	<div class="label section">Color palette</div>
+	<div class="label section">
+		Color palette
+		<button class="add-color" onclick={addAndPick}>+ Add color</button>
+	</div>
 	<div class="palette">
 		{#each store.materials as material (material.id)}
 			{@const name = material.name.trim() || material.hex.slice(1).toUpperCase()}
@@ -242,9 +245,14 @@
 			</div>
 		{/each}
 		{#if !store.materials.length}
-			<p class="hint muted">none selected</p>
+			<!--
+				Nothing chosen yet: the design leaves the slots a colour would
+				fill standing empty, rather than an empty band of panel.
+			-->
+			{#each { length: 3 } as _, i (i)}
+				<span class="slot" aria-hidden="true"></span>
+			{/each}
 		{/if}
-		<button class="add-color" onclick={addAndPick}>+ Add color</button>
 	</div>
 </div>
 
@@ -328,10 +336,6 @@
 	 * swatches between them to separate, and the gap only read as something
 	 * missing.
 	 */
-	.palette .muted {
-		margin: 0;
-		align-self: center;
-	}
 	.muted {
 		font-style: italic;
 		/* The site gives every <p> its own vertical padding; this one is a
@@ -425,7 +429,7 @@
 		flex-wrap: wrap;
 		align-items: flex-start;
 		gap: 1.25rem 19px;
-		padding: 0 10px 0 47px;
+		padding: 0 10px;
 	}
 	/*
 	 * Wider than the swatch it belongs to. The design sizes the name to the
@@ -461,6 +465,14 @@
 	 * the end of the row and the name takes what is left, so it is the name
 	 * that shortens — FLA...(10) rather than a count run off the edge.
 	 */
+	/* An empty slot: the grey the design stands in for a colour not yet made. */
+	.slot {
+		flex: 1 1 0;
+		min-width: 0;
+		height: 40px;
+		background: #e9e9e9;
+	}
+
 	.entry-name {
 		display: flex;
 		align-items: baseline;
@@ -507,7 +519,6 @@
 		padding-left: 0.25em;
 	}
 	.add-color {
-		align-self: center;
 		padding: 0;
 		border: none;
 		background: none;

@@ -2272,9 +2272,10 @@ test('the palette names each fabric and how much of it the quilt uses', async ({
 	const swatch = (await page.locator('.colors .swatch').first().boundingBox())!;
 	expect([Math.round(swatch.width), Math.round(swatch.height)]).toEqual([51, 37]);
 	await expect(page.locator('.colors .hex-chip')).toHaveText(['4F7FE8']);
+	// The palette's heading carries its own add button along the same line.
 	await expect(page.locator('.attributes .label.section')).toHaveText([
 		'Color selection',
-		'Color palette'
+		/^Color palette\s*\+ Add color$/
 	]);
 });
 

@@ -91,7 +91,6 @@
 	/* Every rule inside the tile, chosen or not: the ring says which is which. */
 	const RULE = 1;
 
-	const selectedCount = $derived(store.selection.length);
 	const capturableCount = $derived(store.capturable.length);
 </script>
 
@@ -187,7 +186,21 @@
 	</details>
 
 	<details class="group" data-panel="patterns" bind:open={store.panels.patterns}>
-		<summary class="label section">Block patterns</summary>
+		<summary class="label section">
+			Block patterns
+			<button
+				class="add-new"
+				disabled={!capturableCount}
+				onclick={(e) => {
+					/* It lives inside the summary, so it must not work the disclosure too. */
+					e.preventDefault();
+					e.stopPropagation();
+					store.capturePattern();
+				}}
+			>
+				+ Add selection as pattern
+			</button>
+		</summary>
 		<div class="group-scroll">
 			{#if patternEntries.length}
 				<div class="types">
@@ -217,16 +230,6 @@
 						</div>
 					{/each}
 				</div>
-			{/if}
-			<button class="add-new" disabled={!capturableCount} onclick={() => store.capturePattern()}>
-				+ Add selection as pattern
-			</button>
-			{#if !capturableCount}
-				<p class="hint">
-					{selectedCount
-						? 'Those blocks are empty; fill one to save it.'
-						: 'Select filled blocks on the quilt to save them as a pattern.'}
-				</p>
 			{/if}
 		</div>
 	</details>
@@ -490,7 +493,11 @@
 		text-transform: uppercase;
 		color: #000;
 	}
+	/* A heading that carries an add button lays the two along its own line. */
 	.section {
+		display: flex;
+		align-items: baseline;
+		gap: 6px;
 		padding: 16px var(--sheet-gutter) 5px;
 	}
 	/*
@@ -600,7 +607,7 @@
 	.type {
 		aspect-ratio: 1;
 		padding: 0;
-		border: 1px solid var(--qb-tile);
+		border: 0.25px solid #000;
 		background: none;
 		cursor: pointer;
 		line-height: 0;
@@ -665,11 +672,8 @@
 	}
 
 	/* The design's other "+ add" link, in the same blue and the same size. */
-	/* Centred under the patterns, as the design places it. */
 	.add-new {
-		display: block;
-		width: 100%;
-		margin: 0.9rem 0 0;
+		margin: 0;
 		font: inherit;
 		font-size: 10px;
 		line-height: 18px;
@@ -680,7 +684,6 @@
 		border: none;
 		padding: 0;
 		cursor: pointer;
-		text-align: center;
 	}
 	.add-new:hover:not(:disabled) {
 		text-decoration: underline;
@@ -699,13 +702,4 @@
 	 * nothing to say, as it is at rest now.
 	 */
 	/* Prose about what to do next, so it takes the sans the design labels in. */
-	.hint {
-		margin: 0.6rem var(--qb-pad) 0;
-		min-height: 3.375rem;
-		font-family: var(--qb-sans);
-		font-size: 12px;
-		line-height: 1.5;
-		letter-spacing: 0.36px;
-		color: var(--qb-tool);
-	}
 </style>
