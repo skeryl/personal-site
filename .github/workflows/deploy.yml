@@ -26,9 +26,24 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          # The quilt builder installs from GitHub Packages, which wants a
+          # token even though the package is ours.
+          registry-url: https://npm.pkg.github.com
+          scope: '@skeryl'
 
       - name: Install dependencies
         run: npm install
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # The lockfile pins whatever was current when someone last installed.
+      # A deploy should carry whatever quilt-builder published most recently,
+      # including a release that dispatched this very run, so ask for it by
+      # name rather than trusting a tag to re-resolve past the lockfile.
+      - name: Take the newest quilt builder
+        run: npm install @skeryl/quilt-client@latest -w @sc/ui
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: build
         run: npm run build -w @sc/ui
