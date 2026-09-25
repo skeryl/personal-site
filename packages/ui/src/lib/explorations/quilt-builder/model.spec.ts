@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BLOCK_TYPE_BY_ID } from './blocks';
+import { REPLACED_BY } from './blocks';
 import {
 	blocksEqual,
 	divisionOf,
@@ -73,7 +73,7 @@ describe('rotateBlock', () => {
 	});
 
 	it('is the identity after four turns', () => {
-		const pinwheel = resample(BLOCK_TYPE_BY_ID.pinwheel.block, solid('blue'));
+		const pinwheel = resample(REPLACED_BY.pinwheel, solid('blue'));
 		expect(blocksEqual(rotateBlock(pinwheel, 4), pinwheel)).toBe(true);
 	});
 });
@@ -88,7 +88,7 @@ describe('sameStructure', () => {
 });
 
 describe('board queries reach into compositions', () => {
-	const composed = resample(BLOCK_TYPE_BY_ID.pinwheel.block, solid('blue'));
+	const composed = resample(REPLACED_BY.pinwheel, solid('blue'));
 
 	it('isEmpty is true only when every child is empty', () => {
 		expect(isEmpty(composed)).toBe(false);
@@ -125,7 +125,7 @@ describe('empty means nothing placed, not nothing coloured', () => {
 	 * apart, which is why the offset is kept even when it is zero.
 	 */
 	it('a four patch is not empty, though every leaf of it is a plain square', () => {
-		const fourPatch = BLOCK_TYPE_BY_ID['four-patch'].block;
+		const fourPatch = REPLACED_BY['four-patch'];
 		expect(isEmpty(fourPatch)).toBe(false);
 		expect(flatten(fourPatch).map((piece) => piece.shaped)).toEqual([true, true, true, true]);
 	});

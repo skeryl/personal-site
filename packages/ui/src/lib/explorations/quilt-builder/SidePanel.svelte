@@ -20,8 +20,8 @@
 	} from './data';
 	import Dropdown from './Dropdown.svelte';
 	import { BLOCK_TYPES } from './blocks';
-	import { PIECE_CUTS, roleFill } from './geometry';
-	import { flatten, leafBlock, rotateBlock, type Block } from './model';
+	import { roleFill } from './geometry';
+	import { flatten, rotateBlock, type Block } from './model';
 	import { boundsOf, rotatePattern } from './pattern';
 	import AttributesPanel from './AttributesPanel.svelte';
 	import MaterialsList from './MaterialsList.svelte';
@@ -37,8 +37,13 @@
 	/** Icon fills: dark for the fabric role, light for background, white for empty. */
 	const roleFills = (block: Block): string[] => flatten(block).map((p) => roleFill(p.role));
 
-	const hexOf = (id: string | null): string =>
-		id ? (store.materialById.get(id)?.hex ?? '#fff') : '#fff';
+	/*
+	 * A pattern's pieces, drawn in their fabric where they have one and in the
+	 * shape greys where they do not — so a pattern nobody has coloured in
+	 * still reads as the shape it is, the way the block types above it do.
+	 */
+	const hexOf = (id: string | null, role: number): string =>
+		id ? (store.materialById.get(id)?.hex ?? roleFill(role)) : roleFill(role);
 
 	/*
 	 * Everything that fills exactly one square: the cuts, which paint, and the
@@ -52,15 +57,8 @@
 	/* Filled squares chosen on the quilt: what a capture would take. */
 	const capturableCount = $derived(store.capturable.length);
 
-	const armedCut = $derived(store.tab === 'piece' ? store.pieceId : null);
 	const armedBlock = $derived(store.tab === 'block' ? store.blockId : null);
 
-	const cutEntries = $derived(
-		PIECE_CUTS.map((cut) => ({
-			cut,
-			block: leafBlock(cut.id, cut.id === armedCut ? store.rotation : 0)
-		}))
-	);
 	const blockEntries = $derived(
 		BLOCK_TYPES.map((type) => ({
 			type,
@@ -166,29 +164,6 @@
 		</summary>
 		<div class="group-scroll">
 			<div class="types">
-				{#each cutEntries as entry (entry.cut.id)}
-					{@const given = entry.cut.abbr ?? entry.cut.name}
-					<div class="shape">
-						<button
-							class="type"
-							class:active={store.tab === 'piece' && store.pieceId === entry.cut.id}
-							aria-pressed={store.tab === 'piece' && store.pieceId === entry.cut.id}
-							aria-label={entry.cut.name}
-							onclick={() => store.pickPiece(entry.cut.id)}
-						>
-							<BlockSvg block={entry.block} fills={roleFills(entry.block)} />
-						</button>
-						<input
-							class="shape-name"
-							type="text"
-							maxlength="40"
-							aria-label={`Name for ${given}`}
-							value={store.blockNames[entry.cut.id] ?? ''}
-							placeholder={given}
-							oninput={(e) => store.renameBlock(entry.cut.id, e.currentTarget.value)}
-						/>
-					</div>
-				{/each}
 				{#each blockEntries as entry (entry.type.id)}
 					<div class="shape">
 						<button

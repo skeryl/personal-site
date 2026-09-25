@@ -5,8 +5,12 @@
 
 	interface Props {
 		blocks: PatternBlocks;
-		/** Fill for one piece's fabric; lets icons render by role or by colour. */
-		fillOf: (fabric: string | null) => string;
+		/*
+		 * Fill for one piece. The role comes with the fabric so a pattern that
+		 * has not been coloured in yet can still be drawn in the greys the
+		 * shapes beside it are drawn in, rather than in nothing at all.
+		 */
+		fillOf: (fabric: string | null, role: number) => string;
 	}
 
 	let { blocks, fillOf }: Props = $props();
@@ -35,8 +39,11 @@
 	style="--cols: {cols}; --rows: {rows}; aspect-ratio: {cols} / {rows}; width: {width}%"
 >
 	{#each cells as cell (coordOf(cell.x, cell.y))}
-		<div class="slot" style="grid-column: {cell.x + 1}; grid-row: {cell.y + 1}">
-			<BlockSvg block={cell.block} fills={flatten(cell.block).map((p) => fillOf(p.fabric))} />
+		<div class="at" style="grid-column: {cell.x + 1}; grid-row: {cell.y + 1}">
+			<BlockSvg
+				block={cell.block}
+				fills={flatten(cell.block).map((p) => fillOf(p.fabric, p.role))}
+			/>
 		</div>
 	{/each}
 </div>
@@ -47,7 +54,7 @@
 		grid-template-columns: repeat(var(--cols), 1fr);
 		grid-template-rows: repeat(var(--rows), 1fr);
 	}
-	.slot {
+	.at {
 		min-width: 0;
 		min-height: 0;
 	}

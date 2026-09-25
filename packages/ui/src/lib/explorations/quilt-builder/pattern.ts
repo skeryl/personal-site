@@ -85,6 +85,15 @@ export const blocksFrom = (cells: readonly PatternCell[]): PatternBlocks =>
 		) as PatternBlocks
 	);
 
+/*
+ * A pattern with its own copy of every block. Seed patterns are shared module
+ * constants, so anything that will be edited has to take a copy first.
+ */
+export const clonePattern = (pattern: Pattern): Pattern => ({
+	...pattern,
+	blocks: blocksFrom(cellsOf(pattern.blocks))
+});
+
 /** Turn the whole pattern clockwise: positions move and every block turns. */
 export const rotatePattern = (blocks: PatternBlocks, turns: number): PatternBlocks => {
 	const t = ((turns % 4) + 4) % 4;

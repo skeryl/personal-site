@@ -18,7 +18,7 @@ import {
 	DEFAULT_BINDING_INCHES,
 	DEFAULT_SEAM_INCHES
 } from './data';
-import { BLOCK_TYPES, BLOCK_TYPE_BY_ID } from './blocks';
+import { BLOCK_TYPES, BLOCK_TYPE_BY_ID, DEFAULT_PATTERNS } from './blocks';
 import { CUTS, pieceAt, rotatedPieces, type Point } from './geometry';
 import {
 	applyUpdates,
@@ -62,6 +62,7 @@ import {
 	anchorFor,
 	blocksFrom,
 	boundsOf,
+	clonePattern,
 	placementAt,
 	rotatePattern,
 	type Pattern,
@@ -188,7 +189,12 @@ export class QuiltStore {
 	blockSize = $state(DEFAULT_BLOCK_SIZE);
 	materials = $state<Material[]>([]);
 	selectedMaterialId = $state<string | null>(null);
-	patterns = $state<Pattern[]>([]);
+	/*
+	 * The design's own roster to begin with. They are seed data, not
+	 * constants: once a quilt has been saved, whatever is in it — renamed,
+	 * added to, thrown away — is what comes back.
+	 */
+	patterns = $state<Pattern[]>(DEFAULT_PATTERNS.map(clonePattern));
 	/** Shapes the quilter has renamed, against the id they are known by. */
 	blockNames = $state<Record<string, string>>({});
 	cells = $state<Board>(emptyBoard(gridDims(DEFAULT_SIZE_ID, DEFAULT_BLOCK_SIZE)));

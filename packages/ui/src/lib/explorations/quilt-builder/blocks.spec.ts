@@ -41,17 +41,9 @@ describe('compositions match the cuts they replaced', () => {
 });
 
 describe('BLOCK_TYPES', () => {
-	it('offers every non-legacy block cut plus the compositions', () => {
+	it('offers the six the design draws, in the order it stacks them', () => {
 		const ids = BLOCK_TYPES.map((t) => t.id);
-		expect(ids).toEqual([
-			'pinwheel',
-			'broken-dishes',
-			'hourglass',
-			'square-in-square',
-			'four-patch',
-			'nine-patch',
-			'sawtooth-star'
-		]);
+		expect(ids).toEqual(['hst', 'half-pinwheel', 'zig-zag', 'geese', 'stripe', 'diamond']);
 	});
 
 	it('gives every type at least one piece that takes the selected fabric', () => {
@@ -60,29 +52,38 @@ describe('BLOCK_TYPES', () => {
 		});
 	});
 
-	it('describes pinwheel, broken dishes and four patch as 2x2 grids', () => {
-		expect(divisionOf(BLOCK_TYPE_BY_ID.pinwheel.block)).toBe(2);
-		expect(divisionOf(BLOCK_TYPE_BY_ID['broken-dishes'].block)).toBe(2);
-		expect(divisionOf(BLOCK_TYPE_BY_ID['four-patch'].block)).toBe(2);
-	});
-
-	it('keeps the cuts a grid cannot express as single leaves', () => {
-		['hourglass', 'square-in-square', 'nine-patch', 'sawtooth-star'].forEach((id) => {
-			expect(divisionOf(BLOCK_TYPE_BY_ID[id].block)).toBe(1);
-			expect(CUTS[id].group).toBe('block');
+	it('describes all but the lone triangle as 2x2 grids', () => {
+		expect(divisionOf(BLOCK_TYPE_BY_ID.hst.block)).toBe(1);
+		['half-pinwheel', 'zig-zag', 'geese', 'stripe', 'diamond'].forEach((id) => {
+			expect(divisionOf(BLOCK_TYPE_BY_ID[id].block)).toBe(2);
 		});
 	});
 
-	it('builds a four patch that checkerboards when stamped', () => {
-		// Two of the four squares take the fabric; the others keep what was under.
-		const roles = flatten(BLOCK_TYPE_BY_ID['four-patch'].block).map((p) => p.role);
+	it('builds them out of half square triangles and plain ground', () => {
+		BLOCK_TYPES.forEach((type) => {
+			expect(flatten(type.block).every((p) => p.kind === 'hst' || p.kind === 'square')).toBe(true);
+		});
+		// The ground quarters keep what was under them rather than taking fabric.
+		const ground = flatten(BLOCK_TYPE_BY_ID['half-pinwheel'].block).filter(
+			(p) => p.kind === 'square'
+		);
+		expect(ground).toHaveLength(2);
+		expect(ground.every((p) => p.role === 1)).toBe(true);
+	});
+
+	it('still knows the compositions that replaced the v2 cuts', () => {
+		['pinwheel', 'broken-dishes', 'four-patch'].forEach((id) => {
+			expect(divisionOf(REPLACED_BY[id])).toBe(2);
+		});
+		// Two of a four patch's squares take the fabric; the others keep what was under.
+		const roles = flatten(REPLACED_BY['four-patch']).map((p) => p.role);
 		expect(roles.filter((r) => r === 0)).toHaveLength(2);
 	});
 });
 
 describe('centroids stay inside their own piece', () => {
 	it('so resampling a composition samples the right child', () => {
-		flatten(BLOCK_TYPE_BY_ID.pinwheel.block).forEach((p) => {
+		flatten(REPLACED_BY.pinwheel).forEach((p) => {
 			const [cx, cy] = centroidOf(p.points);
 			expect(cx).toBeGreaterThan(0);
 			expect(cx).toBeLessThan(1);

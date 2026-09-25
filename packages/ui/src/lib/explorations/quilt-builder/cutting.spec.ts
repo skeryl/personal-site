@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Material } from './data';
 import { blankInches, cuttingListFor } from './cutting';
 import { leafBlock, type Block } from './model';
-import { BLOCK_TYPE_BY_ID } from './blocks';
+import { REPLACED_BY } from './blocks';
 import { resample } from './placement';
 
 const blue: Material = { id: 'blue', name: 'Blue', hex: '#0000ff' };
@@ -52,7 +52,7 @@ describe('cuttingListFor with composition', () => {
 
 	it('scales blank size by the composition, so a 2x2 halves it', () => {
 		// A pinwheel is four half-block triangles: 12" block -> 6½" blanks.
-		const plain = resample(BLOCK_TYPE_BY_ID.pinwheel.block, solid('blue'));
+		const plain = resample(REPLACED_BY.pinwheel, solid('blue'));
 		const [flat] = cuttingListFor([plain], [blue], 12);
 		expect(flat.rows.map((r) => r.label)).toEqual(['6½”']);
 

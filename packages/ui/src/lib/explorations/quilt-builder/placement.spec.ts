@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BLOCK_TYPE_BY_ID } from './blocks';
+import { BLOCK_TYPE_BY_ID, REPLACED_BY } from './blocks';
 import { divisionOf, emptyBlock, flatten, leafBlock, recompose, type Block } from './model';
 import { buildErase, buildPlacement, fabricAt, resample } from './placement';
 
@@ -12,7 +12,7 @@ describe('resample', () => {
 	});
 
 	it('carries a solid square into every piece of a composed block', () => {
-		const pinwheel = BLOCK_TYPE_BY_ID.pinwheel.block;
+		const pinwheel = REPLACED_BY.pinwheel;
 		expect(fabrics(resample(pinwheel, solid('blue')))).toEqual(Array(8).fill('blue'));
 	});
 
@@ -80,7 +80,7 @@ describe('buildPlacement', () => {
 });
 
 describe('buildPlacement inside a composition', () => {
-	const pinwheel = BLOCK_TYPE_BY_ID.pinwheel.block;
+	const pinwheel = REPLACED_BY.pinwheel;
 
 	it('paints one piece of one child, leaving the other children alone', () => {
 		const stamped = buildPlacement(
@@ -121,7 +121,7 @@ describe('buildErase', () => {
 	});
 
 	it('empties one child of a composition without changing the others', () => {
-		const filled = resample(BLOCK_TYPE_BY_ID.pinwheel.block, solid('blue'));
+		const filled = resample(REPLACED_BY.pinwheel, solid('blue'));
 		const erased = buildErase(filled, [0.1, 0.1]);
 		expect(erased).not.toBeNull();
 		expect(fabricAt(erased!, [0.1, 0.1])).toBeNull();
@@ -134,7 +134,7 @@ describe('buildErase', () => {
 });
 
 describe('a block type lands in the sub-block under the cursor', () => {
-	const pinwheel = BLOCK_TYPE_BY_ID.pinwheel.block;
+	const pinwheel = REPLACED_BY.pinwheel;
 	const stamp = (block: Block, point: [number, number]) =>
 		buildPlacement(block, point, { mode: 'stamp', block: pinwheel }, 'navy');
 
@@ -195,7 +195,7 @@ describe('stamping the same block onto itself', () => {
 	 * nesting pinwheels inside pinwheels.
 	 */
 	it('recolours rather than nesting, however many times it is stamped', () => {
-		const pending = { mode: 'stamp' as const, block: BLOCK_TYPE_BY_ID.pinwheel.block };
+		const pending = { mode: 'stamp' as const, block: REPLACED_BY.pinwheel };
 		let block: Block = emptyBlock();
 		for (let i = 0; i < 6; i++) {
 			block = buildPlacement(block, [0.3, 0.3], pending, `m${i}`);
@@ -207,10 +207,10 @@ describe('stamping the same block onto itself', () => {
 	});
 
 	it('still nests a different block type into the square under the cursor', () => {
-		const pinwheel = { mode: 'stamp' as const, block: BLOCK_TYPE_BY_ID.pinwheel.block };
-		const hourglass = { mode: 'stamp' as const, block: BLOCK_TYPE_BY_ID.hourglass.block };
+		const pinwheel = { mode: 'stamp' as const, block: REPLACED_BY.pinwheel };
+		const diamond = { mode: 'stamp' as const, block: BLOCK_TYPE_BY_ID.diamond.block };
 		const first = buildPlacement(emptyBlock(), [0.3, 0.3], pinwheel, 'a');
-		const second = buildPlacement(first, [0.3, 0.3], hourglass, 'b');
+		const second = buildPlacement(first, [0.3, 0.3], diamond, 'b');
 		expect(flatten(second).length).toBeGreaterThan(flatten(first).length);
 	});
 });

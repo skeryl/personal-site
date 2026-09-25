@@ -72,6 +72,13 @@ const pickShape = (page: Page, name: string) =>
 	page.getByRole('button', { name, exact: true }).click();
 
 /*
+ * Arm a plain square. The palette lists the six shapes the design draws and
+ * no plain square among them, so there is no button for it: the Place tool
+ * puts one down because an undivided square is what the builder rests on.
+ */
+const armPlain = (page: Page) => tool(page, /^Place/).click();
+
+/*
  * Place into a square at a fraction of it, rather than dead centre. A half
  * square triangle's diagonal runs through the middle, so a centre click lands
  * on the seam and which half takes the fabric turns on a rounded pixel.
@@ -138,26 +145,20 @@ test('shapes go down before any colour exists, in the palette greys', async ({ p
 
 	// With nothing in the palette at all, a two-tone shape lands in the greys
 	// the palette icons are drawn in, one per role.
-	await pickShape(page, 'Half square triangle');
+	await pickShape(page, 'HST');
 	await placeInto(page, 0);
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#83817d', '#d9d9d9']);
-
-	// A plain square has only the one role, and takes the first grey.
-	await pickShape(page, 'Square');
-	await cell(page, 1).click();
-	await parkMouse(page);
-	expect(await cellFills(page, 1)).toEqual(['#83817d']);
 
 	// Adding a colour is enough: it becomes active and placing works unnamed.
 	await addFabric(page, '', '4f7fe8');
 	await cell(page, 1).click();
 	await parkMouse(page);
-	expect(await cellFills(page, 1)).toEqual(['#4f7fe8']);
+	expect(await cellFills(page, 1)).toEqual(['#4f7fe8', '#d9d9d9']);
 });
 
 test('an uncoloured shape is on the quilt, and a blank square is not', async ({ page }) => {
-	await pickShape(page, 'Half square triangle');
+	await pickShape(page, 'HST');
 	await placeInto(page, 0);
 	await parkMouse(page);
 
@@ -175,7 +176,7 @@ test('an uncoloured shape is on the quilt, and a blank square is not', async ({ 
 
 test('a paint drag is one undo step and redo restores it', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await pickShape(page, 'Square');
+	await armPlain(page);
 
 	const start = await cell(page, 0).boundingBox();
 	const end = await cell(page, 2).boundingBox();
@@ -198,23 +199,41 @@ test('a paint drag is one undo step and redo restores it', async ({ page }) => {
 
 test('stamping a block keeps the fabric underneath in the background slots', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	await cell(page, 5).click();
 
 	await addFabric(page, 'Green', '38511f');
-	await page.getByRole('button', { name: 'Square in a square' }).click();
+	await pickShape(page, 'Diamond');
 	await cell(page, 5).click();
 	await parkMouse(page);
 
-	expect(await cellFills(page, 5)).toEqual(['#38511f', '#4f7fe8', '#4f7fe8', '#4f7fe8', '#4f7fe8']);
+	// Four triangles in green, and the ground each sits on still blue.
+	expect(await cellFills(page, 5)).toEqual([
+		'#38511f',
+		'#4f7fe8',
+		'#38511f',
+		'#4f7fe8',
+		'#38511f',
+		'#4f7fe8',
+		'#38511f',
+		'#4f7fe8'
+	]);
+	/*
+	 * Both fabrics are cut from the same blank, two squares each, and the
+	 * block is sewn from the four triangles they make.
+	 */
 	await openMaterials(page);
-	await expect(page.locator('.sheet .caption').first()).toContainText('4½ x 4½” (2)');
-	await expect(page.locator('.sheet .caption').nth(1)).toContainText('6⅛ x 6⅛” (1)');
+	await expect(page.locator('.sheet .caption')).toHaveText([
+		/^squares - 4½ x 4½” \(2\)$/,
+		/^squares - 4½ x 4½” \(2\)$/,
+		/^Diamond - 8 x 8” \(1\)$/,
+		/^HST - 4 x 4” \(4\)$/
+	]);
 });
 
 test('the design, fabrics, and size survive a reload', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	await cell(page, 3).click();
 	await page.getByLabel('Quilt name').fill('Stars');
 	await pickSize(page, 'Throw');
@@ -231,7 +250,7 @@ test('the design, fabrics, and size survive a reload', async ({ page }) => {
 
 test('composition subdivides a block without changing how it looks', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	await cell(page, 0).click();
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#4f7fe8']);
@@ -268,7 +287,7 @@ test('composition subdivides a block without changing how it looks', async ({ pa
 
 test('a composed block can be painted one child at a time', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	await cell(page, 0).click();
 
 	await selectCell(page, 0);
@@ -276,7 +295,7 @@ test('a composed block can be painted one child at a time', async ({ page }) => 
 
 	await addFabric(page, 'Green', '38511f');
 	await tool(page, /^Place/).click();
-	await pickShape(page, 'Square');
+	await armPlain(page);
 
 	// Click inside the top-left quarter only.
 	const box = await cell(page, 0).boundingBox();
@@ -293,7 +312,7 @@ const answerPrompt = (page: Page, name: string) =>
 test('a multi-block selection saves as one pattern and stamps as one', async ({ page }) => {
 	const cols = await gridCols(page);
 	await addFabric(page, 'Blue', '4f7fe8');
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	await cell(page, 0).click();
 	await addFabric(page, 'Green', '38511f');
 	await cell(page, 1).click();
@@ -329,7 +348,7 @@ test('a pattern can be a non-rectangular shape', async ({ page }) => {
 	const ell = [at(cols, 0, 0), at(cols, 1, 0), at(cols, 1, 1)];
 
 	await addFabric(page, 'Blue', '4f7fe8');
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	for (const i of ell) await cell(page, i).click();
 	await parkMouse(page);
 
@@ -414,7 +433,7 @@ test('the minimap moves the visible region', async ({ page }) => {
 
 test('the Grid tool paints a grid onto blocks without selecting them', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	await cell(page, 0).click();
 	await cell(page, 1).click();
 	await parkMouse(page);
@@ -436,7 +455,7 @@ test('the Grid tool paints a grid onto blocks without selecting them', async ({ 
 
 test('G cycles the grid, and applies to a selection when there is one', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	await cell(page, 0).click();
 	await parkMouse(page);
 
@@ -508,7 +527,7 @@ test('the palette chooses which colour gets painted', async ({ page }) => {
 	await expect(page.locator('.palette .chip')).toHaveCount(2);
 
 	// The colour just added is the active one.
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	await cell(page, 0).click();
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#38511f']);
@@ -521,13 +540,13 @@ test('the palette chooses which colour gets painted', async ({ page }) => {
 
 test('attributes lists the fabrics in a selection and remaps one', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	await cell(page, 0).click();
 	await cell(page, 1).click();
 
 	// Stamp a pinwheel over both: role 0 takes green, the rest keeps blue.
 	await addFabric(page, 'Green', '38511f');
-	await page.getByRole('button', { name: 'Pinwheel' }).click();
+	await page.getByRole('button', { name: 'Zig zag', exact: true }).click();
 	await cell(page, 0).click();
 	await cell(page, 1).click();
 	await parkMouse(page);
@@ -643,7 +662,7 @@ test('the mouse tool outlines the block under the cursor', async ({ page }) => {
 	expect(parseFloat(hovered.width)).toBeGreaterThan(0);
 
 	// A different tool hovers in a neutral colour, not the accent.
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	await cell(page, target).hover();
 	const placing = await outlineOf(page, target);
 	expect(placing.color).not.toBe(hovered.color);
@@ -676,7 +695,7 @@ test('dragging a block type stamps each square once, without painting a trail', 
 	page
 }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await pickShape(page, 'Pinwheel');
+	await pickShape(page, 'Zig zag');
 
 	// Drag along the lower half of a row, so the cursor crosses each square
 	// well inside it rather than clipping a corner.
@@ -711,7 +730,7 @@ test('a block type lands in the sub-block under the cursor, like a cut does', as
 	await page.keyboard.press('Escape');
 	await page.getByRole('button', { name: 'One piece', exact: true }).click();
 
-	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	await page.getByRole('button', { name: 'Zig zag', exact: true }).click();
 	const box = await cell(page, plain).boundingBox();
 	const other = await cell(page, quartered).boundingBox();
 	if (!box || !other) throw new Error('cells not found');
@@ -752,7 +771,7 @@ test('alt-drag duplicates a block, leaving the original in place', async ({ page
 	const from = at(cols, 1, 1);
 	const to = at(cols, 3, 3);
 
-	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	await page.getByRole('button', { name: 'Zig zag', exact: true }).click();
 	await cell(page, from).click();
 	await parkMouse(page);
 	const original = await cellFills(page, from);
@@ -776,7 +795,7 @@ test('alt-drag duplicates a block, leaving the original in place', async ({ page
 test('alt-drag carries a whole multi-selection', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
 	const cols = await gridCols(page);
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	await cell(page, at(cols, 0, 0)).click();
 	await cell(page, at(cols, 0, 1)).click();
 	await parkMouse(page);
@@ -794,7 +813,7 @@ test('alt-drag carries a whole multi-selection', async ({ page }) => {
 test('alt-drag refuses rather than clipping at the quilt edge', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
 	const cols = await gridCols(page);
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	await cell(page, at(cols, 0, 0)).click();
 	await cell(page, at(cols, 0, 1)).click();
 	await parkMouse(page);
@@ -826,7 +845,7 @@ test('alt-click drills past the square to a single piece', async ({ page }) => {
 	const cols = await gridCols(page);
 	const target = at(cols, 1, 2);
 
-	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	await page.getByRole('button', { name: 'Zig zag', exact: true }).click();
 	await cell(page, target).click();
 	await parkMouse(page);
 	const before = await cellFills(page, target);
@@ -856,7 +875,7 @@ test('a selected piece links up to the square that contains it', async ({ page }
 	await addFabric(page, 'Blue', '4f7fe8');
 	const cols = await gridCols(page);
 	const target = at(cols, 1, 2);
-	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	await page.getByRole('button', { name: 'Zig zag', exact: true }).click();
 	await cell(page, target).click();
 	await parkMouse(page);
 
@@ -888,7 +907,7 @@ test('alt still duplicates when the pointer moves', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
 	const cols = await gridCols(page);
 	const from = at(cols, 1, 1);
-	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	await page.getByRole('button', { name: 'Zig zag', exact: true }).click();
 	await cell(page, from).click();
 	await parkMouse(page);
 
@@ -905,7 +924,7 @@ test('the grid applies to a selected block, not the whole square', async ({ page
 	const cols = await gridCols(page);
 	const target = at(cols, 1, 2);
 
-	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	await page.getByRole('button', { name: 'Zig zag', exact: true }).click();
 	await cell(page, target).click();
 	await parkMouse(page);
 	expect(await cellFills(page, target)).toHaveLength(8);
@@ -930,7 +949,7 @@ test('rotate turns the selected squares, not just the palette', async ({ page })
 	const cols = await gridCols(page);
 	const target = at(cols, 1, 1);
 
-	await pickShape(page, 'Half square triangle');
+	await pickShape(page, 'HST');
 	await placeInto(page, target);
 	await parkMouse(page);
 	const before = await cellPoints(page, target);
@@ -1026,7 +1045,7 @@ test('the shape sections collapse, and open again on the next visit', async ({ p
 
 	// Everything starts open.
 	await expect(typePanel).toHaveAttribute('open', '');
-	await expect(page.getByRole('button', { name: 'Pinwheel', exact: true })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Zig zag', exact: true })).toBeVisible();
 
 	/*
 	 * Collapsing puts away what is inside a section without moving what is
@@ -1036,7 +1055,7 @@ test('the shape sections collapse, and open again on the next visit', async ({ p
 	const before = (await patterns.boundingBox())!.y;
 	await typePanel.locator('summary').click();
 	await expect(typePanel).not.toHaveAttribute('open', '');
-	await expect(page.getByRole('button', { name: 'Pinwheel', exact: true })).toBeHidden();
+	await expect(page.getByRole('button', { name: 'Zig zag', exact: true })).toBeHidden();
 	expect((await patterns.boundingBox())!.y).toBe(before);
 
 	/*
@@ -1085,7 +1104,7 @@ test('delete empties the selected squares', async ({ page }) => {
 	const b = at(cols, 1, 2);
 	const keep = at(cols, 1, 3);
 
-	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	await page.getByRole('button', { name: 'Zig zag', exact: true }).click();
 	for (const i of [a, b, keep]) await cell(page, i).click();
 	await parkMouse(page);
 	expect(await cellFills(page, a)).toHaveLength(8);
@@ -1114,7 +1133,7 @@ test('delete on a selected piece clears only that piece', async ({ page }) => {
 	const cols = await gridCols(page);
 	const target = at(cols, 1, 1);
 
-	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	await page.getByRole('button', { name: 'Zig zag', exact: true }).click();
 	await cell(page, target).click();
 	await parkMouse(page);
 	const before = await cellFills(page, target);
@@ -1144,8 +1163,8 @@ test('double-clicking a palette colour repaints every piece cut from it', async 
 	const b = at(cols, 3, 2);
 
 	// Two squares in blue, in different places, plus one in green.
+	await armPlain(page);
 	await page.getByRole('button', { name: 'Paint with Blue' }).click();
-	await pickShape(page, 'Square');
 	await cell(page, a).click();
 	await cell(page, b).click();
 	await page.getByRole('button', { name: 'Paint with Green' }).click();
@@ -1171,16 +1190,18 @@ test('double-clicking a palette colour repaints every piece cut from it', async 
 });
 
 test('a plain square is what is armed on load', async ({ page }) => {
-	await expect(page.getByRole('button', { name: 'Square', exact: true })).toHaveClass(/active/);
-	await expect(page.getByRole('button', { name: 'Pinwheel', exact: true })).not.toHaveClass(
-		/active/
-	);
+	/*
+	 * Nothing in the roster is armed to begin with — reaching for Place
+	 * before choosing a shape puts down a plain square, not whichever shape
+	 * happens to head the list.
+	 */
+	await expect(page.locator('[data-panel="type"] .type.active')).toHaveCount(0);
 
 	await addFabric(page, 'Blue', '4f7fe8');
 	await tool(page, /^Place/).click();
 	await cell(page, 0).click();
 	await parkMouse(page);
-	// One piece, not the eight a pinwheel would leave behind.
+	// One piece, not the eight a zig zag would leave behind.
 	expect(await cellFills(page, 0)).toEqual(['#4f7fe8']);
 });
 
@@ -1229,7 +1250,7 @@ test('a sweep takes filled squares, and a click takes whatever it names', async 
 	await addFabric(page, 'Blue', '4f7fe8');
 	const cols = await gridCols(page);
 	const filled = [at(cols, 1, 1), at(cols, 2, 2)];
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	for (const i of filled) await cell(page, i).click();
 	await parkMouse(page);
 
@@ -1495,7 +1516,7 @@ test('cmd-drag moves the selection, leaving its old squares empty', async ({ pag
 	const from = at(cols, 1, 1);
 	const to = at(cols, 4, 3);
 
-	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	await page.getByRole('button', { name: 'Zig zag', exact: true }).click();
 	await cell(page, from).click();
 	await parkMouse(page);
 	const block = await cellFills(page, from);
@@ -1523,7 +1544,7 @@ test('a move that overlaps its own source keeps every block', async ({ page }) =
 	const a = at(cols, 1, 1);
 	const b = at(cols, 1, 2);
 
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	for (const i of [a, b]) await cell(page, i).click();
 	await parkMouse(page);
 
@@ -1544,7 +1565,7 @@ test('escape during a drag drops nothing', async ({ page }) => {
 	const from = at(cols, 1, 1);
 	const to = at(cols, 4, 3);
 
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	await cell(page, from).click();
 	await parkMouse(page);
 
@@ -1560,7 +1581,7 @@ test('escape during a drag drops nothing', async ({ page }) => {
 test('the grid sets how fine a placed piece lands, without leaving Place', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
 	const cols = await gridCols(page);
-	await pickShape(page, 'Square');
+	await armPlain(page);
 
 	const placeAt = async (index: number, grid: string) => {
 		await page.getByRole('button', { name: grid, exact: true }).click();
@@ -1611,7 +1632,7 @@ test('the armed grid is a minimum, so placing never flattens finer detail', asyn
 	await parkMouse(page);
 
 	// Then place with a coarser grid armed.
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	await page.getByRole('button', { name: '2 by 2', exact: true }).click();
 	const box = (await cell(page, target).boundingBox())!;
 	await page.mouse.click(box.x + box.width * 0.1, box.y + box.height * 0.1);
@@ -1631,7 +1652,7 @@ const channels = (hex: string) => [0, 2, 4].map((i) => parseInt(hex.slice(i, i +
 
 test('the picker opens on screen and repaints the quilt as you drag', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	await cell(page, 0).click();
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#4f7fe8']);
@@ -1706,7 +1727,7 @@ test('the picker is a window: the bar drags it, escape closes it', async ({ page
 
 test('mixing in a colour row forks a fabric for those pieces alone', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	await cell(page, 0).click();
 	await cell(page, 1).click();
 	await tool(page, /^Select/).click();
@@ -1733,7 +1754,7 @@ test('mixing in a colour row forks a fabric for those pieces alone', async ({ pa
 
 test('reset puts a colour row back to unset', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	await cell(page, 0).click();
 	await parkMouse(page);
 	await selectCell(page, 0);
@@ -1751,7 +1772,7 @@ test('reset puts a colour row back to unset', async ({ page }) => {
 
 test('removing a fabric leaves the shapes cut from it, unset', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await pickShape(page, 'Half square triangle');
+	await pickShape(page, 'HST');
 	await placeInto(page, 0);
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#4f7fe8', '#d9d9d9']);
@@ -1774,7 +1795,7 @@ test('alt while placing covers the whole square, however finely it is divided', 
 	const target = at(cols, 2, 2);
 
 	// A pinwheel dropped into one sixteenth of a 4x4 square.
-	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	await page.getByRole('button', { name: 'Zig zag', exact: true }).click();
 	await page.getByRole('button', { name: '4 by 4', exact: true }).click();
 	await cell(page, target).click();
 	await parkMouse(page);
@@ -1805,7 +1826,7 @@ test('arming a placement drops the selection, so R turns what is being placed', 
 	page
 }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await pickShape(page, 'Half square triangle');
+	await pickShape(page, 'HST');
 	await placeInto(page, 0);
 	await parkMouse(page);
 	const placed = await cellPoints(page, 0);
@@ -1831,7 +1852,7 @@ test('bare pieces get an unset slot, and colouring it fills all of them', async 
 
 	// A half square triangle on an empty square: one piece coloured, one bare.
 	await page.getByRole('button', { name: 'Paint with Blue' }).click();
-	await pickShape(page, 'Half square triangle');
+	await pickShape(page, 'HST');
 	await placeInto(page, 0);
 	await parkMouse(page);
 	await selectCell(page, 0);
@@ -1876,7 +1897,7 @@ test('the titlebar is name and size alone, and the bottom is two rows', async ({
 test('a square placed with no colour is a shape, and the eraser takes it', async ({ page }) => {
 	// A plain square is the same leaf as blank space until a placement marks
 	// it, so this is the case that needs saying.
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	await cell(page, 0).click();
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#83817d']);
@@ -1893,7 +1914,7 @@ test('a square placed with no colour is a shape, and the eraser takes it', async
 });
 
 test('R turns the shape about to be placed, not the whole palette', async ({ page }) => {
-	await pickShape(page, 'Half square triangle');
+	await pickShape(page, 'HST');
 	const icons = page.locator('[data-panel="types"] .type, .types .type');
 	const pointsOf = () =>
 		icons.evaluateAll((els) =>
@@ -1913,7 +1934,7 @@ test('R turns the shape about to be placed, not the whole palette', async ({ pag
 });
 
 test('the unset slots print the grey they are drawn in', async ({ page }) => {
-	await pickShape(page, 'Half square triangle');
+	await pickShape(page, 'HST');
 	await placeInto(page, 0);
 	await parkMouse(page);
 	await selectCell(page, 0);
@@ -1946,7 +1967,7 @@ test('the colour picker closes on a click outside it', async ({ page }) => {
 });
 
 test('a click on the wall beside the quilt drops the selection', async ({ page }) => {
-	await pickShape(page, 'Half square triangle');
+	await pickShape(page, 'HST');
 	await placeInto(page, 0);
 	await selectCell(page, 0);
 	await expect(page.locator('.readout')).toHaveText('A1 square selected');
@@ -1963,7 +1984,7 @@ test('a click on the wall beside the quilt drops the selection', async ({ page }
 
 test('the paint tool brushes colour on without touching the shape', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await pickShape(page, 'Half square triangle');
+	await pickShape(page, 'HST');
 	await placeInto(page, 0);
 	await placeInto(page, 1);
 	await parkMouse(page);
@@ -1975,7 +1996,7 @@ test('the paint tool brushes colour on without touching the shape', async ({ pag
 
 	// One piece takes the fabric; the cut stays exactly as it was.
 	const box = (await cell(page, 0).boundingBox())!;
-	await page.mouse.click(box.x + box.width * 0.8, box.y + box.height * 0.2);
+	await page.mouse.click(box.x + box.width * 0.2, box.y + box.height * 0.8);
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#4f7fe8', '#38511f']);
 	expect(await cellPoints(page, 0)).toEqual(shape);
@@ -2023,7 +2044,7 @@ test('picking a block type with squares selected puts it in them', async ({ page
 
 	// The palette acts on the selection rather than arming for a later click,
 	// the way picking a grid does.
-	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	await page.getByRole('button', { name: 'Zig zag', exact: true }).click();
 	await parkMouse(page);
 	expect(await cellFills(page, a)).toHaveLength(8);
 	expect(await cellFills(page, b)).toHaveLength(8);
@@ -2053,7 +2074,7 @@ test('a palette colour opens the picker, with the palette inside it', async ({ p
 
 	// And that is the one that gets painted.
 	await win.locator('.close').click();
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	await cell(page, 0).click();
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#38511f']);
@@ -2061,7 +2082,7 @@ test('a palette colour opens the picker, with the palette inside it', async ({ p
 
 test('recolouring a palette fabric is undoable', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	await cell(page, 0).click();
 	await parkMouse(page);
 	expect(await cellFills(page, 0)).toEqual(['#4f7fe8']);
@@ -2084,7 +2105,7 @@ test('recolouring a palette fabric is undoable', async ({ page }) => {
 test('a pattern taller than it is wide fits the square its icon is given', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
 	const cols = await gridCols(page);
-	await pickShape(page, 'Half square triangle');
+	await pickShape(page, 'HST');
 	await cell(page, at(cols, 1, 0)).click();
 	await cell(page, at(cols, 2, 0)).click();
 	await parkMouse(page);
@@ -2095,8 +2116,11 @@ test('a pattern taller than it is wide fits the square its icon is given', async
 	page.once('dialog', (dialog) => dialog.accept('Tall one'));
 	await page.getByRole('button', { name: /Add selection as pattern/ }).click();
 
-	const icon = (await page.locator('.saved .type').first().boundingBox())!;
-	const art = (await page.locator('.saved .type .pattern').first().boundingBox())!;
+	const tall = page.locator('.saved', {
+		has: page.getByRole('button', { name: 'Remove Tall one' })
+	});
+	const icon = (await tall.locator('.type').boundingBox())!;
+	const art = (await tall.locator('.type .pattern').boundingBox())!;
 
 	// The button stays square, and the artwork fits inside it rather than
 	// running to twice its height and dwarfing the icons beside it.
@@ -2110,7 +2134,7 @@ test('alt-click takes the square, cmd-click the piece inside it', async ({ page 
 	await addFabric(page, 'Blue', '4f7fe8');
 	const cols = await gridCols(page);
 	const target = at(cols, 1, 2);
-	await page.getByRole('button', { name: 'Pinwheel', exact: true }).click();
+	await page.getByRole('button', { name: 'Zig zag', exact: true }).click();
 	await cell(page, target).click();
 	await tool(page, /^Select/).click();
 	await parkMouse(page);
@@ -2174,7 +2198,7 @@ test('the dimensions are the design dropdowns, and the seam allowance is real', 
 	// Every blank is its finished size plus two allowances, so changing the
 	// allowance changes the cutting list.
 	await addFabric(page, 'Blue', '4f7fe8');
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	await cell(page, 0).click();
 	await parkMouse(page);
 	await openMaterials(page);
@@ -2261,7 +2285,7 @@ test('the palette names each fabric and how much of it the quilt uses', async ({
 
 	await page.getByRole('button', { name: /^Paint with Denim/ }).click();
 	await page.locator('.picker-window .close').click();
-	await pickShape(page, 'Square');
+	await armPlain(page);
 	for (const index of [0, 1, 2]) await cell(page, index).click();
 	await parkMouse(page);
 	expect(await paletteNames(page)).toEqual(['Denim', 'Peach']);
@@ -2414,7 +2438,7 @@ test('the chosen swatch is boxed clear of its colour', async ({ page }) => {
 
 test("the materials list is the design's three sections, off the panel", async ({ page }) => {
 	await addFabric(page, 'Denim', '3244b3');
-	await pickShape(page, 'Pinwheel');
+	await pickShape(page, 'Zig zag');
 	await cell(page, 0).click();
 	await cell(page, 1).click();
 	await parkMouse(page);
@@ -2447,7 +2471,7 @@ test("the materials list is the design's three sections, off the panel", async (
 	 * pinwheel is not sewn as a pinwheel.
 	 */
 	const sew = page.locator('.sheet .row').last().locator('.caption');
-	await expect(sew).toHaveText([/^Pinwheel - 8 x 8” \(2\)$/, /^HST - 4 x 4” \(8\)$/]);
+	await expect(sew).toHaveText([/^Zig zag - 8 x 8” \(2\)$/, /^HST - 4 x 4” \(8\)$/]);
 
 	await closeMaterials(page);
 	await expect(page.locator('.sheet')).toHaveCount(0);
@@ -2455,7 +2479,7 @@ test("the materials list is the design's three sections, off the panel", async (
 
 test('the materials list saves as a letter page of its own', async ({ page }) => {
 	await addFabric(page, 'Denim', '3244b3');
-	await pickShape(page, 'Pinwheel');
+	await pickShape(page, 'Zig zag');
 	await cell(page, 0).click();
 	await parkMouse(page);
 	await page.getByLabel('Quilt name').fill('Stars');
@@ -2494,7 +2518,7 @@ test('the materials list saves as a letter page of its own', async ({ page }) =>
 
 test('in and mm is one switch, and it reaches every measurement', async ({ page }) => {
 	await addFabric(page, 'Denim', '3244b3');
-	await pickShape(page, 'Pinwheel');
+	await pickShape(page, 'Zig zag');
 	await cell(page, 0).click();
 	await parkMouse(page);
 
@@ -2530,7 +2554,7 @@ test('in and mm is one switch, and it reaches every measurement', async ({ page 
 
 test('everything picked in the builder is marked the same way', async ({ page }) => {
 	await addFabric(page, 'Denim', '3244b3');
-	await pickShape(page, 'Pinwheel');
+	await pickShape(page, 'Zig zag');
 	await cell(page, 0).click();
 	await tool(page, /^Select/).click();
 	await cell(page, 0).click();
@@ -2558,12 +2582,76 @@ test('everything picked in the builder is marked the same way', async ({ page })
 	expect(await ring('.cell.selected')).toBe(shape);
 });
 
+test("the palette holds the design's roster and nothing beside it", async ({ page }) => {
+	/*
+	 * Both lists are read off the design file's own roster frames, so what is
+	 * offered is exactly what it draws — no more, and none of the shapes it
+	 * leaves out.
+	 */
+	const named = (panel: string) =>
+		page.locator(`[data-panel="${panel}"] .types input`).evaluateAll((fields) =>
+			fields.map((f) => {
+				const input = f as HTMLInputElement;
+				return input.value || input.placeholder;
+			})
+		);
+
+	expect(await named('type')).toEqual([
+		'HST',
+		'Half pinwheel',
+		'Zig zag',
+		'Flying geese',
+		'Diagonal stripe',
+		'Diamond'
+	]);
+	expect(await named('patterns')).toEqual([
+		'Star',
+		'Kaleidoscope',
+		'Arrows',
+		'Diamond frame',
+		'Lattice',
+		'Pinwheel'
+	]);
+
+	// Every pattern is two blocks by two, which is how the design draws them.
+	await expect(page.locator('[data-panel="patterns"] .saved-size')).toHaveText(
+		Array(6).fill('2×2')
+	);
+
+	// And each one stamps four squares, not one.
+	await addFabric(page, 'Blue', '4f7fe8');
+	const cols = await gridCols(page);
+	await pickShape(page, 'Star');
+	await cell(page, 0).click();
+	await parkMouse(page);
+	for (const i of [0, 1, cols, cols + 1]) {
+		expect((await cellFills(page, i)).length).toBeGreaterThan(1);
+	}
+	// The square beside them is untouched: one blank face, no shape cut into it.
+	expect(await cellFills(page, 2)).toEqual(['#ffffff']);
+});
+
+test('a pattern thrown away stays thrown away across a reload', async ({ page }) => {
+	// They are what a new quilt starts with, not a list that grows back.
+	const saved = page.locator('[data-panel="patterns"] .saved');
+	await expect(saved).toHaveCount(6);
+	page.on('dialog', (dialog) => dialog.accept());
+	await page.getByRole('button', { name: 'Remove Lattice' }).click();
+	await expect(saved).toHaveCount(5);
+
+	await page.waitForTimeout(AUTOSAVE_MS);
+	await page.reload();
+	await page.waitForSelector('[data-cell-index="0"]');
+	await expect(saved).toHaveCount(5);
+	await expect(page.getByRole('button', { name: 'Lattice', exact: true })).toHaveCount(0);
+});
+
 test('a shape can be called what its quilter calls it', async ({ page }) => {
-	const named = (n: number) => page.locator('.types .shape-name').nth(n);
+	const named = (n: number) => page.locator('[data-panel="type"] .shape-name').nth(n);
 
 	// Until renamed, a shape shows the name it came with.
 	await expect(named(0)).toHaveValue('');
-	await expect(named(0)).toHaveAttribute('placeholder', 'Square');
+	await expect(named(0)).toHaveAttribute('placeholder', 'HST');
 
 	await named(0).fill('Patch');
 	await expect(named(0)).toHaveValue('Patch');
@@ -2580,7 +2668,7 @@ test('a shape can be called what its quilter calls it', async ({ page }) => {
 	await page.reload();
 	await page.waitForSelector('[data-cell-index="0"]');
 	await expect(named(0)).toHaveValue('');
-	await expect(named(0)).toHaveAttribute('placeholder', 'Square');
+	await expect(named(0)).toHaveAttribute('placeholder', 'HST');
 });
 
 test('a shape with more parts than roles is drawn in cloth, not in holes', async ({ page }) => {
@@ -2589,8 +2677,7 @@ test('a shape with more parts than roles is drawn in cloth, not in holes', async
 	 * falling through to white — a hole in the block rather than a piece of it.
 	 */
 	const fills = await page
-		.locator('.types .type')
-		.nth(3)
+		.getByRole('button', { name: 'Flying geese', exact: true })
 		.evaluate((el) =>
 			Array.from(el.querySelectorAll('polygon')).map((p) => p.getAttribute('fill'))
 		);
@@ -2616,13 +2703,14 @@ test('adding a selection as a pattern is always there to be pressed', async ({ p
 	await add.click();
 	await parkMouse(page);
 	expect(prompted).toBe(false);
-	await expect(page.locator('[data-panel="patterns"] .saved')).toHaveCount(0);
+	// The design's own six, and nothing added to them.
+	await expect(page.locator('[data-panel="patterns"] .saved')).toHaveCount(6);
 	// And the press stops at the button rather than working the disclosure.
 	await expect(page.locator('[data-panel="patterns"]')).toHaveAttribute('open', '');
 
 	// With filled squares chosen, it offers to take them.
 	await addFabric(page, 'Blue', '4f7fe8');
-	await pickShape(page, 'Pinwheel');
+	await pickShape(page, 'Zig zag');
 	await cell(page, 0).click();
 	await tool(page, /^Select/).click();
 	await cell(page, 0).click();
@@ -2632,13 +2720,13 @@ test('adding a selection as a pattern is always there to be pressed', async ({ p
 
 test('a swatch with nothing in it still has an edge to aim at', async ({ page }) => {
 	await addFabric(page, 'Blue', '4f7fe8');
-	await pickShape(page, 'Half square triangle');
+	await pickShape(page, 'HST');
 	await placeInto(page, 0);
 	await parkMouse(page);
 
 	// Drill to the half that was never coloured.
 	await tool(page, /^Select/).click();
-	await pieceClick(page, 0, 0.75, 0.25);
+	await pieceClick(page, 0, 0.25, 0.75);
 	await expect(page.locator('.readout')).toHaveText('A1 piece selected');
 
 	/*
@@ -2670,7 +2758,7 @@ test('escape climbs back to the Select tool, where the builder rests', async ({ 
 	await addFabric(page, 'Blue', '4f7fe8');
 	await expect(tool(page, /^Select/)).toHaveClass(/active/);
 
-	await pickShape(page, 'Pinwheel');
+	await pickShape(page, 'Zig zag');
 	await cell(page, 0).click();
 	await expect(tool(page, /^Place/)).toHaveClass(/active/);
 
