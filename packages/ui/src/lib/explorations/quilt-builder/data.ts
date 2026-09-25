@@ -59,15 +59,20 @@ export const DEFAULT_SEAM_INCHES = 0.25;
 export const BINDINGS = [0.5, 0.625, 1, 2] as const;
 export const DEFAULT_BINDING_INCHES = 0.625;
 
-/** Inches in proper fractions, the same ones the rest of the app sets. */
+/*
+ * Written in figures, for the dimensions along the top of the palette. The
+ * design sets those by raising the numerator against the denominator rather
+ * than reaching for a ready-made glyph, so what is drawn is assembled from
+ * the parts and the value stays a plain string.
+ */
 const FRACTIONS: [number, string][] = [
-	[0.125, '⅛'],
-	[0.25, '¼'],
-	[0.375, '⅜'],
-	[0.5, '½'],
-	[0.625, '⅝'],
-	[0.75, '¾'],
-	[0.875, '⅞']
+	[0.125, '1/8'],
+	[0.25, '1/4'],
+	[0.375, '3/8'],
+	[0.5, '1/2'],
+	[0.625, '5/8'],
+	[0.75, '3/4'],
+	[0.875, '7/8']
 ];
 
 export const fmtFraction = (inches: number): string => {

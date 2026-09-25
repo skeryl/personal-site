@@ -637,6 +637,8 @@
 		box-sizing: border-box;
 		height: 3rem;
 		padding: 0 2rem;
+		/* Ruled off from the wall, as the dimensions are from the palette. */
+		border-bottom: var(--qb-divider);
 	}
 	/* The quilt's own name, in the app's writing at the design's 17.75px. */
 	.quilt-name {

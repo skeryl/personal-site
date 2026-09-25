@@ -2165,7 +2165,7 @@ test('the dimensions are the design dropdowns, and the seam allowance is real', 
 		'Seam allowance:',
 		'Binding:'
 	]);
-	await expect(page.locator('.dimensions .display')).toHaveText(['8”', '¼”', '⅝”']);
+	await expect(page.locator('.dimensions .display')).toHaveText(['8”', '1/4”', '5/8”']);
 
 	// Every blank is its finished size plus two allowances, so changing the
 	// allowance changes the cutting list.
@@ -2179,11 +2179,11 @@ test('the dimensions are the design dropdowns, and the seam allowance is real', 
 
 	const seam = page.locator('.dimensions .dropdown').nth(1);
 	await seam.locator('.trigger').click();
-	await seam.getByRole('option', { name: '½”' }).click();
+	await seam.getByRole('option', { name: '1/2”' }).click();
 	await openMaterials(page);
 	await expect(page.locator('.sheet .caption').first()).toContainText('9 x 9”');
 	await closeMaterials(page);
-	await expect(seam.locator('.display')).toHaveText('½”');
+	await expect(seam.locator('.display')).toHaveText('1/2”');
 });
 
 test('the quilt size opens as the design table', async ({ page }) => {
@@ -2414,7 +2414,7 @@ test('in and mm is one switch, and it reaches every measurement', async ({ page 
 	// Inches to start with, written as the design writes them.
 	const unit = (name: string) => page.locator('.units .unit', { hasText: name });
 	await expect(unit('in')).toHaveAttribute('aria-pressed', 'true');
-	await expect(page.locator('.dimensions .display')).toHaveText(['8”', '¼”', '⅝”']);
+	await expect(page.locator('.dimensions .display')).toHaveText(['8”', '1/4”', '5/8”']);
 	await expect(page.locator('.size .display')).toContainText('48” x 64”');
 
 	await unit('mm').click();

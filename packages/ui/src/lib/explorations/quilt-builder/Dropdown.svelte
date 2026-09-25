@@ -53,6 +53,33 @@
 		} | null;
 	} = $props();
 
+	/*
+	 * Fractions are drawn the way the design sets them: a raised numerator, a
+	 * full-height slash, a dropped denominator. Figma gets that from the
+	 * font's own FRAC feature, which the web build of Spline Sans Mono does
+	 * not carry, so the parts are set against each other here instead.
+	 *
+	 * The value stays a plain string everywhere else — in the tooltip, in the
+	 * cutting list, in what a screen reader says — and only its drawing
+	 * changes.
+	 */
+	interface Part {
+		text?: string;
+		numerator?: string;
+		denominator?: string;
+	}
+	const partsOf = (text: string): Part[] => {
+		const parts: Part[] = [];
+		let at = 0;
+		for (const match of text.matchAll(/(\d+)\/(\d+)/g)) {
+			if (match.index > at) parts.push({ text: text.slice(at, match.index) });
+			parts.push({ numerator: match[1], denominator: match[2] });
+			at = match.index + match[0].length;
+		}
+		if (at < text.length) parts.push({ text: text.slice(at) });
+		return parts;
+	};
+
 	let open = $state(false);
 	let root = $state<HTMLElement | null>(null);
 
@@ -95,7 +122,13 @@
 		aria-label={label ? `${label} ${display}` : display}
 		onclick={() => (open = !open)}
 	>
-		<span class="display">{display}</span>
+		<span class="display"
+			>{#each partsOf(display) as part, i (i)}{#if part.numerator}<span class="frac"
+						><span class="num">{part.numerator}</span><span class="slash">/</span><span class="den"
+							>{part.denominator}</span
+						></span
+					>{:else}{part.text}{/if}{/each}</span
+		>
 		<svg class="caret" viewBox="0 0 13 13" aria-hidden="true">
 			<path d="M3 5 L6.5 9 L10 5" fill="none" stroke="currentColor" stroke-width="1" />
 		</svg>
@@ -177,6 +210,21 @@
 		text-transform: uppercase;
 		color: #000;
 		white-space: nowrap;
+	}
+
+	/* A fraction set against itself: numerator up, denominator down. */
+	.frac {
+		white-space: nowrap;
+	}
+	.frac .num,
+	.frac .den {
+		font-size: 0.75em;
+	}
+	.frac .num {
+		vertical-align: 0.35em;
+	}
+	.frac .den {
+		vertical-align: -0.12em;
 	}
 
 	.trigger {
