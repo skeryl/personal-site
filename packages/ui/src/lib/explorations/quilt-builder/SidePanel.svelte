@@ -464,7 +464,11 @@
 		color: #000;
 	}
 
-	/* Three dimensions on one line, at the design's 10px gutter. */
+	/*
+	 * Three dimensions on one line, at the design's 10px gutter. Each one
+	 * grows by an equal share of whatever the row has spare, so the slack
+	 * falls between them rather than collecting after the last.
+	 */
 	.dimensions {
 		display: flex;
 		flex-wrap: wrap;
@@ -472,6 +476,9 @@
 		gap: 0.5rem 23px;
 		padding: 0.9rem 10px 0.75rem;
 		border-bottom: var(--qb-divider);
+	}
+	.dimensions > :global(.dropdown) {
+		flex: 1 1 auto;
 	}
 	/* 10px uppercase Cabin, in black: the design's section heading, every one
 	   of them the same size, Attributes included. */
