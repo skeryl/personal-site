@@ -3,8 +3,6 @@
 
 	import { onMount, setContext } from 'svelte';
 	import { type Post, PostType } from '@sc/model';
-	import ContentRendererStage from '$lib/components/ContentRendererStage.svelte';
-	import ContentRendererThree from '$lib/components/ContentRendererThree.svelte';
 	import ContentRendererExploration from '$lib/components/ContentRendererExploration.svelte';
 	import PostControlBar from '$lib/components/PostControlBar.svelte';
 	import { PlayState, PostControlContext } from '$lib/state/post-control';
@@ -31,6 +29,24 @@
 	let date = $derived(post?.summary.timestamp);
 	let requiresCanvas = $derived(
 		post?.summary?.type === PostType.experiment || post?.summary?.type === PostType.experiment3d
+	);
+
+	/*
+	 * The canvas renderers carry an engine each (grraf, three), so they load on
+	 * demand rather than putting both in every post page. Keyed off the type
+	 * alone, so reloading saved params doesn't remount a running sketch.
+	 * Explorations stay imported: their markup is the prerendered page.
+	 */
+	let postType = $derived(post?.summary?.type);
+	let stageRenderer = $derived(
+		postType === PostType.experiment
+			? import('$lib/components/ContentRendererStage.svelte')
+			: undefined
+	);
+	let threeRenderer = $derived(
+		postType === PostType.experiment3d
+			? import('$lib/components/ContentRendererThree.svelte')
+			: undefined
 	);
 
 	$effect(() => {
@@ -218,10 +234,14 @@
 		{/if}
 
 		{#if post}
-			{#if post.summary.type === PostType.experiment}
-				<ContentRendererStage {post} {container} {cnv} />
-			{:else if post.summary.type === PostType.experiment3d}
-				<ContentRendererThree {post} {cnv} />
+			{#if stageRenderer}
+				{#await stageRenderer then { default: Renderer }}
+					<Renderer {post} {container} {cnv} />
+				{/await}
+			{:else if threeRenderer}
+				{#await threeRenderer then { default: Renderer }}
+					<Renderer {post} {cnv} />
+				{/await}
 			{:else}
 				<ContentRendererExploration {post} />
 			{/if}
