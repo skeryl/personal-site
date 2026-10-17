@@ -502,7 +502,7 @@ const post: Post = {
 		timestamp: new Date(2026, 3, 4),
 		type: PostType.experiment,
 		isHidden: false,
-		collaborators: [{ name: 'Eva Warren', role: 'Art Direction', url: 'https://evamarie.studio' }]
+		collaborators: [{ name: 'Eva Marie', role: 'Art Direction', url: 'https://evamarie.studio' }]
 	},
 	content: () => new BlobGridContent(),
 	params

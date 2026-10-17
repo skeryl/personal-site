@@ -35,7 +35,7 @@
 	<h2>working with Eva</h2>
 	<p>
 		Art direction by <a href="https://evamarie.studio" target="_blank" rel="noopener noreferrer"
-			>Eva Warren</a
+			>Eva Marie</a
 		>:
 	</p>
 	<ul class="list-disc pl-5">
