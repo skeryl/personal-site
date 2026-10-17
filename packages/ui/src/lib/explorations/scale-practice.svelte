@@ -65,7 +65,7 @@
 		</select>
 		<a
 			class="justify-self-end"
-			href={`data:text/plain;charset=utf-8,${window.encodeURIComponent(musicXML)}`}
+			href={`data:text/plain;charset=utf-8,${encodeURIComponent(musicXML)}`}
 			download={`${selectedSong.title}.xml`}>⬇ Download MusicXML</a
 		>
 	</div>

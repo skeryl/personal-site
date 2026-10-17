@@ -142,6 +142,15 @@
 	});
 </script>
 
+<svelte:head>
+	{#if post}
+		<title>{title} · shane's computer</title>
+		{#if post.summary.subtitle}
+			<meta name="description" content={post.summary.subtitle} />
+		{/if}
+	{/if}
+</svelte:head>
+
 <div class="flex flex-1 flex-col h-full" class:experiment-layout={requiresCanvas}>
 	{#if !hideHeader}
 		<!-- Full header: desktop always, mobile for non-experiments -->
@@ -154,7 +163,7 @@
 			<div class="flex flex-row items-baseline mt-2">
 				<h1 class="flex-1">{title}</h1>
 				<div>
-					{date?.toLocaleDateString()}
+					{date?.toLocaleDateString('en-US')}
 				</div>
 			</div>
 			{#if post?.summary.collaborators?.length}
@@ -186,7 +195,9 @@
 					><Icon type="chevron-left" size="sm" className="!text-inherit hover:!text-inherit" /></a
 				>
 				<span class="text-sm font-semibold truncate flex-1">{title}</span>
-				<span class="text-xs text-theme-text-muted shrink-0">{date?.toLocaleDateString()}</span>
+				<span class="text-xs text-theme-text-muted shrink-0"
+					>{date?.toLocaleDateString('en-US')}</span
+				>
 			</div>
 		{/if}
 	{/if}
