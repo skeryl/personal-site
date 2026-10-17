@@ -4,6 +4,10 @@
 	const years: number = differenceInYears(new Date(), new Date('2009-07-01'));
 </script>
 
+<svelte:head>
+	<title>about · shane's computer</title>
+</svelte:head>
+
 <section class="py-2">
 	<h2>what's all this?</h2>
 	<p>

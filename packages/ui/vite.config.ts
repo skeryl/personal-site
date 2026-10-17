@@ -10,6 +10,11 @@ const postSummarizer = await postSummarizerPlugin({
 
 export default defineConfig({
 	plugins: [postSummarizer, sveltekit()],
+	ssr: {
+		// Skeleton ships raw .svelte files but is declared in the root
+		// package.json, where vite-plugin-svelte doesn't look for Svelte libs.
+		noExternal: ['@skeletonlabs/skeleton']
+	},
 	test: {
 		include: ['src/**/*.{test,spec}.{js,ts}', 'plugins/**/*.{test,spec}.{js,ts}']
 	}

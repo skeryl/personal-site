@@ -44,7 +44,7 @@ export class SpotifyClient {
     return this.isInitialized;
   }
 
-  constructor(private readonly fetcherFn: () => Fetcher = () => window.fetch) {
+  constructor(private readonly fetcherFn: () => Fetcher = () => globalThis.fetch) {
     this.fetch = fetcherFn();
   }
 

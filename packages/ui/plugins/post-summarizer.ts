@@ -97,10 +97,31 @@ async function doesFileExist(file: string): Promise<boolean> {
 	}
 }
 
-async function doIfNotExists(file: string, sumpn: () => Promise<void>): Promise<void> {
-	if (!(await doesFileExist(file))) {
-		await sumpn();
+/**
+ * Generated pages are gitignored, so rewriting a stale one loses nothing.
+ * Unchanged files are left alone to keep the dev server from rebuilding in a
+ * loop.
+ */
+export async function writeIfChanged(file: string, content: string): Promise<void> {
+	if ((await doesFileExist(file)) && (await fs.readFile(file, 'utf8')) === content) {
+		return;
 	}
+	await fs.mkdir(path.dirname(file), { recursive: true });
+	await fs.writeFile(file, content);
+}
+
+/**
+ * The page for one post. The entry is imported statically so that the post
+ * renders into the prerendered HTML rather than arriving after hydration.
+ */
+export function postPageSource(postId: string, fileCamelCase: string): string {
+	return `<script lang="ts">
+	import Post from '$lib/components/Post.svelte';
+	import ${fileCamelCase} from '$lib/entries/${postId}';
+</script>
+
+<Post post={${fileCamelCase}} />
+`;
 }
 
 async function generatePostPage(
@@ -108,32 +129,11 @@ async function generatePostPage(
 	file: string,
 	fileCamelCase: string
 ): Promise<void> {
-	const project = new Project();
 	const postId = noExt(file);
-
-	const pageFile = path.join(pagesDir, postId, '+page.svelte');
-	await doIfNotExists(pageFile, async () => {
-		const pageSource = project.createSourceFile(
-			pageFile,
-			`<script lang="ts">
-	import Post from "$lib/components/PostAsync.svelte";
-    const ${fileCamelCase} = import("$lib/entries/${postId}");
-</script>
-<Post post={${fileCamelCase}}/>
-`,
-			{ overwrite: true }
-		);
-		await pageSource.save();
-	});
-
-	const pageServerFile = path.join(pagesDir, postId, '+page.server.ts');
-	await doIfNotExists(pageServerFile, async () => {
-		await project
-			.createSourceFile(pageServerFile, `export const prerender = true;`, {
-				overwrite: true
-			})
-			.save();
-	});
+	await writeIfChanged(
+		path.join(pagesDir, postId, '+page.svelte'),
+		postPageSource(postId, fileCamelCase)
+	);
 }
 
 async function generatePostPages(pagesDir: string, files: string[]) {
