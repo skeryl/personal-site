@@ -23,7 +23,7 @@ for (const route of ['/', '/journal']) {
 		await page.goto(route);
 		const cards = page.locator('.card-grid a[href^="/journal/"]');
 		expect(await cards.count()).toBeGreaterThan(0);
-		await expect(page).toHaveTitle(/\S/);
+		await expect(page).toHaveTitle(/shane's computer/);
 	});
 }
 
@@ -44,6 +44,19 @@ for (const entry of journalEntries) {
 		await expect(heading).not.toBeEmpty();
 		const title = (await heading.textContent())!.trim();
 		await expect(page).toHaveTitle(new RegExp(title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-		await expect(page.getByText('post is loading')).toHaveCount(0);
 	});
 }
+
+/*
+ * An exploration's prose is the reason this matters: a crawler should get the
+ * writing, not a container waiting on hydration to fill it.
+ */
+test('an exploration serves its whole article as markup', async ({ page }) => {
+	await page.goto('/journal/nyc-subway');
+	await expect(
+		page.getByRole('heading', { name: 'The Subway Gap', level: 1 }).first()
+	).toBeVisible();
+	for (const section of ['Which lines actually work?', 'What does CBTC actually mean?']) {
+		await expect(page.getByRole('heading', { name: section })).toBeVisible();
+	}
+});

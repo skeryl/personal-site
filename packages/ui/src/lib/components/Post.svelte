@@ -143,7 +143,12 @@
 </script>
 
 <svelte:head>
-	{#if post}
+	<!--
+		Only the instance that owns the page describes it: explorations embed a
+		second Post for their own content (see TrackVisualizer), and letting that
+		one set the title would rename the page it sits on.
+	-->
+	{#if post && !hideHeader}
 		<title>{title} · shane's computer</title>
 		{#if post.summary.subtitle}
 			<meta name="description" content={post.summary.subtitle} />

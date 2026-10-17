@@ -97,13 +97,31 @@ async function doesFileExist(file: string): Promise<boolean> {
 	}
 }
 
-/** Generated pages are gitignored, so rewriting a stale one loses nothing. */
-async function writeIfChanged(file: string, content: string): Promise<void> {
+/**
+ * Generated pages are gitignored, so rewriting a stale one loses nothing.
+ * Unchanged files are left alone to keep the dev server from rebuilding in a
+ * loop.
+ */
+export async function writeIfChanged(file: string, content: string): Promise<void> {
 	if ((await doesFileExist(file)) && (await fs.readFile(file, 'utf8')) === content) {
 		return;
 	}
 	await fs.mkdir(path.dirname(file), { recursive: true });
 	await fs.writeFile(file, content);
+}
+
+/**
+ * The page for one post. The entry is imported statically so that the post
+ * renders into the prerendered HTML rather than arriving after hydration.
+ */
+export function postPageSource(postId: string, fileCamelCase: string): string {
+	return `<script lang="ts">
+	import Post from '$lib/components/Post.svelte';
+	import ${fileCamelCase} from '$lib/entries/${postId}';
+</script>
+
+<Post post={${fileCamelCase}} />
+`;
 }
 
 async function generatePostPage(
@@ -112,17 +130,9 @@ async function generatePostPage(
 	fileCamelCase: string
 ): Promise<void> {
 	const postId = noExt(file);
-
-	// A static import, so the post renders into the prerendered HTML.
 	await writeIfChanged(
 		path.join(pagesDir, postId, '+page.svelte'),
-		`<script lang="ts">
-	import Post from '$lib/components/Post.svelte';
-	import ${fileCamelCase} from '$lib/entries/${postId}';
-</script>
-
-<Post post={${fileCamelCase}} />
-`
+		postPageSource(postId, fileCamelCase)
 	);
 }
 
