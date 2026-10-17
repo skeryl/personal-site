@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { run } from 'svelte/legacy';
 
-	import { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
+	import type { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
 	import { onMount } from 'svelte';
 	import { generateMeasures, type Song } from '@sc/synth-builder/musicxml';
 	import { allSongs } from '$lib/explorations/scale-practice/songs';
@@ -16,6 +16,9 @@
 		if (!container) {
 			return;
 		}
+		// Loaded here so the renderer stays out of the prerender pass: the home
+		// page imports every entry to read its summary.
+		const { OpenSheetMusicDisplay } = await import('opensheetmusicdisplay');
 		osmd = new OpenSheetMusicDisplay(container, {
 			measureNumberInterval: 4,
 			autoResize: true,
