@@ -11,6 +11,13 @@ jobs:
     name: Cleanup Preview
     if: github.event.action == 'closed'
     runs-on: ubuntu-latest
+    # Same group as the deploy, so closing the PR cancels a deploy still in
+    # flight rather than racing it and leaving the project behind.
+    concurrency:
+      group: disco-preview-${{ github.event.number }}
+      cancel-in-progress: true
+    permissions:
+      pull-requests: read
     steps:
       - name: Remove the preview
         uses: skeryl/disco-preview@v1
@@ -114,6 +121,13 @@ jobs:
     name: Preview Deploy
     needs: build
     runs-on: ubuntu-latest
+    # Disco numbers deployments on arrival and runs them in that order, so
+    # whichever run deploys last wins whatever commit it carries. Two pushes
+    # close together could finish out of order and leave the preview behind
+    # the PR, so only the newest run gets to finish.
+    concurrency:
+      group: disco-preview-${{ github.event.number }}
+      cancel-in-progress: true
     permissions:
       pull-requests: write
     steps:
