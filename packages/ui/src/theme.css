@@ -81,4 +81,13 @@
 	/* ── Typography ────────────────────────────────────────────────── */
 	--font-body: 'Literata', Georgia, serif;
 	--font-heading: 'Sora', sans-serif;
+
+	/* ── Spacing ----------------------------------------------------- */
+	--spacing-xxl: 16rem;
+	--spacing-xl: 8rem;
+	--spacing-lg: 4rem;
+	--spacing-md: 2rem;
+	--spacing-sm: 1rem;
+	--spacing-xs: 0.5rem;
+	--spacing-xxs: 0.25rem;
 }
