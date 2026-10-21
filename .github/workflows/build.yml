@@ -5,26 +5,27 @@ on:
     types: [opened, synchronize, reopened, closed]
 
 jobs:
+  # Best effort: a cancelled run or an Actions outage leaves the project
+  # behind, which is what preview-sweep.yml is for.
   cleanup-preview:
     name: Cleanup Preview
     if: github.event.action == 'closed'
     runs-on: ubuntu-latest
+    # Same group as the deploy, so closing the PR cancels a deploy still in
+    # flight rather than racing it and leaving the project behind.
+    concurrency:
+      group: disco-preview-${{ github.event.number }}
+      cancel-in-progress: true
+    permissions:
+      pull-requests: read
     steps:
-      - name: Delete Netlify preview deploy
-        run: |
-          DEPLOYS=$(curl -sf -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
-            "https://api.netlify.com/api/v1/sites/$NETLIFY_SITE_ID/deploys?per_page=100")
-          DEPLOY_ID=$(echo "$DEPLOYS" | jq -r '.[] | select(.deploy_ssl_url != null and (.deploy_ssl_url | contains("pr-${{ github.event.number }}"))) | .id' | head -1)
-          if [ -n "$DEPLOY_ID" ]; then
-            curl -sf -X DELETE -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
-              "https://api.netlify.com/api/v1/deploys/$DEPLOY_ID"
-            echo "Deleted deploy $DEPLOY_ID for PR #${{ github.event.number }}"
-          else
-            echo "No deploy found for PR #${{ github.event.number }}"
-          fi
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+      - name: Remove the preview
+        uses: skeryl/disco-preview@v1
+        with:
+          mode: teardown
+          project: site-pr-${{ github.event.number }}
+          disco-host: ${{ secrets.DISCO_HOST }}
+          disco-api-key: ${{ secrets.DISCO_API_KEY }}
 
   check:
     name: Type Check
@@ -120,6 +121,13 @@ jobs:
     name: Preview Deploy
     needs: build
     runs-on: ubuntu-latest
+    # Disco numbers deployments on arrival and runs them in that order, so
+    # whichever run deploys last wins whatever commit it carries. Two pushes
+    # close together could finish out of order and leave the preview behind
+    # the PR, so only the newest run gets to finish.
+    concurrency:
+      group: disco-preview-${{ github.event.number }}
+      cancel-in-progress: true
     permissions:
       pull-requests: write
     steps:
@@ -128,19 +136,22 @@ jobs:
         with:
           name: build-output
           path: build/
-      - name: Deploy to Netlify
-        id: netlify
-        uses: nwtgck/actions-netlify@v3
+      # An excluded file 404s in the preview; nothing falls back to
+      # production. Video stays, or a PR that adds one could not show it and
+      # every entry embedding one would render broken. Only the precompressed
+      # sidecars go: Disco's file_server has no precompressed key and the
+      # route chain compresses with zstd on the fly, so nothing reads them.
+      # The ** is load-bearing, since every asset is nested.
+      - name: Deploy to Disco
+        uses: skeryl/disco-preview@v1
         with:
-          publish-dir: build/
-          production-deploy: false
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          deploy-message: 'PR #${{ github.event.number }}: ${{ github.event.pull_request.title }}'
-          alias: pr-${{ github.event.number }}
-          enable-commit-comment: false
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          project: site-pr-${{ github.event.number }}
+          dir: build
+          exclude: |
+            **/*.br
+            **/*.gz
+          disco-host: ${{ secrets.DISCO_HOST }}
+          disco-api-key: ${{ secrets.DISCO_API_KEY }}
 
   smoke:
     name: Smoke Tests
