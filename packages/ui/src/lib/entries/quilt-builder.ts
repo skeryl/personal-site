@@ -9,7 +9,10 @@ const post: Post = {
 		subtitle: 'Design a quilt block by block, then get the cutting list for every fabric',
 		timestamp: new Date(2026, 7, 9),
 		type: PostType.exploration,
-		isHidden: false
+		isHidden: false,
+		collaborators: [
+			{ name: 'Eva Marie', role: 'Design & Implementation', url: 'https://evamarie.studio' }
+		]
 	},
 	content: () => QuiltBuilder
 };

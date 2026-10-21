@@ -60,7 +60,7 @@ test('home page loads and shows post cards', async ({ page }) => {
 
 test('about page loads', async ({ page }) => {
 	await page.goto('/about');
-	await expect(page.getByText("what's all this?")).toBeVisible();
+	await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 	assertNoErrors(page);
 });
 

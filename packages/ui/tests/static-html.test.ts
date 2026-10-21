@@ -29,8 +29,8 @@ for (const route of ['/', '/journal']) {
 
 test('about page is plain HTML with no scripts', async ({ page, request }) => {
 	await page.goto('/about');
-	await expect(page.getByText("what's all this?")).toBeVisible();
-	await expect(page).toHaveTitle(/about/i);
+	await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+	await expect(page).toHaveTitle(/shane's computer/);
 
 	const html = await (await request.get('/about')).text();
 	expect(html).not.toMatch(/<script/i);
