@@ -30,7 +30,7 @@
 				art-direction from
 				<a href="https://evamarie.studio" target="_blank" rel="noopener noreferrer"
 					>Eva&nbsp;Marie</a
-				>
+				>.
 			</p>
 			<ul>
 				<li><a href="/journal/blob-grid">Blob Grid</a></li>
@@ -52,14 +52,14 @@
 			<ul>
 				<li>
 					<a href="/journal/note-shader">Note Shader</a> which lets you use your computer keyboard
-					as a <i>musical</i> keyboard and visualizing the notes
+					as a <em>musical</em> keyboard and visualize the notes.
 				</li>
 				<li>
 					<a href="/journal/spring-harp">Spring Harp</a> when music and physics collide (at the time I
-					was researching soft-body physics and springs)
+					was researching soft-body physics and springs).
 				</li>
 				<li>
-					<a href="/journal/gravity-swell">Gravity Swell</a> a simple exploration on gravity simulation
+					<a href="/journal/gravity-swell">Gravity Swell</a> a simple exploration of gravity simulation.
 				</li>
 			</ul>
 
@@ -67,13 +67,14 @@
 			<ul>
 				<li>
 					<a href="/journal/quilt-builder">Quilt Builder</a> - a tool I initially built for
-					<a href="https://evamarie.studio">Eva</a> to help her design quilted beach blankets. With her
-					design input and help, it has since evolved into a more fully-featured utility that helps design
-					quilt patterns and figure out how much fabric each color uses
+					<a href="https://evamarie.studio" target="_blank" rel="noopener noreferrer">Eva</a> to help
+					her design quilted beach blankets. With her design input and help, it has since evolved into
+					a more fully-featured utility that helps design quilt patterns and figure out how much fabric
+					each color uses.
 				</li>
 				<li>
 					<a href="/journal/scale-practice">Scale Practice</a> - I used this post to generate practice
-					scales to help me prepare for jazz solos (I play trumpet)
+					scales to help me prepare for jazz solos (I play trumpet).
 				</li>
 			</ul>
 
@@ -91,13 +92,14 @@
 				I've worked in many industries, but most recently I have spent a lot of time thinking about
 				problems in finance. For some of that, check out the story of <a
 					href="/journal/calc-builder">Calc Builder</a
-				> in which I explore . In that exploration, I rebuilt it as a small demo from memory to help show
-				.
+				>.
 			</p>
 			<p>
-				If you want my full CV, <a href="https://www.linkedin.com/in/shane-d-carroll/"
-					>look me up here</a
-				>
+				If you want my full CV, <a
+					href="https://www.linkedin.com/in/shane-d-carroll/"
+					target="_blank"
+					rel="noopener noreferrer">look me up here</a
+				>.
 			</p>
 		</div>
 	</div>
