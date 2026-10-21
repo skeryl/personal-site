@@ -122,18 +122,20 @@ jobs:
         with:
           name: build-output
           path: build/
-      # Video is 78MB of the 98MB build, and a preview is the one place it
-      # earns the least. Images are 13MB and stay: they are worth looking at.
-      # The patterns need **/ to reach anything under _app/immutable/assets.
+      # An excluded file 404s in the preview; nothing falls back to
+      # production. Video stays, or a PR that adds one could not show it and
+      # every entry embedding one would render broken. Only the precompressed
+      # sidecars go: Disco's file_server has no precompressed key and the
+      # route chain compresses with zstd on the fly, so nothing reads them.
+      # The ** is load-bearing, since every asset is nested.
       - name: Deploy to Disco
         uses: skeryl/disco-preview@v1
         with:
           project: site-pr-${{ github.event.number }}
           dir: build
           exclude: |
-            **/*.mp4
-            **/*.webm
-            **/*.mov
+            **/*.br
+            **/*.gz
           disco-host: ${{ secrets.DISCO_HOST }}
           disco-api-key: ${{ secrets.DISCO_API_KEY }}
 
