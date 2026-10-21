@@ -5,7 +5,11 @@
 </script>
 
 <svelte:head>
-	<title>shane's computer</title>
+	<title>about · shane's computer</title>
+	<meta
+		name="description"
+		content="the personal site of shane: ideas, art, creative coding, analysis and play. interactive experiments and write-ups from a software engineer of {years} years."
+	/>
 </svelte:head>
 
 <section class="about py-2 flex flex-col">
