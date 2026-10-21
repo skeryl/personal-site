@@ -119,6 +119,11 @@
 		padding-bottom: 0;
 	}
 
+	/* Keeps a last line from being one stranded word. */
+	.about-section p {
+		text-wrap: pretty;
+	}
+
 	/*
 	 * The marker is drawn rather than left to list-style, because a native one
 	 * always sits on the left: on a right-aligned list it travels with the text
