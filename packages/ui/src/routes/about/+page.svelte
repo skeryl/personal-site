@@ -28,7 +28,9 @@
 				You might notice that <strong>some</strong> things on this site look
 				<strong>objectively good</strong>. Usually, those are things designed by or with
 				art-direction from
-				<a href="https://evamarie.studio" target="_blank" rel="noopener noreferrer">Eva Marie</a>
+				<a href="https://evamarie.studio" target="_blank" rel="noopener noreferrer"
+					>Eva&nbsp;Marie</a
+				>
 			</p>
 			<ul>
 				<li><a href="/journal/blob-grid">Blob Grid</a></li>
@@ -41,11 +43,11 @@
 	</div>
 
 	<div class="about-section">
-		<h2>what are these</h2>
+		<h2>what's all this stuff?</h2>
 		<div class="about-section-content">
 			<p>
-				all my posts are kind of like "journal entries". basically these are fun little ideas that
-				I've wanted to explore such as...
+				some posts are kind of like "journal entries"; basically fun little ideas that I've wanted
+				to explore such as...
 			</p>
 			<ul>
 				<li>
@@ -56,6 +58,13 @@
 				<li><a href="/journal/scale-practice">Scale Practice</a></li>
 				<li><a href="/journal/spring-harp">Spring Harp</a></li>
 			</ul>
+
+			<p>
+				some are write-ups of things I've worked on (see <a href="/journal/calc-builder"
+					>Calc Builder</a
+				>)
+			</p>
+
 			<p>
 				other posts are just exploratory "how do I even configure this software to draw stuff?":
 			</p>
@@ -110,11 +119,29 @@
 		padding-bottom: 0;
 	}
 
+	/*
+	 * The marker is drawn rather than left to list-style, because a native one
+	 * always sits on the left: on a right-aligned list it travels with the text
+	 * and lands in a ragged column. This one hangs in the gutter beside the
+	 * text, on whichever side the section is aligned to, level with the first
+	 * line so wrapped lines stay flush.
+	 */
 	.about-section ul {
-		list-style: disc;
-		/* Bullets hang outside, so wrapped lines stay flush with the text. */
+		list-style: none;
 		padding-left: var(--spacing-sm);
 		margin-block: var(--spacing-xs);
+	}
+
+	.about-section li {
+		position: relative;
+	}
+
+	.about-section li::before {
+		content: '•';
+		position: absolute;
+		left: calc(-1 * var(--spacing-sm));
+		width: var(--spacing-sm);
+		text-align: center;
 	}
 
 	/*
@@ -127,13 +154,14 @@
 			text-align: right;
 		}
 
-		/*
-		 * Bullets travel with the text when it is right-aligned, so they land in
-		 * a ragged column. The right edge already groups these few links.
-		 */
 		.about-section:nth-of-type(even) ul {
-			list-style: none;
 			padding-left: 0;
+			padding-right: var(--spacing-sm);
+		}
+
+		.about-section:nth-of-type(even) li::before {
+			left: auto;
+			right: calc(-1 * var(--spacing-sm));
 		}
 	}
 </style>
