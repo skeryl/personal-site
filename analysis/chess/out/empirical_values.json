@@ -1,0 +1,41 @@
+{
+  "method": "weighted logistic regression on midgame material imbalance (plies 30,50)",
+  "samples": 6781301,
+  "games_sampled": 3850193,
+  "intercept": 0.11982979420903199,
+  "coefficients": {
+    "pawn": 0.2083820914409303,
+    "knight": 0.5127152394446952,
+    "bishop": 0.5816361811449973,
+    "rook": 0.8537741801813737,
+    "queen": 1.6089308379009983
+  },
+  "coefficient_se": {
+    "pawn": 0.0007470292404743993,
+    "knight": 0.0013865123186697465,
+    "bishop": 0.00140513428061048,
+    "rook": 0.002055084146188731,
+    "queen": 0.0034866069841455855
+  },
+  "values": {
+    "pawn": 1.0,
+    "knight": 2.460457306572497,
+    "bishop": 2.791200419974058,
+    "rook": 4.097157170645787,
+    "queen": 7.7210609931759855
+  },
+  "value_se": {
+    "pawn": 5.820766091346741e-11,
+    "knight": 0.010043340210222256,
+    "bishop": 0.01093354628592926,
+    "rook": 0.017703533807225575,
+    "queen": 0.032034751944277975
+  },
+  "textbook": {
+    "pawn": 1,
+    "knight": 3,
+    "bishop": 3,
+    "rook": 5,
+    "queen": 9
+  }
+}

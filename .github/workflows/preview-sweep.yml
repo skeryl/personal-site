@@ -12,6 +12,10 @@ jobs:
   sweep:
     name: Remove previews for closed PRs
     runs-on: ubuntu-latest
+    # It reads PR state to decide what to delete, and declines to delete
+    # anything it cannot read.
+    permissions:
+      pull-requests: read
     steps:
       - uses: skeryl/disco-preview@v1
         with:

@@ -1,0 +1,25 @@
+{
+	"permissions": {
+		"allow": [
+			"Bash(npm run check)",
+			"Bash(npm run check:*)",
+			"Bash(npm run build)",
+			"Bash(npm run preview)",
+			"Bash(npm run lint)",
+			"Bash(npx vitest:*)",
+			"Bash(npx playwright:*)",
+			"Bash(npx prettier:*)",
+			"Bash(node .calc-shots/*)",
+			"Bash(node ../../.calc-shots/*)",
+			"Bash(curl -s * http://localhost*)",
+			"Bash(curl -s http://localhost*)",
+			"Bash(git status:*)",
+			"Bash(git log:*)",
+			"Bash(git diff:*)",
+			"Bash(git add:*)",
+			"Bash(git commit:*)",
+			"Bash(npx eslint .)",
+			"mcp__ccd_session_mgmt__search_session_transcripts"
+		]
+	}
+}

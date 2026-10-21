@@ -1,0 +1,10 @@
+import { chromium } from '@playwright/test';
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1100, height: 1000 } });
+await page.goto('http://localhost:4173/journal/calc-builder');
+await page.waitForSelector('.footnote');
+await page.locator('[data-fn="1"]').scrollIntoViewIfNeeded();
+await page.waitForTimeout(600);
+await page.screenshot({ path: '.calc-shots/fn-endpara.png' });
+await browser.close();
+console.log('done');

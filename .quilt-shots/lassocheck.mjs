@@ -1,0 +1,15 @@
+import { chromium } from 'playwright';
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1500, height: 1000 } });
+await page.goto('http://localhost:5173/journal/quilt-builder', { waitUntil: 'networkidle' });
+await page.waitForSelector('[data-cell-index="0"]');
+const a = await page.locator('[data-cell-index="7"]').boundingBox();
+const z = await page.locator('[data-cell-index="20"]').boundingBox();
+await page.mouse.move(a.x + 4, a.y + 4);
+await page.mouse.down();
+await page.mouse.move(z.x + z.width - 4, z.y + z.height - 4, { steps: 10 });
+console.log('cells marked selected during drag:', await page.locator('.cell.selected').count());
+console.log('lasso box:', JSON.stringify(await page.locator('.lasso').boundingBox()));
+await page.mouse.up();
+console.log('cells marked selected after drag:', await page.locator('.cell.selected').count());
+await browser.close();

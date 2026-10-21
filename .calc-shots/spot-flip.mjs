@@ -1,0 +1,14 @@
+import { chromium } from '@playwright/test';
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1680, height: 1000 } });
+await page.goto('http://localhost:4173/journal/calc-builder');
+await page.waitForSelector('[data-expand-demo]');
+await page.locator('[data-expand-demo]').scrollIntoViewIfNeeded();
+await page.waitForTimeout(400);
+await page.locator('[data-expand-demo]').click();
+await page.waitForTimeout(110);
+await page.screenshot({ path: '.calc-shots/flip-mid.png' });
+await page.waitForTimeout(500);
+await page.screenshot({ path: '.calc-shots/flip-done.png' });
+await browser.close();
+console.log('done');

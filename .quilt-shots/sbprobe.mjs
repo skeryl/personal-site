@@ -1,0 +1,10 @@
+import { chromium } from 'playwright';
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 600, height: 400 } });
+await page.setContent('<div id="s" style="width:200px;height:100px;overflow:auto"><div style="height:400px"></div></div>');
+const before = await page.locator('#s').evaluate((el) => el.offsetWidth - el.clientWidth);
+await page.addStyleTag({ content: '#s::-webkit-scrollbar{width:15px;height:15px}#s::-webkit-scrollbar-thumb{background:#999}' });
+await page.waitForTimeout(100);
+const after = await page.locator('#s').evaluate((el) => el.offsetWidth - el.clientWidth);
+console.log('gutter before styling:', before, '/ after:', after);
+await browser.close();
