@@ -1,0 +1,21 @@
+name: Preview Sweep
+
+# Tearing down on `closed` is best effort: cancelled runs, Actions outages and
+# PRs closed while CI was red all leave a project behind. This reconciles what
+# the server has against what is actually open, so orphans cannot accumulate.
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+jobs:
+  sweep:
+    name: Remove previews for closed PRs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: skeryl/disco-preview@v1
+        with:
+          mode: sweep
+          prefix: site-pr-
+          disco-host: ${{ secrets.DISCO_HOST }}
+          disco-api-key: ${{ secrets.DISCO_API_KEY }}
