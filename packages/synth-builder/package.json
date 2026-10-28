@@ -7,7 +7,7 @@
   "devDependencies": {
     "xsd2ts": "^0.9.17",
     "ts-node": "^10.9.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.5"
   },
   "scripts": {
     "generate-music-xml-types": "ts-node ./musicxml/generate-types.ts ./musicxml/schema/musicxml.xsd",
